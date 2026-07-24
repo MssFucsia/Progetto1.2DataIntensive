@@ -1,0 +1,1495 @@
+\documentclass[11pt,a4paper]{article}
+
+% =========================================================
+% METADATI
+% =========================================================
+\newcommand{\Course}{Sicurezza delle Architetture Data Intensive}
+\newcommand{\CourseAcronym}{Agentic Pipeline Threat Model}
+\newcommand{\Professor}{Ernesto Damiani}
+\newcommand{\University}{Università degli Studi di Milano}
+\newcommand{\Degree}{Corso di Laurea Magistrale in Sicurezza Informatica}
+\newcommand{\AcademicYear}{2025/2026}
+\newcommand{\StudentOne}{Marta Finazzi}
+\newcommand{\StudentTwo}{Alessio Bonora}
+
+% =========================================================
+% LINGUA, FONT E TIPOGRAFIA
+% =========================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{newtxtext}
+\usepackage{newtxmath}
+\usepackage[scaled=0.94]{inconsolata}
+\usepackage{microtype}
+\usepackage{csquotes}
+
+% =========================================================
+% LAYOUT
+% =========================================================
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{setspace}
+\setstretch{1.08}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt plus 1pt minus 1pt}
+\renewcommand{\arraystretch}{1.18}
+\usepackage{needspace}
+
+% =========================================================
+% COLORI
+% =========================================================
+\usepackage[table]{xcolor}
+\definecolor{Primary}{HTML}{1F4E79}
+\definecolor{Secondary}{HTML}{2E7D32}
+\definecolor{Accent}{HTML}{7B1FA2}
+\definecolor{Warning}{HTML}{B3261E}
+\definecolor{SoftBg}{HTML}{F5F7FA}
+\definecolor{SoftBlue}{HTML}{E8F1FA}
+\definecolor{SoftGreen}{HTML}{E8F5E9}
+\definecolor{SoftOrange}{HTML}{FFF3E0}
+\definecolor{SoftRed}{HTML}{FCE8E6}
+\definecolor{SoftBorder}{HTML}{C8D1DC}
+\definecolor{RiskCritical}{HTML}{F4CCCC}
+\definecolor{RiskHigh}{HTML}{FCE5CD}
+\definecolor{RiskMedium}{HTML}{FFF2CC}
+\definecolor{RiskLow}{HTML}{D9EAD3}
+\definecolor{AgentFill}{HTML}{DCEBFA}
+\definecolor{ToolFill}{HTML}{E8F5E9}
+\definecolor{DataFill}{HTML}{FFF3E0}
+\definecolor{Boundary}{HTML}{4472C4}
+
+% =========================================================
+% TABELLE
+% =========================================================
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{ragged2e}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\newcolumntype{C}[1]{>{\Centering\arraybackslash}p{#1}}
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcommand{\critico}{\cellcolor{RiskCritical}\textbf{Critico}}
+\newcommand{\alto}{\cellcolor{RiskHigh}\textbf{Alto}}
+\newcommand{\medio}{\cellcolor{RiskMedium}\textbf{Medio}}
+\newcommand{\basso}{\cellcolor{RiskLow}\textbf{Basso}}
+\newcommand{\appAlta}{\cellcolor{RiskHigh}\textbf{Alta}}
+\newcommand{\appMedia}{\cellcolor{RiskMedium}\textbf{Media}}
+\newcommand{\appBassa}{\cellcolor{RiskLow}\textbf{Bassa}}
+\newcommand{\condizionata}{\cellcolor{SoftBlue}\textbf{Condizionata}}
+
+% =========================================================
+% FIGURE, TIKZ E CODICE
+% =========================================================
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\captionsetup{font=small,labelfont=bf,labelsep=colon,skip=5pt}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc,backgrounds,matrix}
+\usepackage{listings}
+\lstdefinelanguage{json}{
+  basicstyle=\ttfamily\small,
+  string=[s]{\"}{\"},
+  stringstyle=\color{Secondary},
+  comment=[l]{//},
+  commentstyle=\color{gray},
+  morecomment=[s]{/*}{*/},
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{SoftBorder},
+  backgroundcolor=\color{SoftBg},
+  columns=fullflexible
+}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{SoftBorder},
+  backgroundcolor=\color{SoftBg},
+  showstringspaces=false,
+  columns=fullflexible
+}
+
+% =========================================================
+% LISTE E TITOLI
+% =========================================================
+\usepackage{enumitem}
+\setlist{topsep=3pt,partopsep=0pt,itemsep=2pt,parsep=0pt,leftmargin=1.6em}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\titleformat{\section}{\Large\bfseries\color{Primary}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\large\bfseries\color{Primary}}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{Primary}}{\thesubsubsection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{1.5ex plus .2ex}{0.8ex}
+\titlespacing*{\subsection}{0pt}{1.2ex plus .2ex}{0.5ex}
+\titlespacing*{\subsubsection}{0pt}{1.0ex plus .2ex}{0.4ex}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+% =========================================================
+% BOX
+% =========================================================
+\usepackage[most]{tcolorbox}
+\newtcolorbox{keybox}[1][]{
+  colback=SoftBlue,
+  colframe=Primary,
+  boxrule=0.6pt,
+  arc=2pt,
+  left=7pt,right=7pt,top=5pt,bottom=5pt,
+  #1
+}
+\newtcolorbox{warningbox}[1][]{
+  colback=SoftRed,
+  colframe=Warning,
+  boxrule=0.6pt,
+  arc=2pt,
+  left=7pt,right=7pt,top=5pt,bottom=5pt,
+  #1
+}
+\newtcolorbox{controlbox}[1][]{
+  colback=SoftGreen,
+  colframe=Secondary,
+  boxrule=0.6pt,
+  arc=2pt,
+  left=7pt,right=7pt,top=5pt,bottom=5pt,
+  #1
+}
+
+% =========================================================
+% HEADER, FOOTER E LINK
+% =========================================================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{Primary}{\CourseAcronym}}
+\fancyhead[C]{\small AA \AcademicYear}
+\fancyhead[R]{\small \StudentOne{} -- \StudentTwo}
+\fancyfoot[L]{\small \University}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\setlength{\headheight}{14pt}
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=Primary,
+  urlcolor=Primary,
+  citecolor=Primary,
+  pdftitle={Threat Modeling di una Agentic Filler Pipeline per Digital Human in tempo reale},
+  pdfauthor={Marta Finazzi e Alessio Bonora}
+}
+
+\begin{document}
+\pagenumbering{roman}
+
+% =========================================================
+% FRONTESPIZIO
+% =========================================================
+\begin{titlepage}
+\centering
+\vspace*{1.3cm}
+{\Large\bfseries Threat Modeling di una Agentic Filler Pipeline\\[0.25cm]
+per Digital Human in tempo reale}\par
+\vspace{1.5cm}
+{\large Progetto per il corso di\\[0.15cm]
+\textbf{\Course} (6 CFU)}\par
+\vspace{0.8cm}
+{\large \textbf{Prof. \Professor}}\par
+\vspace{0.35cm}
+{\large \University}\par
+\vspace{0.2cm}
+{\large \Degree}\par
+\vspace{2.2cm}
+\begin{tabular}{rl}
+\textbf{Studenti:} & \StudentOne \\
+                    & \StudentTwo \\
+\end{tabular}
+\vfill
+{\large Luglio 2026}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+% =========================================================
+\section{Abstract}
+
+Questo progetto presenta il threat modeling di una pipeline agentica progettata per ridurre la latenza percepita durante l'interazione con un digital human. L'architettura adotta un modello 
+\emph{dual-brain}: un \textbf{Fast-Brain Agent} produce rapidamente un filler verbale e un trigger gestuale, mentre un \textbf{Deep-Brain Agent} elabora la risposta principale tramite LLM, RAG e memoria contestuale. I due percorsi sono eseguiti in parallelo e coordinati da un orchestratore che gestisce priorità, transizione audio-video, fallback e sincronizzazione.
+
+L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Come indicato per questa traccia, non viene applicata una FMEA: le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, costruisce un attacker model, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
+
+Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
+
+% =========================================================
+\section{Introduzione e obiettivi}
+
+\subsection{Contesto}
+
+La traccia considera una pipeline per digital human nella quale il percorso STT--LLM--TTS--Lip-Synch--streaming presenta una latenza incompatibile con una conversazione percepita come naturale. Il requisito di progetto assume un tempo percepito di prima risposta inferiore a circa 800\,ms e riporta, nello stato iniziale della pipeline, latenze che possono arrivare a decine di secondi. Per mascherare l'attesa viene introdotto un ciclo agentico di filler contestuali, più credibili di una semplice animazione statica o di una frase ripetitiva \cite{projectspec}.
+
+L'istanza applicativa usa un avatar con personalità coerente, voce clonata e comportamento gestuale. La personalità allegata al progetto descrive una figura anziana emiratina, con stile materno, uso del dialetto locale e riferimenti a rimedi tradizionali. Tali caratteristiche aumentano il realismo, ma anche il potere persuasivo dell'output e quindi la rilevanza di autenticità, safety e tutela della fiducia dell'utente \cite{persona,verbalhabits}.
+
+\subsection{Perché il sistema è agentico}
+
+Secondo il materiale del corso, un sistema agentico combina inferenza e azione, può invocare servizi esterni, comunicare tramite memoria condivisa o persistente e coordinarsi con altri agenti senza supervisione umana passo per passo \cite{damianiagentic}. La pipeline analizzata soddisfa tali caratteristiche perché:
+
+\begin{itemize}
+  \item il Fast-Brain interpreta un input parziale e decide filler, tono e trigger gestuale;
+  \item il Deep-Brain recupera contesto dal RAG e genera la risposta sostanziale;
+  \item l'orchestratore prende decisioni su fork, ordine di riproduzione, timeout, fallback e stitching;
+  \item il sistema invoca servizi di STT, TTS, generazione video, voice cloning e lip-sync;
+  \item feedback e memoria possono influenzare le interazioni future;
+  \item l'output del Fast-Brain viene emesso prima che il percorso principale sia completato.
+\end{itemize}
+
+\subsection{Obiettivi dell'analisi}
+
+Gli obiettivi sono:
+
+\begin{enumerate}
+  \item definire con precisione architettura, scope e assunzioni;
+  \item identificare gli asset Data, Model e gli asset agentici di supporto;
+  \item individuare minacce concrete senza passare da una FMEA;
+  \item classificare le minacce tramite STRIDE-AI e OWASP Agentic;
+  \item prioritizzare i rischi in base a likelihood, impact e amplificatori agentici;
+  \item proporre controlli coerenti con le sette precauzioni del corso;
+  \item progettare una secure architecture compatibile con il vincolo real-time;
+  \item definire un piano sperimentale riproducibile senza inventare risultati non misurati.
+\end{enumerate}
+
+\begin{keybox}
+\textbf{Scelta metodologica.} La FMEA non viene applicata. Il threat model parte direttamente da asset, agenti, trust boundary, identità, memorie, tool e azioni. La FMEA rimane appropriata per analizzare guasti e failure mode di pipeline AI tradizionali, ma non è richiesta per questa traccia agentica.
+\end{keybox}
+
+% =========================================================
+\section{Scope e metodologia}
+
+\subsection{Oggetto dell'analisi}
+
+L'oggetto è la \textbf{pipeline agentica dual-brain} che maschera la latenza della generazione audiovisiva. Il Deep-Brain usa internamente il percorso RAG e i servizi multimediali; tali componenti sono inclusi soltanto nella misura in cui rappresentano memorie, tool o superfici d'attacco raggiungibili dagli agenti.
+
+Sono inclusi:
+
+\begin{itemize}
+  \item input vocale o testuale, VAD e streaming STT;
+  \item Fast-Brain e Deep-Brain;
+  \item orchestratore e messaggi inter-agent;
+  \item RAG, memoria di sessione, eventuale memoria persistente e feedback;
+  \item TTS filler, TTS principale, voice cloning, generazione video e lip-sync;
+  \item identità di servizio, credenziali, policy, log e artefatti intermedi;
+  \item output audio-video verso l'utente.
+\end{itemize}
+
+Sono fuori scope, salvo che vengano introdotti in implementazioni future:
+
+\begin{itemize}
+  \item code interpreter, shell e valutazione dinamica di codice generato;
+  \item accesso dell'agente a sistemi amministrativi esterni;
+  \item modifica autonoma di risorse cloud o database operativi;
+  \item strumenti non descritti nella traccia.
+\end{itemize}
+
+\subsection{Processo di threat modeling}
+
+Il processo adottato è:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  procstep/.style={draw,rounded corners,fill=SoftBlue,minimum height=0.9cm,text width=2.25cm,align=center,font=\small},
+  arr/.style={-Stealth,thick,Primary}
+]
+\node[procstep] (a) {Architettura e scope};
+\node[procstep,right=0.45cm of a] (b) {Attacker model e trust boundary};
+\node[procstep,right=0.45cm of b] (c) {Asset e proprietà};
+\node[procstep,right=0.45cm of c] (d) {Threat concrete e STRIDE-AI};
+\node[procstep,below=0.7cm of d] (e) {OWASP Agentic e priorità};
+\node[procstep,left=0.45cm of e] (f) {Scenari e controlli};
+\node[procstep,left=0.45cm of f] (g) {Secure architecture};
+\node[procstep,left=0.45cm of g] (h) {Validazione e rischio residuo};
+\draw[arr] (a)--(b); \draw[arr] (b)--(c); \draw[arr] (c)--(d);
+\draw[arr] (d)--(e); \draw[arr] (e)--(f); \draw[arr] (f)--(g); \draw[arr] (g)--(h);
+\end{tikzpicture}
+\caption{Processo adottato per la pipeline agentica.}
+\label{fig:method}
+\end{figure}
+
+La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni del corso sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
+
+% =========================================================
+\section{Descrizione della pipeline agentica}
+
+\subsection{Architettura dual-brain}
+
+La pipeline esegue in parallelo due percorsi:
+
+\begin{itemize}
+  \item \textbf{Fast path}: riceve un partial transcript, identifica una categoria d'intento e produce un filler breve più un trigger comportamentale;
+  \item \textbf{Deep path}: riceve la trascrizione completa, interroga il RAG e genera la risposta principale.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  comp/.style={draw,rounded corners,minimum height=0.9cm,text width=2.2cm,align=center,font=\small},
+  agent/.style={draw,rounded corners,minimum height=1.1cm,text width=2.6cm,align=center,font=\small,fill=AgentFill},
+  tool/.style={draw,rounded corners,minimum height=0.9cm,text width=2.2cm,align=center,font=\small,fill=ToolFill},
+  data/.style={draw,rounded corners,minimum height=0.9cm,text width=2.1cm,align=center,font=\small,fill=DataFill},
+  arr/.style={-Stealth,thick},
+  lbl/.style={font=\scriptsize,fill=white,inner sep=2pt}
+]
+\node[comp] (user) at (0,0) {Utente\\voce/testo};
+\node[tool] (stt) at (3,0) {VAD /\\Streaming STT};
+\node[agent] (fast) at (6.3,2) {Fast-Brain\\\scriptsize partial input, filler, trigger};
+\node[agent] (deep) at (6.3,-2) {Deep-Brain\\\scriptsize full transcript, RAG, risposta};
+\node[data] (rag) at (10.1,-3.7) {FAISS / memoria / feedback};
+\node[tool] (ttsf) at (10.1,2) {TTS filler};
+\node[tool] (media) at (10.1,-1.3) {TTS main / Veo / voice clone};
+\node[comp] (orch) at (13.5,0.4) {Orchestratore\\validator + fallback};
+\node[tool] (lip) at (16.8,0.4) {Lip-Sync /\\streaming};
+\node[comp] (out) at (20,0.4) {Output\\audio-video};
+\draw[arr] (user)--(stt);
+\draw[arr] (stt)--node[lbl,sloped]{10--15 token}(fast);
+\draw[arr] (stt)--node[lbl,sloped]{trascrizione completa}(deep);
+\draw[arr] (deep)--(rag); \draw[arr] (rag)--(deep);
+\draw[arr] (fast)--node[lbl]{filler + JSON}(ttsf);
+\draw[arr] (deep)--node[lbl]{risposta}(media);
+\draw[arr] (ttsf)--(orch); \draw[arr] (media)--(orch);
+\draw[arr] (orch)--(lip); \draw[arr] (lip)--(out);
+\draw[arr,dashed] (fast)--node[lbl,sloped]{stato / correlazione}(orch);
+\draw[arr,dashed] (deep)--node[lbl,sloped]{stato / correlazione}(orch);
+\end{tikzpicture}%
+}
+\caption{Pipeline agentica dual-brain analizzata.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Ruoli, azioni e privilegi attesi}
+
+\begin{table}[H]
+\centering
+\caption{Ruoli agentici e principio di least agency atteso.}
+\label{tab:roles}
+\small
+\begin{tabularx}{\textwidth}{|L{2.7cm}|Y|Y|Y|}
+\hline
+\textbf{Componente} & \textbf{Input} & \textbf{Output/azione} & \textbf{Accessi strettamente necessari} \\
+\hline
+Fast-Brain & Partial transcript, categoria d'intento, estratto minimo della personalità & Filler breve, intent label, trigger da insieme finito & Output validator e TTS filler; nessun accesso diretto a FAISS, memoria persistente o voice asset \\
+\hline
+Deep-Brain & Trascrizione completa, contesto RAG, memoria di sessione & Risposta principale & Retrieval read-only, memoria di sessione, TTS main \\
+\hline
+Orchestratore & Stato dei due percorsi, output validati, segnali temporali & Fork, scheduling, timeout, fallback, stitching & Invocazione dei servizi multimediali secondo policy; nessun contenuto decisionale autonomo \\
+\hline
+Feedback Manager & Feedback esplicito e segnali impliciti & Proposta di modifica di ranking o few-shot pool & Feedback store; aggiornamenti persistenti mediati da policy e, per quelli ad alto impatto, HITL \\
+\hline
+RAG Retriever & Query del Deep-Brain & Chunk con provenienza e score & FAISS read-only durante l'inferenza \\
+\hline
+Voice Service & Testo validato e riferimento autorizzato & Audio sintetizzato & Voice embedding protetto; nessun accesso al RAG \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Fast-Brain Agent}
+
+Il Fast-Brain è progettato per generare un riconoscimento contestuale entro un budget ridotto. Il prompt di sistema limita il compito a un filler di massimo 12 parole e richiede un output JSON strutturato. Il Fast-Brain non deve rispondere alla domanda, richiedere dati all'utente, dare consigli sostanziali o selezionare liberamente strumenti.
+
+Un possibile output logico è:
+
+\begin{lstlisting}[language=json,caption={Output logico del Fast-Brain.}]
+{
+  "session_id": "9f4b...",
+  "intent": "complex_analytical",
+  "trigger": "GAZE_UP_LEFT",
+  "filler": "That is an important question; let me consider it carefully.",
+  "sequence": 12
+}
+\end{lstlisting}
+
+Il JSON non è un confine di sicurezza di per sé. Deve essere validato da un componente deterministico indipendente prima di raggiungere TTS e animazione.
+
+\subsection{Deep-Brain Agent}
+
+Il Deep-Brain riceve la trascrizione completa e genera la risposta principale. Il percorso può includere:
+
+\begin{itemize}
+  \item query expansion e retrieval su indice FAISS;
+  \item contesto RAG con metadati e provenienza;
+  \item memoria di sessione e, se prevista, memoria persistente;
+  \item few-shot examples e system/personality prompt;
+  \item TTS, voice cloning e generazione video.
+\end{itemize}
+
+La memoria persistente non è assunta come scrivibile direttamente dall'utente. Qualora il feedback possa aggiornare ranking o few-shot pool, tali aggiornamenti costituiscono un'azione privilegiata separata dall'inferenza.
+
+\subsection{Orchestrazione e stati}
+
+L'orchestratore deve implementare una macchina a stati esplicita:
+
+\begin{enumerate}
+  \item ricezione input e apertura della sessione;
+  \item fork dei due percorsi;
+  \item validazione del Fast-Brain;
+  \item emissione del filler oppure fallback statico;
+  \item preparazione della risposta principale;
+  \item transizione controllata filler--main;
+  \item chiusura della sessione e registrazione dell'audit trail.
+\end{enumerate}
+
+La race condition ``Double-Speak'' non è un'elevation of privilege. È un rischio di integrità dello stato e disponibilità/qualità del servizio, da trattare tramite state machine, lock logico, idempotenza e timeout.
+
+\subsection{Assunzioni architetturali}
+
+\begin{table}[H]
+\centering
+\caption{Assunzioni utilizzate nel threat model.}
+\label{tab:assumptions}
+\small
+\begin{tabularx}{\textwidth}{|C{0.9cm}|Y|Y|}
+\hline
+\textbf{ID} & \textbf{Assunzione} & \textbf{Effetto sull'analisi} \\
+\hline
+A1 & Fast-Brain, Deep-Brain e orchestratore sono processi o servizi distinguibili & È possibile applicare identità e privilegi separati \\
+\hline
+A2 & Il Fast-Brain non necessita di accesso diretto a RAG o memoria persistente & Qualunque accesso rappresenta excessive agency o privilege abuse \\
+\hline
+A3 & Il feedback può influenzare ranking o few-shot pool, ma non dovrebbe aggiornare direttamente la knowledge base & Il feedback è un vettore di poisoning da mediare \\
+\hline
+A4 & TTS, voice cloning o generazione video possono essere servizi esterni & Si introducono trust boundary, supply-chain risk e data disclosure \\
+\hline
+A5 & I messaggi inter-componenti possono attraversare una rete interna o un message bus & Sono richiesti autenticità, integrità, freschezza e binding alla sessione \\
+\hline
+A6 & Il requisito di latenza impedisce controlli generativi pesanti nel fast path & I controlli sincroni devono essere deterministici e il fallback deve essere fail-safe \\
+\hline
+A7 & Non sono presenti shell, code interpreter o \texttt{eval()} di output dell'agente & ASI05 è non applicabile nello scope corrente, salvo estensioni future \\
+\hline
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Attacker model}
+
+\subsection{Profili di attaccante}
+
+\begin{longtable}{|C{0.8cm}|L{2.5cm}|L{3.5cm}|L{3.8cm}|L{3.7cm}|}
+\caption{Attacker model.}\label{tab:attackers}\\
+\hline
+\textbf{ID} & \textbf{Attaccante} & \textbf{Accesso iniziale} & \textbf{Capacità} & \textbf{Obiettivi principali} \\
+\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Attaccante} & \textbf{Accesso iniziale} & \textbf{Capacità} & \textbf{Obiettivi principali} \\
+\hline
+\endhead
+AT1 & Utente esterno malevolo & Canale voce/testo e feedback & Prompt injection, input ripetuti, manipolazione linguistica, replay lato client & Goal hijack, disclosure, degradazione del servizio \\
+\hline
+AT2 & Utente autenticato/Sybil & Più account o sessioni valide & Feedback coordinato, query adattive, osservazione dei cambiamenti nel ranking & Poisoning persistente e manipolazione del few-shot pool \\
+\hline
+AT3 & Attaccante di rete interno & Accesso a rete interna, bus o proxy compromesso & Intercettazione, modifica, replay e spoofing dei messaggi & Confondere agenti e orchestratore, corrompere lo stato \\
+\hline
+AT4 & Insider o amministratore malevolo & Accesso a storage, prompt, log o pipeline di deploy & Modifica di modelli, prompt, index, policy o voice asset & Persistenza, impersonazione, copertura delle tracce \\
+\hline
+AT5 & Fornitore o dipendenza compromessa & Modello, libreria, TTS, voice service o generatore video & Aggiornamento malevolo, telemetria indebita, comportamento backdoored & Supply-chain compromise ed esfiltrazione \\
+\hline
+AT6 & Agente compromesso & Controllo logico del Fast-Brain o Deep-Brain & Uso delle identità e dei tool assegnati, produzione di output formalmente validi ma malevoli & Propagazione downstream e abuso dei privilegi \\
+\hline
+\end{longtable}
+
+\subsection{Obiettivi di sicurezza}
+
+Gli obiettivi prioritari sono:
+
+\begin{itemize}
+  \item impedire che l'input utente ridefinisca il goal degli agenti;
+  \item confinare il blast radius di ogni agente compromesso;
+  \item proteggere memoria, RAG, prompt, voice asset e feedback da modifiche non autorizzate;
+  \item garantire autenticità e freschezza dei messaggi inter-agent;
+  \item assicurare che l'output audiovisivo sia attribuibile alla versione corretta di modello, voce e policy;
+  \item mantenere la disponibilità senza bypassare i controlli di sicurezza in caso di timeout.
+\end{itemize}
+
+% =========================================================
+\section{Data Flow Diagram e trust boundary}
+
+\subsection{DFD di livello 0}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=1.6cm,align=center},
+  arr/.style={Stealth-Stealth,thick}
+]
+\node[box] (u) {Utente / Attaccante\\\scriptsize dominio esterno};
+\node[box,right=3.8cm of u,fill=AgentFill] (s) {Agentic Digital Human Pipeline\\\scriptsize dominio del sistema};
+\draw[arr] (u)--node[above,font=\scriptsize]{voce, testo, feedback / audio-video}(s);
+\end{tikzpicture}
+\caption{DFD livello 0.}
+\end{figure}
+
+\subsection{DFD di livello 1}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  comp/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize},
+  agent/.style={draw,rounded corners,minimum height=1cm,text width=2.2cm,align=center,font=\scriptsize,fill=AgentFill},
+  tool/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize,fill=ToolFill},
+  data/.style={draw,rounded corners,minimum height=0.85cm,text width=2.1cm,align=center,font=\scriptsize,fill=DataFill},
+  arr/.style={-Stealth,thick},
+  tb/.style={draw,dashed,very thick,Boundary,rounded corners,inner sep=11pt},
+  lab/.style={font=\scriptsize,fill=white,inner sep=1.5pt}
+]
+\node[comp] (user) at (0,0) {User};
+\node[tool] (edge) at (2.8,0) {API / VAD / STT};
+\node[agent] (fast) at (6,1.7) {Fast-Brain};
+\node[agent] (deep) at (6,-1.7) {Deep-Brain};
+\node[data] (memory) at (9.4,-3.5) {RAG / memoria / feedback};
+\node[comp] (validator) at (9.4,1.7) {Output Validator};
+\node[comp] (orch) at (12.5,0) {Orchestrator};
+\node[tool] (tools) at (15.7,0) {TTS / voice / video / lip-sync};
+\node[comp] (out) at (18.8,0) {Output};
+\draw[arr] (user)--(edge);
+\draw[arr] (edge)--(fast); \draw[arr] (edge)--(deep);
+\draw[arr] (fast)--(validator); \draw[arr] (validator)--(orch);
+\draw[arr] (deep)--(orch); \draw[arr] (deep)--(memory); \draw[arr] (memory)--(deep);
+\draw[arr,dashed] (edge) to[bend left=18] node[lab,above]{feedback}(memory);
+\draw[arr] (orch)--(tools); \draw[arr] (tools)--(out);
+\node[tb,fit=(user),label={[lab]above:TB1}] {};
+\node[tb,fit=(edge),label={[lab]above:TB2}] {};
+\node[tb,fit=(fast)(deep)(validator)(orch),label={[lab]above:TB3}] {};
+\node[tb,fit=(memory),label={[lab]below:TB4}] {};
+\node[tb,fit=(tools),label={[lab]above:TB5}] {};
+\node[tb,fit=(out),label={[lab]above:TB6}] {};
+\end{tikzpicture}%
+}
+\caption{DFD livello 1 e principali trust boundary.}
+\label{fig:dfd1}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Trust boundary e requisiti di sicurezza.}
+\label{tab:trustboundaries}
+\small
+\begin{tabularx}{\textwidth}{|C{0.9cm}|L{3.2cm}|Y|Y|}
+\hline
+\textbf{TB} & \textbf{Confine} & \textbf{Dati/azioni} & \textbf{Rischi dominanti} \\
+\hline
+TB1 & Utente esterno $\leftrightarrow$ edge & Voce, testo, feedback, session ID & Spoofing, prompt injection, flooding, feedback manipulation \\
+\hline
+TB2 & Edge $\rightarrow$ agenti & Partial transcript, full transcript, intent preliminare & Truncation, goal hijack, PII leakage, session mix-up \\
+\hline
+TB3 & Agenti $\leftrightarrow$ orchestratore & Filler, trigger, risposta, completion signal & Identity spoofing, tampering, replay, state desynchronization \\
+\hline
+TB4 & Deep-Brain $\leftrightarrow$ RAG/memoria & Query, chunk, embedding, score, feedback update & Poisoning, cross-user leakage, unauthorized write \\
+\hline
+TB5 & Orchestratore $\leftrightarrow$ media services & Testo, voice reference, prompt visuale, audio e video intermedi & Tool misuse, supply chain, provider disclosure, artifact tampering \\
+\hline
+TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Impersonazione, output tampering, assenza di disclosure AI \\
+\hline
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Asset model}
+
+\subsection{Proprietà di sicurezza}
+
+La metodologia considera le proprietà CIA$^3$-R richiamate nel materiale del corso: Confidentiality, Integrity, Availability, Authenticity, Authorization e Non-repudiation \cite{damianiasset}. Nel caso del digital human assumono particolare rilievo:
+
+\begin{itemize}
+  \item \textbf{Authenticity}: l'utente deve poter distinguere l'output legittimo da un contenuto sintetico non autorizzato;
+  \item \textbf{Authorization}: ogni agente deve usare soltanto azioni, memorie e tool necessari;
+  \item \textbf{Integrity}: prompt, RAG, feedback, messaggi e artefatti non devono essere alterati;
+  \item \textbf{Confidentiality}: voce, conversazioni, memoria e asset di clonazione possono contenere dati sensibili;
+  \item \textbf{Availability}: il sistema deve degradare in modo sicuro senza bloccarsi o bypassare i controlli;
+  \item \textbf{Non-repudiation}: modifiche persistenti, accessi alla voce e azioni cross-agent devono essere attribuibili.
+\end{itemize}
+
+\subsection{Data assets}
+
+\begin{longtable}{|C{0.8cm}|L{3.2cm}|L{6.0cm}|L{4.6cm}|}
+\caption{Data assets della pipeline agentica.}\label{tab:dataassets}\\
+\hline
+\textbf{ID} & \textbf{Asset} & \textbf{Funzione e sensibilità} & \textbf{Proprietà prioritarie} \\
+\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Asset} & \textbf{Funzione e sensibilità} & \textbf{Proprietà prioritarie} \\
+\hline
+\endhead
+D1 & Input voce/testo & Canale controllato dall'utente; può includere PII, dati sanitari, istruzioni malevole o audio manipolato & C, I, Authenticity \\
+\hline
+D2 & Partial transcript & Prime parole inviate al Fast-Brain; contesto incompleto e forte influenza sul filler immediato & I, Authenticity \\
+\hline
+D3 & Full transcript & Base della risposta principale e del retrieval; può contenere dati sensibili & C, I \\
+\hline
+D4 & System/personality prompt & Definisce identità, vincoli, stile e policy dei due agenti & C, I, Authenticity \\
+\hline
+D5 & FAISS index, chunk, embedding e metadata & Determinano il contesto recuperato; persistenza e provenienza sono critiche & I, Authenticity, Availability \\
+\hline
+D6 & RAG context & Contenuto non trusted inserito nel prompt del Deep-Brain & I, C \\
+\hline
+D7 & Memoria di sessione/persistente & Influenza conversazioni future; possibile cross-user leakage & C, I, Authorization \\
+\hline
+D8 & Few-shot pool & Condiziona stabilmente output e stile; promozione non controllata causa poisoning & I, Authenticity \\
+\hline
+D9 & Feedback esplicito e implicito & Può modificare ranking e selezione degli esempi & I, Non-repudiation \\
+\hline
+D10 & Filler e trigger JSON & Output immediato del Fast-Brain, consumato prima della risposta principale & I, Authorization, Authenticity \\
+\hline
+D11 & Main response transcript & Risposta sostanziale destinata al TTS e al video & I, C, Authenticity \\
+\hline
+D12 & Therapist WAV / voice embedding & Asset biometrico e identitario che abilita la clonazione vocale & C, Authenticity, Authorization \\
+\hline
+D13 & Reference video e prompt visuale & Definiscono l'identità visiva e lo stile dell'avatar & I, Authenticity \\
+\hline
+D14 & Artefatti intermedi & Audio TTS, cloned.wav, silent.mp4 e file temporanei & C, I, Availability \\
+\hline
+D15 & Output finale e metadata & Contenuto attribuito al digital human, potenzialmente persuasivo & Authenticity, I, C \\
+\hline
+D16 & Audit trail & Ricostruisce input, decisioni, tool call, policy decision e modifiche persistenti & I, Non-repudiation, C \\
+\hline
+\end{longtable}
+
+\subsection{Model assets}
+
+\begin{table}[H]
+\centering
+\caption{Model assets.}
+\label{tab:modelassets}
+\small
+\begin{tabularx}{\textwidth}{|C{0.8cm}|L{3.5cm}|Y|Y|}
+\hline
+\textbf{ID} & \textbf{Modello} & \textbf{Ruolo} & \textbf{Rischi specifici} \\
+\hline
+M1 & Fast-Brain model & Intent preliminare, filler e trigger a bassa latenza & Goal hijack, output fuori scope, supply-chain compromise \\
+\hline
+M2 & Deep-Brain LLM & Risposta principale e uso del contesto RAG & Prompt injection, data disclosure, context misuse \\
+\hline
+M3 & Embedding model & Rappresentazione della query e dei chunk & Retrieval manipulation, drift, inconsistenza di versione \\
+\hline
+M4 & VAD/STT & Segmentazione e trascrizione dell'audio & Adversarial audio, truncation e transcript mismatch \\
+\hline
+M5 & Arabic TTS & Sintesi della voce nel dialetto previsto & Testo/SSML malevolo, provider risk, output non coerente \\
+\hline
+M6 & Voice-cloning model & Replica l'identità vocale a partire dal riferimento & Identity abuse, extraction e uso non autorizzato \\
+\hline
+M7 & Video generation model & Generazione visuale/cinematica & Off-prompt output, provider risk, content-policy failure \\
+\hline
+M8 & Lip-Sync engine & Sincronizzazione audio-video & Artifact tampering, desincronizzazione e DoS \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Supporting agentic assets}
+
+\begin{table}[H]
+\centering
+\caption{Asset agentici di supporto.}
+\label{tab:supportassets}
+\small
+\begin{tabularx}{\textwidth}{|C{0.8cm}|L{3.6cm}|Y|Y|}
+\hline
+\textbf{ID} & \textbf{Asset} & \textbf{Funzione} & \textbf{Rischio dominante} \\
+\hline
+A1 & Agent identity / service account & Identifica Fast-Brain, Deep-Brain, orchestratore e servizi & Spoofing, privilege abuse \\
+\hline
+A2 & API token e credenziali & Autorizzano accesso a RAG e tool & Leakage, scope eccessivo, mancata revoca \\
+\hline
+A3 & Policy e JSON Schema & Definiscono output e azioni consentite & Tampering o bypass \\
+\hline
+A4 & Messaggi inter-agent & Trasportano output, stato, sequence e session binding & Replay, tampering, identity spoofing \\
+\hline
+A5 & Orchestration state & Coordina fork, transizione, retry e fallback & Race condition e cascading failure \\
+\hline
+A6 & Runtime/container & Esegue agenti e servizi & Escape, resource exhaustion, misconfiguration \\
+\hline
+A7 & Model registry e pipeline di deploy & Distribuiscono modelli, prompt e dipendenze & Supply-chain compromise \\
+\hline
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Identificazione delle minacce}
+
+\subsection{STRIDE-AI applicato direttamente alle threat concrete}
+
+STRIDE-AI viene usato come classificatore delle minacce, non come punteggio assegnato astrattamente a ogni asset. La tabella seguente mantiene la tracciabilità fra threat, asset, proprietà, categoria STRIDE e rischio OWASP.
+
+\begin{longtable}{|C{0.8cm}|L{4.1cm}|L{3.0cm}|L{2.6cm}|L{2.6cm}|C{1.3cm}|}
+\caption{Threat catalogue sintetico.}\label{tab:threatcatalogue}\\
+\hline
+\textbf{ID} & \textbf{Threat concreta} & \textbf{Asset} & \textbf{Proprietà} & \textbf{STRIDE / OWASP} & \textbf{Priorità} \\
+\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Threat concreta} & \textbf{Asset} & \textbf{Proprietà} & \textbf{STRIDE / OWASP} & \textbf{Priorità} \\
+\hline
+\endhead
+T1 & Prompt injection nei token parziali ridefinisce il goal del Fast-Brain & D2, D4, M1 & I, Authenticity & Tampering / ASI01 & \alto \\
+\hline
+T2 & Adversarial audio o segmentazione STT produce un partial transcript malevolo & D1--D3, M4 & I, Authenticity & Tampering, Spoofing / ASI01 & \alto \\
+\hline
+T3 & Feedback coordinato altera ranking o few-shot pool & D5, D8, D9 & I, Non-repudiation & Tampering / ASI06 & \critico \\
+\hline
+T4 & Il Fast-Brain usa credenziali o endpoint riservati al Deep-Brain & A1, A2, D7 & Authorization & Elevation of Privilege / ASI03 & \critico \\
+\hline
+T5 & Replay o modifica di trigger e completion signal & D10, A4, A5 & I, Authenticity & Tampering, Spoofing / ASI07 & \alto \\
+\hline
+T6 & Furto o uso non autorizzato del voice asset per impersonare il personaggio & D12, M6, D15 & C, Authenticity & Disclosure, Spoofing / ASI03, ASI09 & \critico \\
+\hline
+T7 & Modello, libreria o servizio esterno compromesso & M1--M8, A7 & I, C & Tampering / ASI04 & \alto \\
+\hline
+T8 & Flooding o input costosi saturano GPU, video path o lip-sync & M7, M8, A6 & Availability & Denial of Service / ASI08 & \medio \\
+\hline
+T9 & Filler persuasivo richiede PII o induce l'utente ad accettare guida malevola & D10, D15, M1 & Authenticity, C & Spoofing, Tampering / ASI09 & \alto \\
+\hline
+T10 & Fast-Brain o Deep-Brain devia stabilmente dalla policy dopo aggiornamento o prompt tampering & D4, M1, M2, A7 & I, Authenticity & Tampering / ASI10 & \medio \\
+\hline
+T11 & Artefatti audio-video intermedi vengono sostituiti prima del lip-sync & D14, D15 & I, Authenticity & Tampering / ASI02, ASI04 & \alto \\
+\hline
+T12 & Log incompleti impediscono di attribuire modifiche a memoria, feedback o voice asset & D9, D12, D16 & Non-repudiation & Repudiation / trasversale & \medio \\
+\hline
+\end{longtable}
+
+\subsection{Applicabilità dell'OWASP Top 10 for Agentic Applications}
+
+\begin{table}[H]
+\centering
+\caption{Applicabilità OWASP Agentic 2026.}
+\label{tab:owaspapplicability}
+\small
+\begin{tabularx}{\textwidth}{|C{1.2cm}|L{3.5cm}|C{2.0cm}|Y|}
+\hline
+\textbf{ID} & \textbf{Rischio} & \textbf{Applicabilità} & \textbf{Motivazione nella pipeline} \\
+\hline
+ASI01 & Agent Goal Hijack & \appAlta & Il Fast-Brain riceve input utente parziale e produce un'azione comunicativa immediata \\
+\hline
+ASI02 & Tool Misuse \& Exploitation & \condizionata & È rilevante solo se l'agente controlla invocazione o parametri sensibili dei servizi; non basta che TTS e lip-sync esistano \\
+\hline
+ASI03 & Identity \& Privilege Abuse & \appAlta & Agenti e servizi devono avere identità e scope separati; credenziali condivise ampliano il blast radius \\
+\hline
+ASI04 & Agentic Supply Chain & \appAlta & Modelli, framework e servizi multimediali possono provenire da terze parti \\
+\hline
+ASI05 & Unexpected Code Execution & \appBassa & Nello scope non sono presenti shell, code interpreter o esecuzione dinamica di output; diventa rilevante solo in estensioni future \\
+\hline
+ASI06 & Memory \& Context Poisoning & \appAlta & RAG, feedback, few-shot pool e memoria possono influenzare interazioni future \\
+\hline
+ASI07 & Insecure Inter-Agent Communication & \appAlta & Messaggi asincroni e segnali di stato richiedono autenticità, integrità e replay protection \\
+\hline
+ASI08 & Cascading Failures & \appAlta & I percorsi paralleli, le risorse condivise e lo stitching possono propagare errori e DoS \\
+\hline
+ASI09 & Human-Agent Trust Exploitation & \appAlta & Voce, volto, gesti e personalità aumentano la fiducia e il potenziale di social engineering \\
+\hline
+ASI10 & Rogue Agents & \appMedia & Modello, prompt o policy possono deviare in modo persistente; il monitoraggio deve rilevare drift e regressioni \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{warningbox}
+\textbf{Non applicabilità motivata di ASI05.} Inserire una RCE non supportata dall'architettura indebolirebbe il threat model. ASI05 deve essere rivalutato soltanto se vengono aggiunti code interpreter, plugin dinamici, script generati o uso di \texttt{eval()}.
+\end{warningbox}
+
+% =========================================================
+\section{Risk prioritization}
+
+\subsection{Criteri}
+
+Il rischio è valutato qualitativamente come combinazione di likelihood e impact. Non viene usato RPN. La likelihood considera accessibilità del vettore, privilegi richiesti, complessità, ripetibilità e controlli esistenti. L'impact considera dati esposti, persistenza, utenti coinvolti, propagazione, perdita di autenticità, indisponibilità e danno reputazionale.
+
+Sono inoltre considerati quattro amplificatori agentici richiamati nelle metriche AIVSS presentate nel corso \cite{damianiagentic}:
+
+\begin{itemize}
+  \item autonomia dell'agente;
+  \item memoria persistente;
+  \item interazione multi-agent;
+  \item criticità della decisione e potere persuasivo dell'output.
+\end{itemize}
+
+\subsection{Matrice qualitativa}
+
+\begin{table}[H]
+\centering
+\caption{Matrice likelihood $\times$ impact.}
+\label{tab:riskmatrix}
+\begin{tabular}{|c|c|c|c|}
+\hline
+ & \textbf{Impact basso} & \textbf{Impact medio} & \textbf{Impact alto} \\
+\hline
+\textbf{Likelihood alta} & \medio & \alto & \critico \\
+\hline
+\textbf{Likelihood media} & \basso & \medio & \alto \\
+\hline
+\textbf{Likelihood bassa} & \basso & \basso & \medio \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Priorità dei rischi principali}
+
+\begin{table}[H]
+\centering
+\caption{Valutazione dei rischi prioritari.}
+\label{tab:riskpriority}
+\small
+\begin{tabularx}{\textwidth}{|C{0.8cm}|Y|C{1.5cm}|C{1.5cm}|C{1.5cm}|Y|}
+\hline
+\textbf{ID} & \textbf{Rischio} & \textbf{Lik.} & \textbf{Impact} & \textbf{Risk} & \textbf{Amplificatori agentici} \\
+\hline
+R1 & Goal hijack del Fast-Brain & Alta & Alto & \critico & Output immediato, contesto parziale, human trust \\
+\hline
+R2 & Feedback poisoning persistente & Alta & Alto & \critico & Persistenza, effetto cross-session, modifica del few-shot pool \\
+\hline
+R3 & Identity/privilege abuse tra agenti & Media & Alto & \alto & Multi-agent, credenziali, accesso a memoria e tool \\
+\hline
+R4 & Tampering/replay inter-agent & Media & Alto & \alto & Esecuzione asincrona, state machine e correlazione sessione \\
+\hline
+R5 & Voice clone abuse e trust exploitation & Media & Alto & \alto & Identità biometrica, output persuasivo, difficile attribution \\
+\hline
+R6 & Supply-chain compromise & Media & Alto & \alto & Molti servizi esterni, persistenza e difficile rilevazione \\
+\hline
+R7 & Cascading failure/DoS & Media & Medio & \medio & Percorsi paralleli e risorse condivise \\
+\hline
+\end{tabularx}
+\end{table}
+
+Per evitare falsa precisione, non viene assegnato un AARS numerico in assenza del calcolatore e della formula completa utilizzati dal corso. Per i rischi R1--R5 si conserva comunque un vettore descrittivo di exploitability e impatto nella sezione successiva.
+
+% =========================================================
+\section{Scenari di minaccia prioritari}
+
+\subsection{Scenario 1 --- Goal hijack del Fast-Brain}
+
+\textbf{Classificazione:} STRIDE Tampering; OWASP ASI01, con possibile propagazione verso ASI09.
+
+\textbf{Asset:} partial transcript, system/personality prompt, Fast-Brain, filler, trigger JSON.
+
+\textbf{Precondizioni:} l'attaccante può inviare voce o testo; il Fast-Brain opera su input parziale; l'output viene sintetizzato prima della risposta principale.
+
+\textbf{Attack path:}
+
+\begin{enumerate}
+  \item L'attaccante inserisce nei primi token un'istruzione che tenta di ridefinire il compito del Fast-Brain.
+  \item Lo STT produce un partial transcript privo del contesto che seguirebbe nella frase completa.
+  \item Il modello interpreta l'istruzione come prioritaria rispetto al ruolo di semplice filler.
+  \item Viene prodotto un filler che risponde alla domanda, chiede dati sensibili o induce l'utente a compiere un'azione.
+  \item Il contenuto viene pronunciato prima che il Deep-Brain e i controlli del percorso principale possano correggerlo.
+\end{enumerate}
+
+\textbf{Impatto:} compromissione dell'integrità conversazionale, social engineering, possibile disclosure di PII e perdita di fiducia.
+
+\textbf{Vettore qualitativo ispirato ad AIVSS:} AV:N, AC:L, AT:N, PR:N, UI:P; C:M, I:H, A:L; autonomia media, memoria bassa, multi-agent media, trust impact alto.
+
+\textbf{Detection signals:} filler interrogativi, richiesta di PII, presenza di imperativi, overlap semantico con una risposta sostanziale, trigger non coerente, violazione del limite di parole.
+
+\textbf{Controlli chiave:} least agency, JSON Schema, trigger enum, content policy deterministica, PII detection, timeout e filler statico pre-approvato.
+
+\subsection{Scenario 2 --- Feedback poisoning persistente}
+
+\textbf{Classificazione:} STRIDE Tampering e Repudiation; OWASP ASI06.
+
+\textbf{Asset:} feedback esplicito/implicito, ranking, FAISS metadata, few-shot pool, audit trail.
+
+\textbf{Precondizioni:} il feedback influenza ranking o selezione degli esempi; i contributi non sono sufficientemente autenticati, deduplicati o limitati.
+
+\textbf{Attack path:}
+
+\begin{enumerate}
+  \item L'attaccante crea più sessioni o account e ripete feedback positivi su risposte associate a chunk malevoli.
+  \item In parallelo penalizza chunk corretti tramite feedback negativo o replay.
+  \item Il sistema aggiorna score o promuove esempi nel few-shot pool senza una soglia robusta e senza provenienza affidabile.
+  \item Le query future recuperano più frequentemente contenuto manipolato.
+  \item Il Deep-Brain produce risposte distorte per utenti diversi dall'attaccante.
+\end{enumerate}
+
+\textbf{Impatto:} integrità compromessa in modo persistente, effetto cross-session, difficile rollback se non esistono versioning e audit.
+
+\textbf{Vettore qualitativo:} AV:N, AC:L--M, AT:N, PR:L, UI:N; C:L, I:H, A:L; autonomia media, memoria alta, multi-agent media, decision criticality media-alta.
+
+\textbf{Detection signals:} burst di feedback, account correlati, distribuzioni anomale, variazioni improvvise del top-$k$, promozione di chunk senza evidenza sufficiente.
+
+\textbf{Controlli chiave:} feedback autenticato, rate limit, anti-replay, robust aggregation, separazione fra feedback e update persistente, provenance, versioning, rollback e HITL per promozioni ad alto impatto.
+
+\subsection{Scenario 3 --- Identity and privilege abuse tra agenti}
+
+\textbf{Classificazione:} STRIDE Elevation of Privilege e Spoofing; OWASP ASI03.
+
+\textbf{Asset:} service account, API token, endpoint RAG, memoria, orchestratore.
+
+\textbf{Precondizioni:} Fast-Brain e Deep-Brain condividono credenziali oppure le API non verificano lo scope dell'identità chiamante.
+
+\textbf{Attack path:}
+
+\begin{enumerate}
+  \item Il Fast-Brain viene compromesso tramite goal hijack o supply-chain compromise.
+  \item Il processo usa il token condiviso per invocare un endpoint riservato al Deep-Brain.
+  \item Legge memoria, recupera dati non necessari o propone una modifica persistente.
+  \item L'azione appare provenire da un'identità legittima e può non essere distinta nei log.
+  \item Il blast radius passa dal solo filler all'intera pipeline.
+\end{enumerate}
+
+\textbf{Impatto:} accesso non autorizzato a memoria e contesto, possibile esfiltrazione, modifica persistente e compromissione dell'orchestratore.
+
+\textbf{Vettore qualitativo:} AV:A/N, AC:M, AT:P, PR:L, UI:N; C:H, I:H, A:M; autonomia alta dopo la compromissione, memoria alta, multi-agent alta.
+
+\textbf{Detection signals:} chiamate RAG dall'identità Fast-Brain, uso di scope anomali, token fuori contesto, accessi incompatibili con il ruolo.
+
+\textbf{Controlli chiave:} identità distinte, token short-lived, audience e scope binding, deny-by-default, policy enforcement point, network segmentation e audit per azione cross-agent.
+
+\subsection{Scenario 4 --- Tampering e replay dei messaggi inter-agent}
+
+\textbf{Classificazione:} STRIDE Tampering e Spoofing; OWASP ASI07.
+
+\textbf{Asset:} messaggi Fast-Brain/orchestratore, trigger, sequence number, session ID, completion signal.
+
+\textbf{Precondizioni:} il canale o il message bus non garantisce autenticità end-to-end, freschezza e binding alla sessione.
+
+\textbf{Attack path:}
+
+\begin{enumerate}
+  \item L'attaccante intercetta o ottiene un messaggio valido del Fast-Brain.
+  \item Modifica il trigger oppure reinvia il messaggio in una sessione diversa.
+  \item L'orchestratore verifica solo la correttezza sintattica del JSON.
+  \item Il messaggio viene accettato come fresco e proveniente dall'agente corretto.
+  \item L'avatar esegue un gesto errato, riproduce un filler non correlato o entra in uno stato inconsistente.
+\end{enumerate}
+
+\textbf{Impatto:} corruzione dello stato, output inappropriato, race condition, potenziale cascading failure.
+
+\textbf{Vettore qualitativo:} AV:A, AC:M, AT:P, PR:L, UI:N; C:L, I:H, A:M; multi-agent alta.
+
+\textbf{Detection signals:} sequence duplicate, timestamp fuori finestra, session mismatch, agent ID non coerente, ordine degli stati impossibile.
+
+\textbf{Controlli chiave:} mTLS o identità workload equivalente, autenticazione applicativa quando il bus persiste i messaggi, nonce/sequence, expiry, idempotency key e state machine deterministica.
+
+\subsection{Scenario 5 --- Voice clone abuse e human-agent trust exploitation}
+
+\textbf{Classificazione:} STRIDE Spoofing e Information Disclosure; OWASP ASI03, ASI04 e ASI09.
+
+\textbf{Asset:} Therapist WAV, voice embedding, credenziali TTS, personality prompt, output finale e metadata.
+
+\textbf{Precondizioni:} l'attaccante ottiene il voice asset, il relativo embedding o le credenziali del servizio di clonazione.
+
+\textbf{Attack path:}
+
+\begin{enumerate}
+  \item Il voice asset viene copiato tramite storage mal configurato, insider o provider compromesso.
+  \item L'attaccante genera audio nella voce dell'avatar e produce un video coerente.
+  \item Il contenuto usa tono, formule linguistiche e gesti associati alla personalità legittima.
+  \item L'utente attribuisce il messaggio al sistema autentico.
+  \item Il contenuto può chiedere PII, promuovere rimedi non sicuri o fornire indicazioni fraudolente.
+\end{enumerate}
+
+\textbf{Impatto:} impersonazione altamente credibile, danno reputazionale, disclosure di dati, rischio di guida dannosa e difficile attribution.
+
+\textbf{Vettore qualitativo:} AV:N, AC:M, AT:P, PR:L/H, UI:A; C:H, I:H, A:L; trust impact molto alto.
+
+\textbf{Detection signals:} accessi anomali al voice vault, generazioni senza sessione valida, assenza di provenance, output non associato a un audit ID.
+
+\textbf{Controlli chiave:} voice vault cifrato, accesso esclusivo del voice service, credenziali temporanee, watermark/provenance, audit, revoca, disclosure chiara della natura sintetica e policy che vieta richieste di PII.
+
+% =========================================================
+\section{Controlli secondo le sette precauzioni}
+
+\subsection{Precauzione 1 --- Least Agency}
+
+Least Agency estende least privilege alle capacità di ragionamento, memorie, tool e azioni dell'agente \cite{damianiagentic}. Applicazioni concrete:
+
+\begin{itemize}
+  \item il Fast-Brain può produrre soltanto filler, intent label e trigger appartenenti a una whitelist;
+  \item il Fast-Brain non accede a FAISS, memoria persistente, feedback store, voice asset o generazione video;
+  \item il Deep-Brain usa il RAG in read-only durante l'inferenza;
+  \item il Feedback Manager propone aggiornamenti, ma non promuove autonomamente contenuti ad alto impatto;
+  \item l'orchestratore applica una sequenza deterministica e non interpreta output come codice;
+  \item ogni identità ha scope, audience e durata minima necessari.
+\end{itemize}
+
+\subsection{Precauzione 2 --- Guardrail deterministici e HITL}
+
+\textbf{Guardrail sincroni sul Fast-Brain:}
+
+\begin{itemize}
+  \item JSON Schema strict;
+  \item filler con lunghezza massima;
+  \item trigger da enum;
+  \item divieto di richieste di PII e di consigli sostanziali;
+  \item filtro per domande, imperativi e contenuti fuori policy;
+  \item session binding e sequence validation;
+  \item fallback statico quando un controllo fallisce o il timeout scade.
+\end{itemize}
+
+\textbf{HITL per azioni ad alto impatto:}
+
+\begin{itemize}
+  \item modifica del voice asset o del personality prompt;
+  \item promozione persistente nel few-shot pool;
+  \item modifica del set di trigger o delle policy;
+  \item rilascio di nuovi modelli o provider;
+  \item aggiornamenti permanenti dell'indice RAG;
+  \item output in domini sensibili quando il sistema formula raccomandazioni mediche o finanziarie.
+\end{itemize}
+
+\subsection{Precauzione 3 --- Sandboxing e controllo granulare degli accessi}
+
+\begin{itemize}
+  \item container o runtime isolati per agenti, TTS, voice service e lip-sync;
+  \item identità workload separate e token short-lived;
+  \item deny-by-default su rete e file system;
+  \item voice asset in storage dedicato, cifrato e accessibile solo al voice service;
+  \item FAISS read-only nel serving path e update path separato;
+  \item egress control verso provider esterni;
+  \item quote e limiti di risorse per prevenire cascading failure.
+\end{itemize}
+
+\subsection{Precauzione 4 --- Audit trail completo e immutabile}
+
+L'audit trail deve registrare:
+
+\begin{itemize}
+  \item input e transcript, con protezioni per i dati sensibili;
+  \item partial transcript inviato al Fast-Brain;
+  \item versione di modello, prompt, policy e schema;
+  \item filler, trigger, risultato dei controlli e fallback;
+  \item agent identity, tool invocation, timestamp e outcome;
+  \item chunk RAG recuperati, score e provenance;
+  \item feedback, deduplicazione e modifiche a ranking/few-shot;
+  \item accessi al voice asset e generazioni del voice service;
+  \item transizioni della state machine e timeout.
+\end{itemize}
+
+Non è necessario memorizzare ragionamenti privati completi. Per la ricostruzione dell'incidente sono sufficienti decision trace, input/output, tool call, policy decision e motivazione sintetica.
+
+\subsection{Precauzione 5 --- Supply chain control}
+
+\begin{itemize}
+  \item registry approvato per modelli e container;
+  \item firme, hash e versioni bloccate;
+  \item SBOM per librerie, servizi e modelli;
+  \item scansione delle dipendenze e verifica della serializzazione sicura;
+  \item test in shadow mode prima del rilascio;
+  \item rollback rapido di modelli, prompt e policy;
+  \item due diligence sui provider TTS, voice e video;
+  \item registrazione della versione di ogni componente usato per generare l'output.
+\end{itemize}
+
+\subsection{Precauzione 6 --- Continuous execution monitoring}
+
+Il monitoraggio deve rilevare:
+
+\begin{itemize}
+  \item filler che risponde alla domanda o richiede dati;
+  \item goal drift e trigger anomali;
+  \item accessi incompatibili con il ruolo dell'agente;
+  \item replay, session mismatch e sequence duplicate;
+  \item burst di feedback e variazioni anomale del top-$k$;
+  \item consumo GPU, timeout, retry e loop;
+  \item Double-Speak e transizioni di stato impossibili;
+  \item generazioni vocali prive di sessione o audit ID;
+  \item deviazioni persistenti dopo un aggiornamento.
+\end{itemize}
+
+Devono esistere kill-switch, circuit breaker, limiti massimi di passi e graceful degradation.
+
+\subsection{Precauzione 7 --- Audit periodici ispirati ad AIVSS}
+
+Gli audit devono essere ripetuti:
+
+\begin{itemize}
+  \item dopo ogni modifica a modello, prompt, memoria o tool;
+  \item quando cambia il livello di autonomia;
+  \item quando viene aggiunto un nuovo provider;
+  \item dopo incidenti o rilevazioni di drift;
+  \item periodicamente tramite red teaming multilingue e multimodale.
+\end{itemize}
+
+L'audit riesamina vettore d'attacco, complessità, requisiti, privilegi, interazione utente, impatto CIA e amplificatori agentici.
+
+% =========================================================
+\section{Secure architecture proposal}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  comp/.style={draw,rounded corners,minimum height=0.9cm,text width=2.05cm,align=center,font=\scriptsize},
+  agent/.style={draw,rounded corners,minimum height=1cm,text width=2.2cm,align=center,font=\scriptsize,fill=AgentFill},
+  sec/.style={draw,rounded corners,minimum height=0.75cm,text width=2.0cm,align=center,font=\scriptsize,fill=SoftGreen},
+  data/.style={draw,rounded corners,minimum height=0.9cm,text width=2.15cm,align=center,font=\scriptsize,fill=DataFill},
+  arr/.style={-Stealth,thick},
+  lab/.style={font=\scriptsize,fill=white,inner sep=1pt}
+]
+\node[comp] (user) at (0,0) {User};
+\node[sec] (edge) at (2.7,0) {API gateway\\rate limit / session};
+\node[sec] (input) at (5.4,0) {Input guard\\VAD/STT integrity};
+\node[agent] (fast) at (8.2,1.8) {Fast-Brain\\isolato};
+\node[agent] (deep) at (8.2,-1.8) {Deep-Brain\\isolato};
+\node[sec] (val) at (11.1,1.8) {Deterministic\\output validator};
+\node[data] (rag) at (11.1,-3.7) {RAG read-only\\memory isolation};
+\node[sec] (auth) at (11.1,-0.2) {Workload identity\\AuthZ / replay guard};
+\node[comp] (orch) at (14.1,0.4) {Stateful orchestrator\\circuit breaker};
+\node[sec] (media) at (17.1,0.4) {Sandboxed media\\voice vault / egress};
+\node[sec] (prov) at (20.0,0.4) {Provenance\\watermark / audit ID};
+\node[comp] (out) at (22.8,0.4) {Output};
+\node[sec] (monitor) at (14.1,-3.6) {Immutable audit +\\continuous monitoring};
+\draw[arr] (user)--(edge)--(input);
+\draw[arr] (input)--(fast); \draw[arr] (input)--(deep);
+\draw[arr] (fast)--(val)--(auth);
+\draw[arr] (deep)--(auth); \draw[arr] (deep)--(rag); \draw[arr] (rag)--(deep);
+\draw[arr] (auth)--(orch)--(media)--(prov)--(out);
+\draw[arr,dashed] (fast)--(monitor); \draw[arr,dashed] (deep)--(monitor);
+\draw[arr,dashed] (rag)--(monitor); \draw[arr,dashed] (orch)--(monitor); \draw[arr,dashed] (media)--(monitor);
+\end{tikzpicture}%
+}
+\caption{Secure architecture proposta.}
+\label{fig:securearchitecture}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Controlli per trust boundary.}
+\label{tab:controlsbytb}
+\small
+\begin{tabularx}{\textwidth}{|C{1.0cm}|L{3.6cm}|Y|Y|}
+\hline
+\textbf{TB} & \textbf{Controllo} & \textbf{Funzione} & \textbf{Threat ridotte} \\
+\hline
+TB1 & API gateway, rate limit, session management & Limita abuso dell'input e associa ogni richiesta a un principal & T1, T2, T8, T9 \\
+\hline
+TB2 & Input guard e partial/full transcript correlation & Controlla formato, durata, lingua e coerenza dei transcript & T1, T2 \\
+\hline
+TB3 & Workload identity, AuthZ, schema, nonce e sequence & Autentica agenti e messaggi, impedisce accessi fuori ruolo e replay & T4, T5 \\
+\hline
+TB4 & RAG read-only, update gate, provenance e versioning & Separa serving e update, limita poisoning persistente & T3, T4, T12 \\
+\hline
+TB5 & Sandboxing, voice vault, egress control e signed artifacts & Limita tool misuse, furto della voce e supply-chain impact & T6, T7, T11 \\
+\hline
+TB6 & Provenance, watermark, audit ID e transparency disclosure & Rafforza autenticità e attribution dell'output & T6, T9, T11 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Fail-safe behavior}
+
+Il sistema non deve scegliere fra sicurezza e latenza. Se il Fast-Brain non produce un output valido entro il budget, l'orchestratore usa un filler statico pre-approvato oppure mantiene un'animazione idle sicura. Non deve mai inoltrare un output non validato soltanto per rispettare il tempo target.
+
+% =========================================================
+\section{Trade-off sicurezza--latenza}
+
+I controlli sono suddivisi in base al loro posizionamento nel percorso critico.
+
+\begin{table}[H]
+\centering
+\caption{Posizionamento dei controlli.}
+\label{tab:latencycontrols}
+\small
+\begin{tabularx}{\textwidth}{|L{3.2cm}|Y|L{3.4cm}|L{2.6cm}|}
+\hline
+\textbf{Classe} & \textbf{Esempi} & \textbf{Posizionamento} & \textbf{Overhead atteso} \\
+\hline
+Sincroni deterministici & JSON Schema, enum, length check, session/sequence binding, allow/deny policy & Prima del TTS filler & Trascurabile o basso; da misurare \\
+\hline
+Sincroni leggeri & PII detection, request rate limit, classificatore di policy compatto & Edge e output validator & Basso; da misurare \\
+\hline
+Asincroni & Anomaly detection, analisi feedback, correlazione dei log, drift monitoring & Fuori dal critical path & Non blocca il filler \\
+\hline
+Offline & Red teaming, scansione supply chain, AIVSS audit, model evaluation & CI/CD e audit periodico & Nessun impatto runtime \\
+\hline
+\end{tabularx}
+\end{table}
+
+Non vengono indicati valori in millisecondi non misurati. La validazione sperimentale dovrà quantificare l'overhead reale e il tasso di attivazione del fallback.
+
+% =========================================================
+\section{Piano di validazione sperimentale}
+
+Questa sezione definisce esperimenti riproducibili. Non vengono presentati risultati empirici perché non sono ancora stati eseguiti. Le tabelle sono predisposte per essere completate dopo l'implementazione.
+
+\subsection{Esperimento A --- Fast-Brain security harness}
+
+\textbf{Obiettivo:} verificare che il validator impedisca filler e trigger fuori policy senza introdurre un overhead incompatibile con il fast path.
+
+\textbf{Dataset:}
+
+\begin{itemize}
+  \item input benigni;
+  \item direct prompt injection nei primi token;
+  \item input troncati e ambigui;
+  \item inglese, arabo standard, dialetto emiratino e code-switching;
+  \item richieste di PII e consigli sostanziali;
+  \item output JSON malformati o con trigger non autorizzato.
+\end{itemize}
+
+\textbf{Metriche:} policy violation rate, invalid JSON rate, unsafe filler rate, fallback activation rate, false positive rate e tempo di validazione.
+
+\begin{table}[H]
+\centering
+\caption{Template risultati Esperimento A.}
+\small
+\begin{tabularx}{\textwidth}{|Y|C{2.2cm}|C{2.2cm}|C{2.2cm}|}
+\hline
+\textbf{Metrica} & \textbf{Baseline} & \textbf{Con controlli} & \textbf{Target/nota} \\
+\hline
+Unsafe filler rate & Da misurare & Da misurare & Riduzione significativa \\
+\hline
+Invalid trigger accepted & Da misurare & Da misurare & 0 \\
+\hline
+False positive rate & -- & Da misurare & Compatibile con UX \\
+\hline
+Validation latency & -- & Da misurare & Entro il budget definito \\
+\hline
+Fallback activation rate & -- & Da misurare & Monitorato, non nascosto \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Esperimento B --- Feedback poisoning simulation}
+
+\textbf{Obiettivo:} confrontare un aggiornamento diretto del ranking con un sistema protetto da autenticazione, rate limit, deduplicazione, anti-replay, robust aggregation e update gate.
+
+\textbf{Metriche:} numero di feedback richiesto per portare un chunk malevolo nel top-$k$, percentuale di query compromesse, tempo di rilevamento e correttezza del rollback.
+
+\begin{table}[H]
+\centering
+\caption{Template risultati Esperimento B.}
+\small
+\begin{tabularx}{\textwidth}{|Y|C{2.3cm}|C{2.3cm}|C{2.3cm}|}
+\hline
+\textbf{Metrica} & \textbf{Baseline} & \textbf{Sistema sicuro} & \textbf{Interpretazione} \\
+\hline
+Feedback per entrare nel top-$k$ & Da misurare & Da misurare & Più alto è migliore \\
+\hline
+Query compromesse & Da misurare & Da misurare & Più basso è migliore \\
+\hline
+Replay accettato & Da misurare & Da misurare & Target: no \\
+\hline
+Tempo di rollback & -- & Da misurare & Ripristino della versione precedente \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Esperimento C --- Sicurezza dei messaggi inter-agent}
+
+\textbf{Obiettivo:} verificare il rifiuto di trigger modificati, session mismatch, duplicate sequence, messaggi scaduti e agent ID falsi.
+
+\begin{table}[H]
+\centering
+\caption{Test case dei messaggi inter-agent.}
+\small
+\begin{tabularx}{\textwidth}{|L{4.1cm}|Y|Y|}
+\hline
+\textbf{Test} & \textbf{Controllo atteso} & \textbf{Esito atteso} \\
+\hline
+Trigger modificato & Schema + signature/MAC applicativo se richiesto & Rifiutato \\
+\hline
+Session ID diverso & Session binding & Rifiutato \\
+\hline
+Sequence duplicata & Replay cache / idempotency & Rifiutato \\
+\hline
+Timestamp fuori finestra & Expiry check & Rifiutato \\
+\hline
+Agent ID falso & Workload identity e authorization & Rifiutato \\
+\hline
+Filler oltre il limite & Schema e content policy & Fallback \\
+\hline
+\end{tabularx}
+\end{table}
+
+% =========================================================
+\section{Rischio residuo}
+
+\begin{table}[H]
+\centering
+\caption{Valutazione qualitativa del rischio residuo atteso.}
+\label{tab:residualrisk}
+\small
+\begin{tabularx}{\textwidth}{|L{3.6cm}|L{4.4cm}|C{2.0cm}|C{2.0cm}|Y|}
+\hline
+\textbf{Scenario} & \textbf{Controlli principali} & \textbf{Iniziale} & \textbf{Residuo} & \textbf{Motivazione} \\
+\hline
+Goal hijack Fast-Brain & Least agency, validator, fallback, monitoring & Critico & Medio & I guardrail riducono l'impatto, ma input linguistici adattivi restano possibili \\
+\hline
+Feedback poisoning & Auth feedback, update gate, robust aggregation, rollback & Critico & Medio & La persistenza è confinata e reversibile, ma Sybil sofisticati restano un rischio \\
+\hline
+Privilege abuse & Identità separate, token short-lived, policy deny-by-default & Alto & Basso--Medio & Il Fast-Brain non possiede più gli accessi utili alla propagazione \\
+\hline
+Replay inter-agent & Workload identity, nonce, sequence, expiry & Alto & Basso & Messaggi non freschi o fuori sessione vengono rifiutati \\
+\hline
+Voice clone abuse & Voice vault, provenance, audit, revoca & Alto & Medio & Un output sintetico ottenuto fuori sistema può essere difficile da eliminare completamente \\
+\hline
+\end{tabularx}
+\end{table}
+
+Il rischio residuo deve essere rivalutato dopo la validazione sperimentale. I valori sopra rappresentano una previsione progettuale, non risultati misurati.
+
+% =========================================================
+\section{Limitazioni}
+
+\begin{itemize}
+  \item L'architettura è descritta a livello progettuale; deployment, provider e protocolli effettivi possono modificare likelihood e controlli necessari.
+  \item Non sono stati eseguiti test empirici; la sezione di validazione contiene un piano e template di risultati.
+  \item La valutazione del rischio è qualitativa. Non viene calcolato un AARS numerico senza lo strumento e la formula usati nel corso.
+  \item La robustezza multilingue e dialettale dei guardrail deve essere verificata sperimentalmente.
+  \item Il threat model non dimostra l'assenza di backdoor nei modelli; riduce il rischio tramite provenance, firme, testing e rollback.
+  \item Privacy, compliance e consenso per voice cloning richiedono un'analisi dedicata oltre al threat model tecnico.
+  \item L'uso dell'avatar in contesti di salute aumenta la decision criticality e richiede policy di contenuto e supervisione umana più restrittive.
+\end{itemize}
+
+% =========================================================
+\section{Conclusioni}
+
+La pipeline dual-brain riduce la latenza percepita, ma introduce superfici d'attacco specifiche: il Fast-Brain agisce su input parziale, i due agenti devono coordinarsi, memorie e feedback possono persistere, e l'output audiovisivo sfrutta una forte identità umana. Il rischio non deriva soltanto dal modello linguistico, ma dall'interazione fra identità, memoria, tool, orchestrazione e fiducia dell'utente.
+
+Il threat modeling ha mostrato come i rischi prioritari siano goal hijack, feedback poisoning, identity/privilege abuse, comunicazione inter-agent insicura e abuso della voce clonata. ASI05 è stato correttamente considerato non applicabile nello scope corrente, evitando di introdurre scenari RCE non supportati dall'architettura.
+
+La strategia proposta applica le sette precauzioni del corso e adotta un principio centrale: \textbf{la bassa latenza non deve mai giustificare il bypass dei controlli}. I controlli deterministici restano nel fast path; monitoraggio, audit e analisi più costose operano in modo asincrono; in caso di errore il sistema usa un fallback statico sicuro. La separazione delle identità e la least agency limitano il blast radius, mentre provenance, voice vault e update gate proteggono gli asset più caratterizzanti della pipeline.
+
+Il passo successivo è implementare il security harness e la simulazione di feedback poisoning, completando le tabelle sperimentali con valori misurati. Questo permetterà di trasformare il threat model progettuale in una valutazione verificata e riproducibile.
+
+% =========================================================
+\appendix
+\section{JSON Schema semplificato del Fast-Brain}
+
+\begin{lstlisting}[language=json]
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["session_id", "intent", "trigger", "filler", "sequence"],
+  "properties": {
+    "session_id": {"type": "string", "minLength": 16, "maxLength": 128},
+    "intent": {
+      "type": "string",
+      "enum": [
+        "complex_analytical",
+        "opinion_affective",
+        "factual_search",
+        "controversial_defensive",
+        "generic_acknowledgement"
+      ]
+    },
+    "trigger": {
+      "type": "string",
+      "enum": [
+        "GAZE_UP_LEFT",
+        "HEAD_NOD_SLIGHT",
+        "LEAN_IN_BOOK",
+        "HAND_GESTURE_OPEN",
+        "IDLE_THINKING"
+      ]
+    },
+    "filler": {"type": "string", "minLength": 1, "maxLength": 120},
+    "sequence": {"type": "integer", "minimum": 0}
+  }
+}
+\end{lstlisting}
+
+La lunghezza in caratteri non sostituisce il controllo applicativo sul numero di parole. Il validator deve inoltre applicare content policy, PII detection e divieto di richieste all'utente.
+
+\section{Formato sicuro del messaggio inter-agent}
+
+\begin{lstlisting}[language=json]
+{
+  "message_id": "uuid",
+  "session_id": "9f4b...",
+  "agent_id": "fast-brain-prod-eu-01",
+  "audience": "orchestrator-prod-eu",
+  "issued_at": "2026-07-23T14:22:18Z",
+  "expires_at": "2026-07-23T14:22:20Z",
+  "sequence": 12,
+  "idempotency_key": "9f4b...:12",
+  "payload": {
+    "intent": "complex_analytical",
+    "trigger": "GAZE_UP_LEFT",
+    "filler": "That is an important question; let me think carefully."
+  },
+  "policy_version": "fastbrain-policy-3.2",
+  "schema_version": "1.0"
+}
+\end{lstlisting}
+
+Il trasporto deve autenticare l'identità del workload. Se il messaggio è persistito, inoltrato attraverso più trust domain o necessita di verifica end-to-end, è opportuno aggiungere una firma o un MAC applicativo. Sequence, expiry e idempotency impediscono replay e duplicazione.
+
+\section{Matrice di tracciabilità}
+
+\begin{longtable}{|L{3.2cm}|L{3.0cm}|L{3.0cm}|L{4.2cm}|}
+\caption{Tracciabilità threat--controlli--test.}\label{tab:traceability}\\
+\hline
+\textbf{Threat} & \textbf{OWASP / STRIDE} & \textbf{Controlli} & \textbf{Validazione} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Threat} & \textbf{OWASP / STRIDE} & \textbf{Controlli} & \textbf{Validazione} \\
+\hline
+\endhead
+Goal hijack & ASI01 / Tampering & Least agency, validator, fallback & Esperimento A: prompt injection multilingue \\
+\hline
+Feedback poisoning & ASI06 / Tampering & Auth, anti-replay, update gate, rollback & Esperimento B: top-$k$ poisoning simulation \\
+\hline
+Privilege abuse & ASI03 / EoP & Workload identity, scoped token, AuthZ & Test negativo: Fast-Brain chiama endpoint RAG \\
+\hline
+Inter-agent replay & ASI07 / Spoofing, Tampering & Nonce, sequence, expiry, session binding & Esperimento C \\
+\hline
+Voice clone abuse & ASI09 / Spoofing, Disclosure & Voice vault, provenance, audit, revoca & Test accessi e generazioni senza audit ID \\
+\hline
+Supply chain & ASI04 / Tampering & Firma, SBOM, scanning, shadow mode & Verifica artefatto e rollback \\
+\hline
+Cascading failure & ASI08 / DoS & Quote, timeout, circuit breaker, fallback & Load e fault-injection test \\
+\hline
+\end{longtable}
+
+% =========================================================
+% BIBLIOGRAFIA
+% =========================================================
+\begin{thebibliography}{99}
+
+\bibitem{projectspec}
+Project specification, \emph{Agentic filler loop for a real-time digital human pipeline}, materiale fornito per il progetto, 2026.
+
+\bibitem{damianiagentic}
+E. Damiani, \emph{Security Precautions for Agentic Systems: Seven Key Practices for Safe Data-Intensive Architectures}, slide del corso Sicurezza delle Architetture Data Intensive, Università degli Studi di Milano, 20 aprile 2026.
+
+\bibitem{damianiasset}
+E. Damiani, \emph{Talking Avatar with RAG Pipeline using Veo 3.1: Asset Model, Failure Modes, and Threat Analysis using STRIDE-AI}, slide del corso, 4 maggio 2026.
+
+\bibitem{persona}
+Project material, \emph{The Legend of Al-Hakima Umm Saif} e \emph{Core Personality Traits}, 2026.
+
+\bibitem{verbalhabits}
+Project material, \emph{Verbal Habits \& Response Guidelines}, 2026.
+
+\bibitem{mauri2021strideai}
+L. Mauri and E. Damiani, ``STRIDE-AI: An Approach to Identifying Vulnerabilities of Machine Learning Assets,'' \emph{IEEE International Conference on Cyber Security and Resilience}, 2021.
+
+\bibitem{mauri2022stride}
+L. Mauri and E. Damiani, ``Modeling Threats to AI-ML Systems Using STRIDE,'' \emph{Sensors}, 2022.
+
+\bibitem{owaspagentic}
+OWASP Foundation, \emph{OWASP Top 10 for Agentic Applications 2026}, 2026.
+
+\bibitem{owaspllm}
+OWASP Foundation, \emph{OWASP Top 10 for Large Language Model Applications 2025}, 2025.
+
+\bibitem{react}
+S. Yao et al., ``ReAct: Synergizing Reasoning and Acting in Language Models,'' 2023.
+
+\bibitem{nist}
+NIST, \emph{Artificial Intelligence Risk Management Framework (AI RMF 1.0)}, 2023.
+
+\bibitem{mitreatlas}
+MITRE, \emph{ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems}.
+
+\bibitem{webrtc}
+IETF, \emph{Security Architecture for WebRTC} and \emph{WebRTC Security Considerations}, RFC 8827 and RFC 8826, 2021.
+
+\end{thebibliography}
+
+\end{document}
