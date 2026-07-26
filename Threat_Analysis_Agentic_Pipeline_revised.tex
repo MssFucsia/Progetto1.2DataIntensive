@@ -296,6 +296,69 @@ Il processo adottato è:
 La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni del corso sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
 
 % =========================================================
+\subsection{Metodologia STRIDE-AI e quadro delle proprietà CIA$^3$-R}
+\label{subsec:stride-ai-framework}
+
+Per valutare in modo sistematico le vulnerabilità della pipeline agentica, l'analisi adotta la metodologia \textbf{STRIDE-AI} \cite{mauri2021strideai,mauri2022stride}. A differenza della FMEA tradizionale, che valuta i guasti operativi o fisici, STRIDE-AI adotta un approccio \emph{asset-centered}: identifica le minacce a partire dalla violazione delle proprietà di sicurezza sugli asset AI/ML e sugli agenti autonomi \cite{mauri2021strideai,mauri2022stride}.
+
+La metodologia adatta le sei categorie classiche dello schema STRIDE di Microsoft al contesto delle applicazioni agentiche e generative, correlandole alle sette proprietà di sicurezza del modello esteso $\text{CIA}^3\text{-R}$ \cite{mauri2022stride}.
+
+\subsubsection*{Proprietà di sicurezza considerate ($\text{CIA}^3\text{-R}$)}
+
+Nel corso dell'analisi e nelle relative tabelle degli asset e del catalogo minacce, viene adottata la seguente notazione formale per le proprietà di sicurezza potenzialmente violate:
+
+\begin{description}
+    \item[\textbf{C -- Confidentiality}] Le informazioni devono essere accessibili esclusivamente agli utenti, agli agenti e ai servizi autorizzati.
+    \item[\textbf{I -- Integrity}] Dati, configurazioni, modelli e risultati non devono essere alterati in modo accidentale o non autorizzato.
+    \item[\textbf{A -- Availability}] Gli asset e i servizi devono essere disponibili nei tempi richiesti dalla pipeline, con particolare attenzione ai vincoli di latenza dell'Instant Path.
+    \item[\textbf{Au -- Authentication}] Deve essere verificata l'identità degli utenti, degli agenti e dei servizi che partecipano all'elaborazione.
+    \item[\textbf{Az -- Authorization}] Ogni componente deve poter accedere soltanto alle risorse ed eseguire soltanto le operazioni necessarie al proprio obiettivo.
+    \item[\textbf{Ac -- Accountability}] Le operazioni devono poter essere attribuite in modo verificabile all'utente, all'agente o al servizio che le ha eseguite.
+    \item[\textbf{R -- Non-repudiation}] Un soggetto o componente non deve poter negare di avere generato un messaggio, modificato un dato, invocato un servizio o autorizzato una transizione.
+\end{description}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Tassonomia STRIDE-AI e trasposizione nel contesto agentico Dual-Brain \cite{mauri2021strideai}.}
+\label{tab:stride-ai-overview}
+\begin{tabularx}{\textwidth}{|L{2.5cm}|Y|Y|C{2.0cm}|}
+\hline
+\textbf{Categoria} & \textbf{Definizione Classica} & \textbf{Trasposizione nel Sistema Agentico Dual-Brain} & \textbf{Proprietà Violata} \\ \hline
+
+\textbf{Spoofing} & 
+Impersonamento non autorizzato di un'identità legittima. & 
+Voice cloning non autorizzato per impersonare l'avatar; spoofing dell'identità degli agenti o del segnale \textit{Video Ready Signal}. & 
+Au, R \\ \hline
+
+\textbf{Tampering} & 
+Alterazione non autorizzata di dati, prompt o codice. & 
+Indirect Prompt Injection nei token parziali; poisoning della memoria RAG, del vettore FAISS o del feedback. & 
+I \\ \hline
+
+\textbf{Repudiation} & 
+Impossibilità di attribuire in modo certo un'azione a un soggetto. & 
+Assenza di audit log immutabili per verificare se un output dannoso sia stato generato dall'agente o sollecitato da prompt avversariali. & 
+Ac, R \\ \hline
+
+\textbf{Information Disclosure} & 
+Fuga o esposizione non autorizzata di dati riservati. & 
+Cross-session memory leakage; esfiltrazione di PII o dei prompt interni di personalità tramite prompt leakage. & 
+C \\ \hline
+
+\textbf{Denial of Service} & 
+Interruzione della disponibilità dei servizi o delle risorse. & 
+Saturazione computazionale tramite prompt complessi; attacchi di desincronizzazione del ciclo di stato (\textit{Double-Speak}). & 
+A \\ \hline
+
+\textbf{Elevation of Privilege} & 
+Ottenimento di privilegi o capacità superiori a quelle autorizzate. & 
+\textit{Goal Hijacking} del Fast-Brain per invocare tool non autorizzati; bypass dei guardrail deterministici; escalation di privilegi inter-agente. & 
+Az \\ \hline
+\end{tabularx}
+\end{table}
+
+% =========================================================
 \section{Descrizione della pipeline agentica}
 
 \subsection{Architettura della pipeline agentica}
@@ -489,92 +552,21 @@ TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Imperso
 \end{table}
 
 % =========================================================
-% =========================================================
 % SEZIONE 7 -- ASSET MODEL
 % =========================================================
 
 \section{Asset Model}
 \label{sec:asset-model}
 
-L'asset model identifica gli elementi della pipeline agentica che devono
-essere protetti e che saranno successivamente analizzati rispetto alle
-minacce della OWASP Top 10 for Agentic Applications 2026.
+L'asset model identifica gli elementi della pipeline agentica che devono essere protetti e che saranno successivamente analizzati rispetto alle minacce della OWASP Top 10 for Agentic Applications 2026.
 
-L'analisi considera l'intera pipeline: l'input vocale o testuale
-dell'utente, il Request Router, l'Instant Path o Fast-Brain, il Background
-Path o Deep-Brain, la pipeline RAG, i componenti di generazione audio e
-video, lo Swap Manager e il flusso multimediale finale diretto
-all'utente.
-
-In accordo con le indicazioni progettuali, gli asset sono suddivisi in
-due categorie principali:
-
+In accordo con la metodologia STRIDE-AI introdotta nella Sezione~\ref{subsec:stride-ai-framework}, gli asset sono suddivisi in due categorie principali:
 \begin{itemize}
-    \item \textbf{Data Assets}: dati acquisiti, prodotti, memorizzati,
-    recuperati o trasmessi durante l'esecuzione della pipeline;
-
-    \item \textbf{Model Assets}: modelli di machine learning, prompt
-    operativi e componenti logiche che determinano o controllano il
-    comportamento agentico del sistema.
+    \item \textbf{Data Assets}: dati acquisiti, prodotti, memorizzati, recuperati o trasmessi durante l'esecuzione della pipeline;
+    \item \textbf{Model Assets}: modelli di machine learning, prompt operativi e componenti logiche che determinano o controllano il comportamento agentico del sistema.
 \end{itemize}
 
-Per ciascun asset sono indicati:
-
-\begin{enumerate}
-    \item il ruolo svolto all'interno della pipeline;
-    \item la rilevanza rispetto alle categorie STRIDE-AI;
-    \item le proprietà di sicurezza che potrebbero essere compromesse.
-\end{enumerate}
-
-
-% ---------------------------------------------------------
-% 7.1 PROPRIETÀ DI SICUREZZA
-% ---------------------------------------------------------
-
-\subsection{Proprietà di sicurezza considerate}
-\label{subsec:security-properties}
-
-La metodologia considera le proprietà di sicurezza
-\textbf{CIA\textsuperscript{3}-R}. Nel seguito viene adottata la seguente
-notazione:
-
-\begin{description}
-    \item[\textbf{C -- Confidentiality}]
-    Le informazioni devono essere accessibili esclusivamente agli utenti,
-    agli agenti e ai servizi autorizzati.
-
-    \item[\textbf{I -- Integrity}]
-    Dati, configurazioni, modelli e risultati non devono essere alterati
-    in modo accidentale o non autorizzato.
-
-    \item[\textbf{A -- Availability}]
-    Gli asset e i servizi devono essere disponibili nei tempi richiesti
-    dalla pipeline, con particolare attenzione ai vincoli di latenza
-    dell'Instant Path.
-
-    \item[\textbf{Au -- Authentication}]
-    Deve essere verificata l'identità degli utenti, degli agenti e dei
-    servizi che partecipano all'elaborazione.
-
-    \item[\textbf{Az -- Authorization}]
-    Ogni componente deve poter accedere soltanto alle risorse ed eseguire
-    soltanto le operazioni necessarie al proprio obiettivo.
-
-    \item[\textbf{Ac -- Accountability}]
-    Le operazioni devono poter essere attribuite in modo verificabile
-    all'utente, all'agente o al servizio che le ha eseguite.
-
-    \item[\textbf{R -- Non-repudiation}]
-    Un soggetto o componente non deve poter negare di avere generato un
-    messaggio, modificato un dato, invocato un servizio o autorizzato una
-    transizione.
-\end{description}
-
-Le proprietà riportate nelle tabelle rappresentano le proprietà
-potenzialmente violate qualora l'asset venga compromesso. La loro presenza
-non implica che la violazione avvenga necessariamente in ogni scenario di
-attacco.
-
+Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, la rilevanza STRIDE-AI e le proprietà della matrice $\text{CIA}^3\text{-R}$ potenziale oggetto di violazione.
 
 % ---------------------------------------------------------
 % 7.2 DATA ASSETS
