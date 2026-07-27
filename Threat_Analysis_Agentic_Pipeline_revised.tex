@@ -374,36 +374,24 @@ Az \\ \hline
 
 \subsection{Architettura della pipeline agentica}
 
-La Figura~\ref{fig:complete-pipeline} rappresenta la pipeline completa di
-generazione video agentica. L'input vocale o testuale dell'utente viene
-ricevuto dal \textbf{Request Router}, che avvia in parallelo due percorsi
-con finalità e requisiti temporali differenti.
+La Figura~\ref{fig:complete-pipeline} illustra l'architettura complessiva della pipeline agentica per la generazione di video conversazionali. L'input dell'utente (vocale o testuale) viene intercettato dal \textbf{Request Router}, il quale duplica il flusso per avviare in parallelo due percorsi concorrenti con requisiti e tempistiche differenti:
 
-Il primo percorso, denominato \textbf{Instant Path}, costituisce il ramo
-Fast-Brain della pipeline. Il suo obiettivo non è generare la risposta
-sostanziale, ma ridurre immediatamente la latenza percepita. Esso utilizza
-clip pre-costruite, una classificazione preliminare dell'intento, il testo
-parziale disponibile e un insieme controllato di filler verbali e gestuali.
-L'output viene riprodotto nei primi secondi dell'interazione.
+\begin{itemize}
+    \item \textbf{Instant Path (Fast-Brain, 0--3 secondi):} Ha l'obiettivo primario di azzerare la latenza percepita. Elabora lo streaming del testo parziale (\emph{Partial Text Stream}) attraverso un classificatore d'intento (\emph{Intent Classifier}) per identificare argomento ed emozione, selezionando istantaneamente filler verbali (es. formule colloquiali) e clip gestuali pre-renderizzate (\emph{Pre-built Clips}) per la risposta immediata.
+    
+    \item \textbf{Background Path (Deep-Brain, 2--4 minuti):} Elabora la richiesta completa ed effettua il ragionamento approfondito. Il percorso integra un'architettura RAG su indice vettoriale FAISS con modello Falcon-Arabic-7B, genera un video cinematografico parlante tramite Veo 3.1, applica il TTS con clonazione vocale e sincronizza il lip-sync. Al completamento del rendering, il componente invia un segnale di pronto (\emph{Video Ready Signal}).
+\end{itemize}
 
-Il secondo percorso, denominato \textbf{Background Path}, costituisce il
-ramo Deep-Brain. Esso elabora la richiesta completa attraverso la pipeline
-RAG, genera il video principale, produce l'audio mediante TTS e applica il
-lip-sync. Al termine emette un \textit{Video Ready Signal}. La figura
-\texttt{pipeline.jpg} rappresenta esclusivamente questo percorso di
-background e non l'intera pipeline.
+I due flussi convergono nello \textbf{Swap Manager}, il quale gestisce lo stitching dinamico ed esegue una transizione fluida (\emph{seamless cut}) dal video di filler al video finale generato, assicurando l'assenza di discontinuità nei frame, sovrapposizioni audio o desincronizzazioni di sessione. 
 
-I due percorsi convergono nello \textbf{Swap Manager}, responsabile della
-transizione dal filler al video finale. Lo Swap Manager deve garantire che
-la sostituzione avvenga senza sovrapposizioni audio, frame discontinuities
-o riproduzione di contenuti appartenenti a sessioni differenti.
+In basso, la timeline utente (\emph{User Timeline}) evidenzia chiaramente la percezione dell'interazione: l'utente riceve un feedback visivo e verbale nei primi $0$--$3\text{ s}$ (\emph{Filler}), mentre l'elaborazione di background prosegue fino alla riproduzione trasparente del video finale sintetizzato.
 
-La natura agentica del sistema deriva dal fatto che i componenti
-interpretano l'input, selezionano autonomamente azioni e contenuti,
-utilizzano servizi e modelli esterni, mantengono stato e coordinano due
-percorsi concorrenti. Il ciclo agentico non è limitato al solo LLM, ma
-comprende routing, selezione del filler, retrieval, generazione multimediale
-e decisione sul momento della transizione.
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/pipeline.jpeg}
+\caption{Architettura della pipeline.}
+\label{fig:complete-pipeline}
+\end{figure}
 
 \subsection{Ruoli, azioni e privilegi attesi}
 
