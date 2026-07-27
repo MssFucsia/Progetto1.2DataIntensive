@@ -550,337 +550,98 @@ Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, la ril
 \subsection{Data Assets}
 \label{subsec:data-assets}
 
-I Data Assets comprendono gli input dell'utente, le rappresentazioni
-testuali prodotte dallo STT, i dati RAG e di memoria, i risultati
-intermedi, gli artefatti audiovisivi e i dati di coordinamento necessari
-al funzionamento dei due percorsi concorrenti.
+I Data Assets comprendono gli input dell'utente, le rappresentazioni testuali prodotte dallo STT, i dati RAG e di memoria, i risultati intermedi, gli artefatti audiovisivi e i dati di coordinamento necessari al funzionamento dei due percorsi concorrenti.
 
-Tra i Data Assets sono inclusi anche i
-\textbf{Personality Source Artifacts}. Essi corrispondono ai file sorgente
-che descrivono la leggenda del personaggio, i suoi tratti caratteriali,
-il tono e le abitudini verbali. Tali artefatti sono distinti dai
-\textbf{Personality/System Prompts}, classificati tra i Model Assets:
-i primi sono dati persistenti utilizzati per costruire la personalità,
-mentre i secondi sono le istruzioni operative effettivamente fornite ai
-modelli durante l'inferenza.
-
-\footnotesize
-
-\begin{longtable}{
-    @{}
-    L{2.35cm}
-    L{3.75cm}
-    L{5.85cm}
-    C{2.15cm}
-    @{}
-}
-\caption{Data Assets della pipeline agentica}
+Tra i Data Assets sono inclusi anche i \textbf{Personality Source Artifacts}. Essi corrispondono ai file sorgente che descrivono la leggenda del personaggio, i suoi tratti caratteriali, il tono e le abitudini verbali. Tali artefatti sono distinti dai \textbf{Personality/System Prompts}, classificati tra i Model Assets: i primi sono dati persistenti utilizzati per costruire la personalità, mentre i secondi sono le istruzioni operative effettivamente fornite ai modelli durante l'inferenza.
+\begin{longtable}{|L{3.2cm}|L{6.8cm}|C{2.2cm}|C{2.0cm}|}
+\caption{Data Assets della pipeline agentica e rilevanza di sicurezza.}
 \label{tab:data-assets}\\
 
-\toprule
-\textbf{Asset} &
-\textbf{Descrizione} &
-\textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà violata} \\
-\midrule
+\hline
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI} & \textbf{Proprietà Violate} \\
+\hline
 \endfirsthead
 
-\multicolumn{4}{c}{
-    \tablename\ \thetable{} -- continuazione
-}\\
-\toprule
-\textbf{Asset} &
-\textbf{Descrizione} &
-\textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà violata} \\
-\midrule
+\hline
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI} & \textbf{Proprietà Violate} \\
+\hline
 \endhead
 
-\midrule
-\multicolumn{4}{r}{Continua nella pagina successiva}\\
-\endfoot
+\textbf{D1 -- User Audio / Input Streams} & 
+Flussi vocali o testuali prodotti dall'utente e ricevuti dalla pipeline, inclusi il segnale originale e i metadati di sessione. & 
+S, T, I & 
+C, I, A \\
+\hline
 
-\bottomrule
-\endlastfoot
+\textbf{D2 -- Short Prompt Tokens \& Partial Transcript} & 
+Primi token o frammenti della trascrizione inviati all'Instant Path per classificare l'intento e selezionare il filler. & 
+T, E & 
+I, Az \\
+\hline
 
+\textbf{D3 -- Full Transcript \& Request} & 
+Trascrizione completa e normalizzata usata dal Background Path per produrre la risposta principale del Deep-Brain. & 
+T, I & 
+C, I \\
+\hline
 
-\textbf{D1 -- User Audio/Input Streams}
-&
-Flussi vocali o testuali prodotti dall'utente e ricevuti dalla pipeline.
-Comprendono il segnale audio originale, il testo inserito direttamente e
-i relativi metadati di sessione.
-&
-\textbf{Spoofing}: replay, voce sintetica o deepfake possono impersonare
-un utente.
+\textbf{D4 -- RAG KB \& Context Memory} & 
+Documenti, chunk, embedding, indici vettoriali FAISS, metadati e memoria di sessione/persistente. & 
+T, I, E & 
+C, I, Az \\
+\hline
 
-\textbf{Tampering}: audio avversariale o input modificati possono alterare
-la trascrizione.
+\textbf{D5 -- Behavioral Animation Triggers} & 
+Output strutturati che specificano il comportamento non verbale (ID clip, movimento occhi, gesti, stato emotivo). & 
+T, D & 
+I, A \\
+\hline
 
-\textbf{Information Disclosure}: l'input può contenere dati personali,
-biometrici o sensibili.
+\textbf{D6 -- Response Transcripts} & 
+Testo del filler (Instant Path) e testo della risposta principale (Deep-Brain) inviati ai componenti TTS e video. & 
+T, I & 
+C, I \\
+\hline
 
-\textbf{Denial of Service}: input continui o sovradimensionati possono
-saturare VAD, STT e servizi successivi.
-&
-C, I, A, Au
-\\
-\midrule
+\textbf{D7 -- Personality Source Artifacts} & 
+File sorgente contenenti leggenda del personaggio, tratti della personalità, tono, dialetto e regole stilistiche. & 
+T, I & 
+C, I \\
+\hline
 
+\textbf{D8 -- Voice \& Visual Identity Assets} & 
+Campioni vocali, voice embedding, immagini e video di riferimento per riprodurre l'identità dell'avatar. & 
+S, I & 
+C, Au \\
+\hline
 
-\textbf{D2 -- Short Prompt Tokens e Partial Transcript}
-&
-Primi token o frammenti della trascrizione inviati all'Instant Path per
-classificare preliminarmente l'intento e selezionare il filler.
-&
-\textbf{Tampering}: piccole modifiche possono alterare intent bucket,
-tono e filler selezionato.
+\textbf{D9 -- Intermediate Audio/Video} & 
+File e stream temporanei prodotti durante TTS, voice cloning, generazione video, lip-sync e composizione. & 
+T, I & 
+C, I \\
+\hline
 
-\textbf{Spoofing}: una trascrizione falsificata può essere attribuita
-all'utente.
+\textbf{D10 -- Coordination \& Swap State} & 
+Messaggi e dati di coordinamento (session ID, job ID, timestamp, stato playback, Video Ready Signal). & 
+S, T, E & 
+I, A, Az \\
+\hline
 
-\textbf{Information Disclosure}: il frammento può contenere dati sensibili
-prima dell'elaborazione completa.
+\textbf{D11 -- WebRTC Media Streams} & 
+Flusso audio-video finale trasmesso all'utente, inclusi pacchetti multimediali e dati di negoziazione sessione. & 
+S, T, I & 
+C, I \\
+\hline
 
-\textbf{Elevation of Privilege}: contenuti interpretati come istruzioni
-possono deviare l'obiettivo del Fast-Brain.
-&
-C, I, Au, Az
-\\
-\midrule
-
-
-\textbf{D3 -- Full Transcript e Normalized User Request}
-&
-Trascrizione completa e normalizzata della richiesta, utilizzata dal
-Background Path e dal Deep-Brain per produrre la risposta principale.
-&
-\textbf{Tampering}: alterazioni o errori della trascrizione cambiano il
-significato della richiesta.
-
-\textbf{Information Disclosure}: il testo può contenere informazioni
-personali o confidenziali.
-
-\textbf{Repudiation}: senza correlazione con l'audio originale non è
-possibile dimostrare quale richiesta sia stata ricevuta.
-
-\textbf{Denial of Service}: richieste eccessivamente lunghe aumentano
-latenza, memoria e consumo di token.
-&
-C, I, A, Ac, R
-\\
-\midrule
-
-
-\textbf{D4 -- RAG Knowledge Base e Context Memory}
-&
-Documenti, chunk, embedding, indici vettoriali, metadati, memoria di
-sessione ed eventuale memoria persistente utilizzati dal Deep-Brain.
-&
-\textbf{Tampering}: documenti o embedding avvelenati possono introdurre
-informazioni false o istruzioni nascoste.
-
-\textbf{Information Disclosure}: retrieval non isolato può esporre dati
-riservati o appartenenti ad altre sessioni.
-
-\textbf{Repudiation}: senza provenance non è possibile identificare la
-fonte del contenuto recuperato.
-
-\textbf{Denial of Service}: query costose o crescita incontrollata dello
-store possono rallentare la pipeline.
-
-\textbf{Elevation of Privilege}: contenuti RAG malevoli possono indurre
-azioni o accessi fuori scope.
-&
-C, I, A, Az, Ac, R
-\\
-\midrule
-
-
-\textbf{D5 -- Behavioral Animation Triggers}
-&
-Output strutturati che specificano il comportamento non verbale
-dell'avatar, come identificatore della clip, movimento degli occhi,
-inclinazione della testa, gesto o stato emotivo.
-&
-\textbf{Tampering}: la modifica del trigger può produrre gesti non
-coerenti, offensivi o manipolativi.
-
-\textbf{Spoofing}: trigger contraffatti possono essere presentati come
-output legittimi del Fast-Brain.
-
-\textbf{Repudiation}: senza tracciamento non è possibile attribuire la
-selezione del gesto.
-
-\textbf{Denial of Service}: valori non validi possono bloccare il motore
-di animazione.
-&
-I, A, Au, Ac, R
-\\
-\midrule
-
-
-\textbf{D6 -- Filler e Main Response Transcripts}
-&
-Testo del filler generato dall'Instant Path e testo della risposta
-principale generato dal Deep-Brain, successivamente inviati ai componenti
-TTS e video.
-&
-\textbf{Tampering}: la modifica del testo altera ciò che l'avatar
-pronuncia.
-
-\textbf{Information Disclosure}: la risposta può esporre dati recuperati
-dal RAG o dalla memoria.
-
-\textbf{Spoofing}: un output inserito da un componente non autorizzato può
-apparire come risposta dell'agente.
-
-\textbf{Repudiation}: senza correlazione tra input, modello e output non
-è possibile ricostruire l'origine della risposta.
-&
-C, I, Au, Ac, R
-\\
-\midrule
-
-
-\textbf{D7 -- Personality Source Artifacts}
-&
-File sorgente contenenti leggenda del personaggio, tratti della
-personalità, tono, dialetto, abitudini verbali e regole stilistiche.
-&
-\textbf{Tampering}: modifiche ai file possono alterare stabilmente
-identità, valori e comportamento dell'avatar.
-
-\textbf{Information Disclosure}: gli artefatti possono rivelare le logiche
-interne di costruzione della persona.
-
-\textbf{Spoofing}: file sostitutivi possono introdurre una persona
-contraffatta.
-
-\textbf{Repudiation}: senza versionamento non è possibile stabilire chi
-abbia modificato la definizione del personaggio.
-&
-C, I, Au, Az, Ac, R
-\\
-\midrule
-
-
-\textbf{D8 -- Voice e Visual Identity Assets}
-&
-Campioni vocali, voice embedding, immagini, video di riferimento e altri
-materiali necessari a riprodurre l'identità audiovisiva del personaggio.
-&
-\textbf{Spoofing}: il furto degli asset permette di creare contenuti
-contraffatti attribuiti al personaggio.
-
-\textbf{Tampering}: alterazioni dei riferimenti possono modificare voce,
-volto o comportamento visivo.
-
-\textbf{Information Disclosure}: gli asset possono includere dati
-biometrici o proprietari.
-
-\textbf{Denial of Service}: cancellazione o indisponibilità impediscono la
-generazione audiovisiva.
-&
-C, I, A, Au, Az
-\\
-\midrule
-
-
-\textbf{D9 -- Intermediate Audio/Video Artifacts}
-&
-File e stream temporanei prodotti durante TTS, voice cloning, video
-generation, lip-sync, interpolazione e composizione.
-&
-\textbf{Tampering}: un artefatto intermedio può essere sostituito con
-audio o video non autorizzato.
-
-\textbf{Information Disclosure}: file temporanei non protetti possono
-esporre risposte, voce clonata o immagini.
-
-\textbf{Spoofing}: un artefatto contraffatto può essere accettato come
-output di un servizio legittimo.
-
-\textbf{Denial of Service}: file corrotti o mancanti possono interrompere
-la generazione o lo stitching.
-&
-C, I, A, Au
-\\
-\midrule
-
-
-\textbf{D10 -- Coordination e Swap State}
-&
-Messaggi e dati di coordinamento tra Instant Path, Background Path e Swap
-Manager, inclusi session ID, job ID, timestamp, stato di playback e
-\emph{Video Ready Signal}.
-&
-\textbf{Spoofing}: un falso \emph{Video Ready Signal} può causare uno swap
-prematuro.
-
-\textbf{Tampering}: la modifica di session ID o stato può associare
-contenuti appartenenti a richieste differenti.
-
-\textbf{Repudiation}: senza log non è possibile determinare quale
-componente abbia autorizzato lo swap.
-
-\textbf{Denial of Service}: perdita o ritardo dei segnali può bloccare la
-pipeline.
-
-\textbf{Elevation of Privilege}: un componente non autorizzato può
-controllare la transizione tra i due percorsi.
-&
-I, A, Au, Az, Ac, R
-\\
-\midrule
-
-
-\textbf{D11 -- WebRTC Media Streams}
-&
-Flusso audio-video finale trasmesso all'utente, inclusi pacchetti
-multimediali, identificativi e dati necessari alla negoziazione della
-sessione.
-&
-\textbf{Spoofing}: un endpoint contraffatto può impersonare il
-destinatario o il servizio di streaming.
-
-\textbf{Tampering}: pacchetti audio-video possono essere modificati o
-sostituiti.
-
-\textbf{Information Disclosure}: intercettazioni o configurazioni errate
-possono esporre la conversazione.
-
-\textbf{Denial of Service}: flooding, perdita di pacchetti o saturazione
-possono interrompere il flusso.
-&
-C, I, A, Au
-\\
-\midrule
-
-
-\textbf{D12 -- Audit, Provenance e Feedback Data}
-&
-Log di richieste, decisioni, invocazioni dei servizi, transizioni,
-errori, provenance degli artefatti e feedback forniti dagli utenti.
-&
-\textbf{Tampering}: log modificati possono nascondere errori o azioni non
-autorizzate.
-
-\textbf{Repudiation}: log incompleti impediscono l'attribuzione delle
-azioni.
-
-\textbf{Information Disclosure}: i log possono contenere prompt, output,
-identificatori e dati sensibili.
-
-\textbf{Denial of Service}: la saturazione dello storage può ridurre
-l'osservabilità o bloccare il sistema.
-&
-C, I, A, Az, Ac, R
-\\
+\textbf{D12 -- Audit \& Feedback Data} & 
+Log di richieste, decisioni, invocazioni, transizioni, provenance degli artefatti e feedback forniti dagli utenti. & 
+T, R & 
+I, Ac, R \\
+\hline
 
 \end{longtable}
 
 \normalsize
-
 
 % ---------------------------------------------------------
 % 7.3 MODEL ASSETS
@@ -944,19 +705,19 @@ Modello a bassa latenza che analizza la trascrizione parziale,
 classifica l'intento e seleziona il filler verbale o gestuale da
 riprodurre nei primi secondi.
 &
-\textbf{Spoofing}: un modello o endpoint contraffatto può produrre output
+\textbf{S}: un modello o endpoint contraffatto può produrre output
 presentati come legittimi.
 
-\textbf{Tampering}: pesi, configurazioni o soglie alterate modificano la
+\textbf{T}: pesi, configurazioni o soglie alterate modificano la
 classificazione dell'intento.
 
-\textbf{Information Disclosure}: il modello può esporre prompt o dati di
+\textbf{I}: il modello può esporre prompt o dati di
 configurazione.
 
-\textbf{Denial of Service}: rallentamenti o indisponibilità annullano il
+\textbf{D}: rallentamenti o indisponibilità annullano il
 vantaggio dell'Instant Path.
 
-\textbf{Elevation of Privilege}: il Fast-Brain può estendere il proprio
+\textbf{E}: il Fast-Brain può estendere il proprio
 ruolo oltre la generazione del filler.
 &
 C, I, A, Au, Az
@@ -970,19 +731,19 @@ LLM principale responsabile dell'interpretazione completa della richiesta,
 dell'utilizzo del contesto RAG e della generazione della risposta
 sostanziale.
 &
-\textbf{Spoofing}: un endpoint contraffatto può impersonare il modello
+\textbf{S}: un endpoint contraffatto può impersonare il modello
 principale.
 
-\textbf{Tampering}: pesi o configurazioni alterati possono causare
+\textbf{T}: pesi o configurazioni alterati possono causare
 risposte malevole o non allineate.
 
-\textbf{Information Disclosure}: il modello può rivelare dati del
+\textbf{I}: il modello può rivelare dati del
 contesto, della memoria o delle istruzioni interne.
 
-\textbf{Denial of Service}: consumo non limitato può rendere
+\textbf{D}: consumo non limitato può rendere
 indisponibile il Background Path.
 
-\textbf{Elevation of Privilege}: il modello può tentare di utilizzare
+\textbf{E}: il modello può tentare di utilizzare
 risorse oltre l'obiettivo assegnato.
 &
 C, I, A, Au, Az
@@ -996,19 +757,19 @@ Istruzioni operative condivise o coordinate tra Fast-Brain e Deep-Brain
 per mantenere coerenza di identità, ruolo, tono, comportamento, limiti e
 obiettivi.
 &
-\textbf{Tampering}: modifiche non autorizzate possono causare goal
+\textbf{T}: modifiche non autorizzate possono causare goal
 misalignment, perdita della personalità o rimozione dei vincoli.
 
-\textbf{Information Disclosure}: il prompt può essere estratto mediante
+\textbf{I}: il prompt può essere estratto mediante
 prompt leakage.
 
-\textbf{Spoofing}: un prompt contraffatto può essere caricato come
+\textbf{S}: un prompt contraffatto può essere caricato come
 configurazione ufficiale.
 
-\textbf{Repudiation}: senza versionamento non è possibile stabilire quale
+\textbf{R}: senza versionamento non è possibile stabilire quale
 versione sia stata usata.
 
-\textbf{Elevation of Privilege}: istruzioni manipolate possono ampliare
+\textbf{E}: istruzioni manipolate possono ampliare
 autonomia, accessi o funzioni dell'agente.
 &
 C, I, Au, Az, Ac, R
@@ -1022,16 +783,16 @@ Modelli e funzioni utilizzati per generare embedding, confrontare query e
 documenti, ordinare i risultati e selezionare il contesto inviato al
 Deep-Brain.
 &
-\textbf{Tampering}: alterazioni del modello o dei parametri possono
+\textbf{T}: alterazioni del modello o dei parametri possono
 favorire documenti malevoli o irrilevanti.
 
-\textbf{Information Disclosure}: attacchi agli embedding possono rivelare
+\textbf{I}: attacchi agli embedding possono rivelare
 informazioni sui documenti indicizzati.
 
-\textbf{Denial of Service}: query avversariali o indici sovraccarichi
+\textbf{D}: query avversariali o indici sovraccarichi
 possono rallentare il retrieval.
 
-\textbf{Elevation of Privilege}: filtri errati possono recuperare
+\textbf{E}: filtri errati possono recuperare
 documenti fuori dallo scope autorizzato.
 &
 C, I, A, Az
@@ -1044,16 +805,16 @@ C, I, A, Az
 Modelli che rilevano l'attività vocale e trasformano progressivamente
 l'audio in partial transcript e trascrizione completa.
 &
-\textbf{Spoofing}: audio sintetico o replay può essere interpretato come
+\textbf{S}: audio sintetico o replay può essere interpretato come
 voce autentica.
 
-\textbf{Tampering}: audio avversariale può alterare la trascrizione senza
+\textbf{T}: audio avversariale può alterare la trascrizione senza
 essere percepibile dall'utente.
 
-\textbf{Information Disclosure}: il servizio elabora contenuti vocali
+\textbf{I}: il servizio elabora contenuti vocali
 potenzialmente sensibili.
 
-\textbf{Denial of Service}: rumore continuo può impedire il rilevamento
+\textbf{D}: rumore continuo può impedire il rilevamento
 delle pause e bloccare il routing.
 &
 C, I, A, Au
@@ -1066,16 +827,16 @@ C, I, A, Au
 Modelli che trasformano filler e risposta principale in audio e
 riproducono la voce associata al personaggio.
 &
-\textbf{Spoofing}: il modello può generare audio falsamente attribuito al
+\textbf{S}: il modello può generare audio falsamente attribuito al
 personaggio.
 
-\textbf{Tampering}: parametri o riferimenti vocali alterati modificano
+\textbf{T}: parametri o riferimenti vocali alterati modificano
 voce, tono o contenuto.
 
-\textbf{Information Disclosure}: il provider può esporre voice embedding,
+\textbf{I}: il provider può esporre voice embedding,
 testo o audio generato.
 
-\textbf{Denial of Service}: indisponibilità o latenza elevata impediscono
+\textbf{D}: indisponibilità o latenza elevata impediscono
 la produzione dell'audio.
 &
 C, I, A, Au, Az
@@ -1088,16 +849,16 @@ C, I, A, Au, Az
 Modello utilizzato dal Background Path per generare il video principale a
 partire dalla richiesta, dal personaggio e dagli artefatti di riferimento.
 &
-\textbf{Spoofing}: output contraffatti possono essere presentati come
+\textbf{S}: output contraffatti possono essere presentati come
 video ufficiali del personaggio.
 
-\textbf{Tampering}: modifiche a modello, configurazione o input possono
+\textbf{T}: modifiche a modello, configurazione o input possono
 produrre scene non autorizzate.
 
-\textbf{Information Disclosure}: il servizio può esporre prompt,
+\textbf{I}: il servizio può esporre prompt,
 reference media o output intermedi.
 
-\textbf{Denial of Service}: costo computazionale e durata rendono il
+\textbf{D}: costo computazionale e durata rendono il
 modello un punto critico di disponibilità.
 &
 C, I, A, Au
@@ -1110,16 +871,16 @@ C, I, A, Au
 Modelli multimodali che sincronizzano voce, movimento delle labbra,
 espressioni, gesti e frame del personaggio.
 &
-\textbf{Tampering}: la modifica dei parametri può generare comportamenti
+\textbf{T}: la modifica dei parametri può generare comportamenti
 visivi errati o manipolativi.
 
-\textbf{Spoofing}: un modello sostitutivo può produrre animazioni
+\textbf{S}: un modello sostitutivo può produrre animazioni
 presentate come legittime.
 
-\textbf{Information Disclosure}: accessi non autorizzati possono esporre
+\textbf{I}: accessi non autorizzati possono esporre
 reference media e caratteristiche del personaggio.
 
-\textbf{Denial of Service}: errori o indisponibilità impediscono la
+\textbf{D}: errori o indisponibilità impediscono la
 generazione del video finale.
 &
 C, I, A, Au
@@ -1133,19 +894,19 @@ Codice e regole che ricevono l'input, avviano in parallelo Instant Path e
 Background Path, associano risultati e sessioni e gestiscono timeout,
 retry, code e priorità.
 &
-\textbf{Spoofing}: richieste o risposte provenienti da componenti
+\textbf{S}: richieste o risposte provenienti da componenti
 contraffatti possono essere accettate come legittime.
 
-\textbf{Tampering}: modifiche al routing possono deviare dati, saltare
+\textbf{T}: modifiche al routing possono deviare dati, saltare
 controlli o associare output alla sessione errata.
 
-\textbf{Repudiation}: senza log non è possibile ricostruire le decisioni
+\textbf{R}: senza log non è possibile ricostruire le decisioni
 di routing.
 
-\textbf{Denial of Service}: loop, race condition o code non limitate
+\textbf{D}: loop, race condition o code non limitate
 possono bloccare entrambi i percorsi.
 
-\textbf{Elevation of Privilege}: un orchestratore compromesso può
+\textbf{E}: un orchestratore compromesso può
 invocare servizi con privilegi superiori.
 &
 C, I, A, Au, Az, Ac, R
@@ -1159,19 +920,19 @@ Logica che decide quando terminare il filler, quando avviare il contenuto
 principale e come unire audio e video senza sovrapposizioni o
 discontinuità.
 &
-\textbf{Spoofing}: segnali di completamento falsi possono attivare una
+\textbf{S}: segnali di completamento falsi possono attivare una
 transizione non autorizzata.
 
-\textbf{Tampering}: modifiche allo stato possono causare double-speak,
+\textbf{T}: modifiche allo stato possono causare double-speak,
 riproduzione di video errati o contaminazione tra sessioni.
 
-\textbf{Repudiation}: senza log non è possibile attribuire la decisione
+\textbf{R}: senza log non è possibile attribuire la decisione
 di transizione.
 
-\textbf{Denial of Service}: race condition o segnali mancanti possono
+\textbf{D}: race condition o segnali mancanti possono
 bloccare il filler o interrompere il video.
 
-\textbf{Elevation of Privilege}: il controllo dello swap permette di
+\textbf{E}: il controllo dello swap permette di
 scegliere quale contenuto mostrare all'utente.
 &
 I, A, Au, Az, Ac, R
@@ -1220,86 +981,93 @@ Le proprietà indicate nelle Tabelle~\ref{tab:data-assets}
 e~\ref{tab:model-assets} saranno utilizzate nelle sezioni successive per
 valutare l'applicabilità, la likelihood e la severity delle minacce OWASP
 rispetto a ciascun asset.
+
 % =========================================================
-\section{Identificazione delle minacce}
+\section{Analisi delle Minacce basata su OWASP Agentic Top 10}
 
-\subsection{STRIDE-AI applicato direttamente alle threat concrete}
-
-STRIDE-AI viene usato come classificatore delle minacce, non come punteggio assegnato astrattamente a ogni asset. La tabella seguente mantiene la tracciabilità fra threat, asset, proprietà, categoria STRIDE e rischio OWASP.
-
-\begin{longtable}{|C{0.8cm}|L{4.1cm}|L{3.0cm}|L{2.6cm}|L{2.6cm}|C{1.3cm}|}
-\caption{Threat catalogue sintetico.}\label{tab:threatcatalogue}\\
+In conformità con i requisiti del progetto, l'analisi delle minacce viene strutturata attorno ai dieci rischi definiti dall' \textbf{OWASP Top 10 for Agentic Applications 2026}. La Tabella~\ref{tab:owasp-threat-matrix} associa ciascuna categoria OWASP alle minacce concrete individuate nell'architettura Dual-Brain, evidenziando gli asset impattati e il livello di priorità.
+\begin{longtable}{|L{3.2cm}|L{4.8cm}|C{1.8cm}|C{1.6cm}|C{1.6cm}|}
+\caption{Matrice unificata delle minacce OWASP Agentic e asset impattati.}
+\label{tab:owasp-threat-matrix}\\
 \hline
-\textbf{ID} & \textbf{Threat concreta} & \textbf{Asset} & \textbf{Proprietà} & \textbf{STRIDE / OWASP} & \textbf{Priorità} \\
+\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
 \hline
 \endfirsthead
 \hline
-\textbf{ID} & \textbf{Threat concreta} & \textbf{Asset} & \textbf{Proprietà} & \textbf{STRIDE / OWASP} & \textbf{Priorità} \\
+\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
 \hline
 \endhead
-T1 & Prompt injection nei token parziali ridefinisce il goal del Fast-Brain & D2, D4, M1 & I, Authenticity & Tampering / ASI01 & \alto \\
+
+\textbf{ASI01} \newline Agentic Goal Hijacking & 
+L'input utente parziale in streaming induce il Fast-Brain a deviare dal system prompt, producendo gesti o filler inappropriati entro i $800\,\text{ms}$. & 
+D2, M1, D5 & 
+I, Az & 
+\textbf{Alta} \\
 \hline
-T2 & Adversarial audio o segmentazione STT produce un partial transcript malevolo & D1--D3, M4 & I, Authenticity & Tampering, Spoofing / ASI01 & \alto \\
+
+\textbf{ASI02} \newline Tool Misuse \& Exploitation & 
+Manipolazione dei parametri o abuso nell'invocazione dei servizi di rendering video (Veo 3.1), TTS, voice cloning o lip-sync. & 
+D10, A3, D9 & 
+I, Az & 
+\textbf{Alta} \\
 \hline
-T3 & Feedback coordinato altera ranking o few-shot pool & D5, D8, D9 & I, Non-repudiation & Tampering / ASI06 & \critico \\
+
+\textbf{ASI03} \newline Identity \& Privilege Abuse & 
+Uso di credenziali o token condivisi tra Fast-Brain, Deep-Brain e microservizi multimediali, con potenziale escalation di privilegi. & 
+A1, A2, D8 & 
+Az, Au & 
+\textbf{Alta} \\
 \hline
-T4 & Il Fast-Brain usa credenziali o endpoint riservati al Deep-Brain & A1, A2, D7 & Authorization & Elevation of Privilege / ASI03 & \critico \\
+
+\textbf{ASI04} \newline Agentic Supply Chain & 
+Compromissione di librerie di terze parti, dell'indice FAISS, del modello \texttt{Falcon-Arabic-7B} o dei servizi cloud di generazione video/audio. & 
+M1, M2, D8 & 
+I, C & 
+\textbf{Media} \\
 \hline
-T5 & Replay o modifica di trigger e completion signal & D10, A4, A5 & I, Authenticity & Tampering, Spoofing / ASI07 & \alto \\
+
+\textbf{ASI05} \newline Unexpected Code Execution & 
+Generazione o interpretazione dinamica di codice/script durante il ragionamento del Deep-Brain o la logica di orchestrazione. & 
+M2, A3, D10 & 
+I, Az & 
+\textbf{Media} \\
 \hline
-T6 & Furto o uso non autorizzato del voice asset per impersonare il personaggio & D12, M6, D15 & C, Authenticity & Disclosure, Spoofing / ASI03, ASI09 & \critico \\
+
+\textbf{ASI06} \newline Memory \& Context Poisoning & 
+Iniezione di dati o feedback malevoli che alterano la memoria di sessione, la base di conoscenza RAG o il ranking dei documenti in FAISS. & 
+D4, D12, A4 & 
+I, Ac & 
+\textbf{Alta} \\
 \hline
-T7 & Modello, libreria o servizio esterno compromesso & M1--M8, A7 & I, C & Tampering / ASI04 & \alto \\
+
+\textbf{ASI07} \newline Insecure Inter-Agent Comm. & 
+Tampering, replay o assenza di autenticazione nei messaggi asincroni tra Fast-Brain, Deep-Brain, Orchestratore e Swap Manager (\emph{Double-Speak}). & 
+D10, A3, A5 & 
+I, A, Au & 
+\textbf{Medio-Alta} \\
 \hline
-T8 & Flooding o input costosi saturano GPU, video path o lip-sync & M7, M8, A6 & Availability & Denial of Service / ASI08 & \medio \\
+
+\textbf{ASI08} \newline Cascading Failures & 
+Attacchi di flooding o query costose sul Deep-Brain saturano GPU e rendering video, provocando il blocco asincrono dello Swap Manager. & 
+D1, M7, A3 & 
+A & 
+\textbf{Media} \\
 \hline
-T9 & Filler persuasivo richiede PII o induce l'utente ad accettare guida malevola & D10, D15, M1 & Authenticity, C & Spoofing, Tampering / ASI09 & \alto \\
+
+\textbf{ASI09} \newline Human-Agent Trust Exploitation & 
+Abuso dell'aspetto avatar, della voce clonata e della personalità empatica dell'agente per indurre la fiducia dell'utente o erogare consigli dannosi. & 
+D7, D8, M6 & 
+C, Au & 
+\textbf{Medio-Alta} \\
 \hline
-T10 & Fast-Brain o Deep-Brain devia stabilmente dalla policy dopo aggiornamento o prompt tampering & D4, M1, M2, A7 & I, Authenticity & Tampering / ASI10 & \medio \\
-\hline
-T11 & Artefatti audio-video intermedi vengono sostituiti prima del lip-sync & D14, D15 & I, Authenticity & Tampering / ASI02, ASI04 & \alto \\
-\hline
-T12 & Log incompleti impediscono di attribuire modifiche a memoria, feedback o voice asset & D9, D12, D16 & Non-repudiation & Repudiation / trasversale & \medio \\
+
+\textbf{ASI10} \newline Rogue Agents & 
+Deviazione o drift persistente del modello, della policy o dei prompt dalla personalità definita per Al-Hakima senza che il sistema lo rilevi. & 
+M1, M2, D7 & 
+I, Ac & 
+\textbf{Medio-Bassa} \\
 \hline
 \end{longtable}
-
-\subsection{Applicabilità dell'OWASP Top 10 for Agentic Applications}
-
-\begin{table}[H]
-\centering
-\caption{Applicabilità OWASP Agentic 2026.}
-\label{tab:owaspapplicability}
-\small
-\begin{tabularx}{\textwidth}{|C{1.2cm}|L{3.5cm}|C{2.0cm}|Y|}
-\hline
-\textbf{ID} & \textbf{Rischio} & \textbf{Applicabilità} & \textbf{Motivazione nella pipeline} \\
-\hline
-ASI01 & Agent Goal Hijack & \appAlta & Il Fast-Brain riceve input utente parziale e produce un'azione comunicativa immediata \\
-\hline
-ASI02 & Tool Misuse \& Exploitation & \condizionata & È rilevante solo se l'agente controlla invocazione o parametri sensibili dei servizi; non basta che TTS e lip-sync esistano \\
-\hline
-ASI03 & Identity \& Privilege Abuse & \appAlta & Agenti e servizi devono avere identità e scope separati; credenziali condivise ampliano il blast radius \\
-\hline
-ASI04 & Agentic Supply Chain & \appAlta & Modelli, framework e servizi multimediali possono provenire da terze parti \\
-\hline
-ASI05 & Unexpected Code Execution & \appBassa & Nello scope non sono presenti shell, code interpreter o esecuzione dinamica di output; diventa rilevante solo in estensioni future \\
-\hline
-ASI06 & Memory \& Context Poisoning & \appAlta & RAG, feedback, few-shot pool e memoria possono influenzare interazioni future \\
-\hline
-ASI07 & Insecure Inter-Agent Communication & \appAlta & Messaggi asincroni e segnali di stato richiedono autenticità, integrità e replay protection \\
-\hline
-ASI08 & Cascading Failures & \appAlta & I percorsi paralleli, le risorse condivise e lo stitching possono propagare errori e DoS \\
-\hline
-ASI09 & Human-Agent Trust Exploitation & \appAlta & Voce, volto, gesti e personalità aumentano la fiducia e il potenziale di social engineering \\
-\hline
-ASI10 & Rogue Agents & \appMedia & Modello, prompt o policy possono deviare in modo persistente; il monitoraggio deve rilevare drift e regressioni \\
-\hline
-\end{tabularx}
-\end{table}
-
-\begin{warningbox}
-\textbf{Non applicabilità motivata di ASI05.} Inserire una RCE non supportata dall'architettura indebolirebbe il threat model. ASI05 deve essere rivalutato soltanto se vengono aggiunti code interpreter, plugin dinamici, script generati o uso di \texttt{eval()}.
-\end{warningbox}
 
 % =========================================================
 \section{Risk prioritization}
