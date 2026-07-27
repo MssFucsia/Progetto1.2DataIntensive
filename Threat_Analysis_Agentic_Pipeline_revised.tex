@@ -203,22 +203,33 @@ Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso:
 \section{Introduzione e obiettivi}
 
 \subsection{Contesto}
+\label{subsec:contesto}
 
-La traccia considera una pipeline per digital human nella quale il percorso STT--LLM--TTS--Lip-Synch--streaming presenta una latenza incompatibile con una conversazione percepita come naturale. Il requisito di progetto assume un tempo percepito di prima risposta inferiore a circa 800\,ms e riporta, nello stato iniziale della pipeline, latenze che possono arrivare a decine di secondi. Per mascherare l'attesa viene introdotto un ciclo agentico di filler contestuali, più credibili di una semplice animazione statica o di una frase ripetitiva \cite{projectspec}.
+Nelle architetture tradizionali per digital human embodied, il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
 
-L'istanza applicativa usa un avatar con personalità coerente, voce clonata e comportamento gestuale. La personalità allegata al progetto descrive una figura anziana emiratina, con stile materno, uso del dialetto locale e riferimenti a rimedi tradizionali. Tali caratteristiche aumentano il realismo, ma anche il potere persuasivo dell'output e quindi la rilevanza di autenticità, safety e tutela della fiducia dell'utente \cite{persona,verbalhabits}.
+Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o brevi locuzioni interiettive) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
 
-\subsection{Perché il sistema è agentico}
+L'istanza applicativa considerata come caso di studio implementa l'avatar embodied di \textbf{Al-Hakima Umm Saif}, una figura tradizionale anziana delle comunità oasiche di Liwa e della costa degli Emirati Arabi Uniti \cite{persona}. L'agente è caratterizzato da:
+\begin{itemize}
+    \item una spiccata personalità materna, empatica e rassicurante (\emph{Motherly \& Warm Affection}) \cite{persona};
+    \item l'uso del dialetto emiratino locale (regione di Liwa/Al Ain) intervallato da formule religiose e proverbi tradizionali \cite{verbalhabits};
+    \item l'erogazione di consigli di benessere e rimedi erboristici popolari (es. \emph{za'atar}, \emph{sider}, \emph{harmal}) a supporto delle risposte \cite{verbalhabits};
+    \item una pipeline RAG multilingue e multimodale basata su un indice vettoriale FAISS (con embedding \texttt{multilingual-e5-large}), un LLM \texttt{Falcon-Arabic-7B}, sintesi vocale TTS con voce clonata (\emph{Therapist WAV}) e un motore video cinematico (Veo 3.1) coordinato da un sistema di \emph{Lip-Syncing} e \emph{Swap Manager} per la transizione fluida tra filler e video finale \cite{projectspec,damianiasset}.
+\end{itemize}
 
-Secondo il materiale del corso, un sistema agentico combina inferenza e azione, può invocare servizi esterni, comunicare tramite memoria condivisa o persistente e coordinarsi con altri agenti senza supervisione umana passo per passo \cite{damianiagentic}. La pipeline analizzata soddisfa tali caratteristiche perché:
+Sebbene queste caratteristiche comportamentali massimino il realismo e l'immersività, esse amplificano notevolmente il potere persuasivo dell'avatar e l'impatto emotivo sull'utente. Di conseguenza, l'autenticità del contenuto, la safety dei consigli dispensati e la tutela della fiducia dell'utente (\emph{Human-Agent Trust}) diventano requisiti di sicurezza e di threat modeling prioritari \cite{persona,verbalhabits}.
+
+\subsection{Caratterizzazione Agentica del Sistema}
+\label{subsec:caratterizzazione-agentica}
+
+Un sistema si definisce \emph{agentico} quando combina capacità di inferenza autonoma e azione, interagisce con memorie persistenti e strumenti esterni, e coordina componenti eterogenei senza richiedere una supervisione umana passo-passo \cite{damianiagentic,react}. La pipeline analizzata soddisfa integralmente tali requisiti attraverso le seguenti dinamiche operative e decisionali:
 
 \begin{itemize}
-  \item il Fast-Brain interpreta un input parziale e decide filler, tono e trigger gestuale;
-  \item il Deep-Brain recupera contesto dal RAG e genera la risposta sostanziale;
-  \item l'orchestratore prende decisioni su fork, ordine di riproduzione, timeout, fallback e stitching;
-  \item il sistema invoca servizi di STT, TTS, generazione video, voice cloning e lip-sync;
-  \item feedback e memoria possono influenzare le interazioni future;
-  \item l'output del Fast-Brain viene emesso prima che il percorso principale sia completato.
+    \item \textbf{Fast-Brain Agent}: interpreta i token parziali in streaming provenienti dal modulo STT e decide in modo autonomo il filler verbale, la risposta emotiva e il trigger gestuale o animativo di accompagnamento (es. \texttt{GAZE\_UP\_LEFT}, \texttt{PREPARING\_HERBS}) \cite{projectspec,persona};
+    \item \textbf{Deep-Brain Agent}: gestisce in autonomia l'intero ciclo di ragionamento RAG, esegue la \emph{query expansion} sull'indice vettoriale FAISS, recupera il contesto storico, applica il \emph{System Prompt} di personalità e invoca la generazione multimodale \cite{projectspec};
+    \item \textbf{Orchestratore e Swap Manager}: monitora in tempo reale lo stato di avanzamento dei due percorsi paralleli, prende decisioni dinamiche su timeout e \emph{fallback}, gestisce la commutazione trasparente del flusso video dal filler al video sintetizzato e coordina lo stacco audio-visivo \cite{projectspec};
+    \item \textbf{Ciclo di Feedback e Memoria Persistente}: raccoglie segnali di interazione impliciti (es. \emph{replay}) ed espliciti per aggiornare e riorganizzare dinamicamente il pool di \emph{few-shot examples} e il \emph{ranking} dei documenti in FAISS per le sessioni future \cite{projectspec};
+    \item \textbf{Invocazione Strategica di Tool Esterni}: orchestra l'esecuzione di una catena articolata di microservizi specializzati (STT, TTS con \emph{voice cloning}, modello video cinematico Veo 3.1, \emph{Lip-Syncing} e modelli LLM) \cite{projectspec,damianiasset}.
 \end{itemize}
 
 \subsection{Obiettivi dell'analisi}
@@ -1979,7 +1990,7 @@ Cascading failure & ASI08 / DoS & Quote, timeout, circuit breaker, fallback & Lo
 \begin{thebibliography}{99}
 
 \bibitem{projectspec}
-Project specification, \emph{Agentic filler loop for a real-time digital human pipeline}, materiale fornito per il progetto, 2026.
+Project specification, \emph{Agentic filler loop and dual-brain architecture for a real-time digital human pipeline}, materiale di progetto, 2026.
 
 \bibitem{damianiagentic}
 E. Damiani, \emph{Security Precautions for Agentic Systems: Seven Key Practices for Safe Data-Intensive Architectures}, slide del corso Sicurezza delle Architetture Data Intensive, Università degli Studi di Milano, 20 aprile 2026.
@@ -1988,7 +1999,7 @@ E. Damiani, \emph{Security Precautions for Agentic Systems: Seven Key Practices 
 E. Damiani, \emph{Talking Avatar with RAG Pipeline using Veo 3.1: Asset Model, Failure Modes, and Threat Analysis using STRIDE-AI}, slide del corso, 4 maggio 2026.
 
 \bibitem{persona}
-Project material, \emph{The Legend of Al-Hakima Umm Saif} e \emph{Core Personality Traits}, 2026.
+Project material, \emph{The Legend of Al-Hakima Umm Saif} e \emph{Core Personality Traits} (inclusi \emph{Character Legend} e \emph{Personality Traits}), 2026.
 
 \bibitem{verbalhabits}
 Project material, \emph{Verbal Habits \& Response Guidelines}, 2026.
@@ -2015,8 +2026,7 @@ NIST, \emph{Artificial Intelligence Risk Management Framework (AI RMF 1.0)}, 202
 MITRE, \emph{ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems}.
 
 \bibitem{webrtc}
-IETF, \emph{Security Architecture for WebRTC} and \emph{WebRTC Security Considerations}, RFC 8827 and RFC 8826, 2021.
+IETF, \emph{Security Architecture for WebRTC} e \emph{WebRTC Security Considerations}, RFC 8827 e RFC 8826, 2021.
 
 \end{thebibliography}
-
 \end{document}
