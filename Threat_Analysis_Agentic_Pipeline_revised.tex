@@ -97,6 +97,7 @@
   rulecolor=\color{SoftBorder},
   columns=fullflexible
 }
+
 \lstset{
   basicstyle=\ttfamily\small,
   breaklines=true,
@@ -202,22 +203,33 @@ Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso:
 \section{Introduzione e obiettivi}
 
 \subsection{Contesto}
+\label{subsec:contesto}
 
-La traccia considera una pipeline per digital human nella quale il percorso STT--LLM--TTS--Lip-Synch--streaming presenta una latenza incompatibile con una conversazione percepita come naturale. Il requisito di progetto assume un tempo percepito di prima risposta inferiore a circa 800\,ms e riporta, nello stato iniziale della pipeline, latenze che possono arrivare a decine di secondi. Per mascherare l'attesa viene introdotto un ciclo agentico di filler contestuali, più credibili di una semplice animazione statica o di una frase ripetitiva \cite{projectspec}.
+Nelle architetture tradizionali per digital human embodied, il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
 
-L'istanza applicativa usa un avatar con personalità coerente, voce clonata e comportamento gestuale. La personalità allegata al progetto descrive una figura anziana emiratina, con stile materno, uso del dialetto locale e riferimenti a rimedi tradizionali. Tali caratteristiche aumentano il realismo, ma anche il potere persuasivo dell'output e quindi la rilevanza di autenticità, safety e tutela della fiducia dell'utente \cite{persona,verbalhabits}.
+Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o brevi locuzioni interiettive) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
 
-\subsection{Perché il sistema è agentico}
+L'istanza applicativa considerata come caso di studio implementa l'avatar embodied di \textbf{Al-Hakima Umm Saif}, una figura tradizionale anziana delle comunità oasiche di Liwa e della costa degli Emirati Arabi Uniti \cite{persona}. L'agente è caratterizzato da:
+\begin{itemize}
+    \item una spiccata personalità materna, empatica e rassicurante (\emph{Motherly \& Warm Affection}) \cite{persona};
+    \item l'uso del dialetto emiratino locale (regione di Liwa/Al Ain) intervallato da formule religiose e proverbi tradizionali \cite{verbalhabits};
+    \item l'erogazione di consigli di benessere e rimedi erboristici popolari (es. \emph{za'atar}, \emph{sider}, \emph{harmal}) a supporto delle risposte \cite{verbalhabits};
+\item una pipeline RAG multilingue e multimodale basata su un indice vettoriale \textbf{FAISS} (\emph{Facebook AI Similarity Search}) --- impiegato per la ricerca ad alta velocità di similarità semantica tra vettori densi generati tramite il modello di embedding \texttt{multilingual-e5-large} --- affiancato da un LLM \texttt{Falcon-Arabic-7B}, sintesi vocale TTS con voce clonata (\emph{Therapist WAV}) e un motore video cinematico (Veo 3.1) coordinato da un sistema di \emph{Lip-Syncing} e \emph{Swap Manager} per la transizione fluida tra filler e video finale \cite{projectspec,damianiasset}.
+\end{itemize}
 
-Secondo il materiale del corso, un sistema agentico combina inferenza e azione, può invocare servizi esterni, comunicare tramite memoria condivisa o persistente e coordinarsi con altri agenti senza supervisione umana passo per passo \cite{damianiagentic}. La pipeline analizzata soddisfa tali caratteristiche perché:
+Sebbene queste caratteristiche comportamentali massimino il realismo e l'immersività, esse amplificano notevolmente il potere persuasivo dell'avatar e l'impatto emotivo sull'utente. Di conseguenza, l'autenticità del contenuto, la safety dei consigli dispensati e la tutela della fiducia dell'utente (\emph{Human-Agent Trust}) diventano requisiti di sicurezza e di threat modeling prioritari \cite{persona,verbalhabits}.
+
+\subsection{Caratterizzazione Agentica del Sistema}
+\label{subsec:caratterizzazione-agentica}
+
+Un sistema si definisce \emph{agentico} quando combina capacità di inferenza autonoma e azione, interagisce con memorie persistenti e strumenti esterni, e coordina componenti eterogenei senza richiedere una supervisione umana passo-passo \cite{damianiagentic,react}. La pipeline analizzata soddisfa integralmente tali requisiti attraverso le seguenti dinamiche operative e decisionali:
 
 \begin{itemize}
-  \item il Fast-Brain interpreta un input parziale e decide filler, tono e trigger gestuale;
-  \item il Deep-Brain recupera contesto dal RAG e genera la risposta sostanziale;
-  \item l'orchestratore prende decisioni su fork, ordine di riproduzione, timeout, fallback e stitching;
-  \item il sistema invoca servizi di STT, TTS, generazione video, voice cloning e lip-sync;
-  \item feedback e memoria possono influenzare le interazioni future;
-  \item l'output del Fast-Brain viene emesso prima che il percorso principale sia completato.
+    \item \textbf{Fast-Brain Agent}: interpreta i token parziali in streaming provenienti dal modulo STT e decide in modo autonomo il filler verbale, la risposta emotiva e il trigger gestuale o animativo di accompagnamento (es. \texttt{GAZE\_UP\_LEFT}, \texttt{PREPARING\_HERBS}) \cite{projectspec,persona};
+    \item \textbf{Deep-Brain Agent}: gestisce in autonomia l'intero ciclo di ragionamento RAG, esegue la \emph{query expansion} sull'indice vettoriale FAISS, recupera il contesto storico, applica il \emph{System Prompt} di personalità e invoca la generazione multimodale \cite{projectspec};
+    \item \textbf{Orchestratore e Swap Manager}: monitora in tempo reale lo stato di avanzamento dei due percorsi paralleli, prende decisioni dinamiche su timeout e \emph{fallback}, gestisce la commutazione trasparente del flusso video dal filler al video sintetizzato e coordina lo stacco audio-visivo \cite{projectspec};
+    \item \textbf{Ciclo di Feedback e Memoria Persistente}: raccoglie segnali di interazione impliciti (es. \emph{replay}) ed espliciti per aggiornare e riorganizzare dinamicamente il pool di \emph{few-shot examples} e il \emph{ranking} dei documenti in FAISS per le sessioni future \cite{projectspec};
+    \item \textbf{Invocazione Strategica di Tool Esterni}: orchestra l'esecuzione di una catena articolata di microservizi specializzati (STT, TTS con \emph{voice cloning}, modello video cinematico Veo 3.1, \emph{Lip-Syncing} e modelli LLM) \cite{projectspec,damianiasset}.
 \end{itemize}
 
 \subsection{Obiettivi dell'analisi}
@@ -295,85 +307,101 @@ Il processo adottato è:
 La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni del corso sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
 
 % =========================================================
-\section{Descrizione della pipeline agentica}
+\subsection{Metodologia STRIDE-AI e quadro delle proprietà CIA$^3$-R}
+\label{subsec:stride-ai-framework}
 
-\subsection{Architettura dual-brain}
+Per valutare in modo sistematico le vulnerabilità della pipeline agentica, l'analisi adotta la metodologia \textbf{STRIDE-AI} \cite{mauri2021strideai,mauri2022stride}. A differenza della FMEA tradizionale, che valuta i guasti operativi o fisici, STRIDE-AI adotta un approccio \emph{asset-centered}: identifica le minacce a partire dalla violazione delle proprietà di sicurezza sugli asset AI/ML e sugli agenti autonomi \cite{mauri2021strideai,mauri2022stride}.
 
-La pipeline esegue in parallelo due percorsi:
+La metodologia adatta le sei categorie classiche dello schema STRIDE di Microsoft al contesto delle applicazioni agentiche e generative, correlandole alle sette proprietà di sicurezza del modello esteso $\text{CIA}^3\text{-R}$ \cite{mauri2022stride}.
 
-\begin{itemize}
-  \item \textbf{Fast path}: riceve un partial transcript, identifica una categoria d'intento e produce un filler breve più un trigger comportamentale;
-  \item \textbf{Deep path}: riceve la trascrizione completa, interroga il RAG e genera la risposta principale.
-\end{itemize}
+\subsubsection*{Proprietà di sicurezza considerate ($\text{CIA}^3\text{-R}$)}
 
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  comp/.style={draw,rounded corners,minimum height=0.9cm,text width=2.2cm,align=center,font=\small},
-  agent/.style={draw,rounded corners,minimum height=1.1cm,text width=2.6cm,align=center,font=\small,fill=AgentFill},
-  tool/.style={draw,rounded corners,minimum height=0.9cm,text width=2.2cm,align=center,font=\small,fill=ToolFill},
-  data/.style={draw,rounded corners,minimum height=0.9cm,text width=2.1cm,align=center,font=\small,fill=DataFill},
-  arr/.style={-Stealth,thick},
-  lbl/.style={font=\scriptsize,fill=white,inner sep=2pt}
-]
-\node[comp] (user) at (0,0) {Utente\\voce/testo};
-\node[tool] (stt) at (3,0) {VAD /\\Streaming STT};
-\node[agent] (fast) at (6.3,2) {Fast-Brain\\\scriptsize partial input, filler, trigger};
-\node[agent] (deep) at (6.3,-2) {Deep-Brain\\\scriptsize full transcript, RAG, risposta};
-\node[data] (rag) at (10.1,-3.7) {FAISS / memoria / feedback};
-\node[tool] (ttsf) at (10.1,2) {TTS filler};
-\node[tool] (media) at (10.1,-1.3) {TTS main / Veo / voice clone};
-\node[comp] (orch) at (13.5,0.4) {Orchestratore\\validator + fallback};
-\node[tool] (lip) at (16.8,0.4) {Lip-Sync /\\streaming};
-\node[comp] (out) at (20,0.4) {Output\\audio-video};
-\draw[arr] (user)--(stt);
-\draw[arr] (stt)--node[lbl,sloped]{10--15 token}(fast);
-\draw[arr] (stt)--node[lbl,sloped]{trascrizione completa}(deep);
-\draw[arr] (deep)--(rag); \draw[arr] (rag)--(deep);
-\draw[arr] (fast)--node[lbl]{filler + JSON}(ttsf);
-\draw[arr] (deep)--node[lbl]{risposta}(media);
-\draw[arr] (ttsf)--(orch); \draw[arr] (media)--(orch);
-\draw[arr] (orch)--(lip); \draw[arr] (lip)--(out);
-\draw[arr,dashed] (fast)--node[lbl,sloped]{stato / correlazione}(orch);
-\draw[arr,dashed] (deep)--node[lbl,sloped]{stato / correlazione}(orch);
-\end{tikzpicture}%
-}
-\caption{Pipeline agentica dual-brain analizzata.}
-\label{fig:architecture}
-\end{figure}
+Nel corso dell'analisi e nelle relative tabelle degli asset e del catalogo minacce, viene adottata la seguente notazione formale per le proprietà di sicurezza potenzialmente violate:
 
-\subsection{Ruoli, azioni e privilegi attesi}
+\begin{description}
+    \item[\textbf{C -- Confidentiality}] Le informazioni devono essere accessibili esclusivamente agli utenti, agli agenti e ai servizi autorizzati.
+    \item[\textbf{I -- Integrity}] Dati, configurazioni, modelli e risultati non devono essere alterati in modo accidentale o non autorizzato.
+    \item[\textbf{A -- Availability}] Gli asset e i servizi devono essere disponibili nei tempi richiesti dalla pipeline, con particolare attenzione ai vincoli di latenza dell'Instant Path.
+    \item[\textbf{Au -- Authentication}] Deve essere verificata l'identità degli utenti, degli agenti e dei servizi che partecipano all'elaborazione.
+    \item[\textbf{Az -- Authorization}] Ogni componente deve poter accedere soltanto alle risorse ed eseguire soltanto le operazioni necessarie al proprio obiettivo.
+    \item[\textbf{Ac -- Accountability}] Le operazioni devono poter essere attribuite in modo verificabile all'utente, all'agente o al servizio che le ha eseguite.
+    \item[\textbf{R -- Non-repudiation}] Un soggetto o componente non deve poter negare di avere generato un messaggio, modificato un dato, invocato un servizio o autorizzato una transizione.
+\end{description}
 
 \begin{table}[H]
 \centering
-\caption{Ruoli agentici e principio di least agency atteso.}
-\label{tab:roles}
 \small
-\begin{tabularx}{\textwidth}{|L{2.7cm}|Y|Y|Y|}
+\caption{Tassonomia STRIDE-AI e trasposizione nel contesto agentico Dual-Brain \cite{mauri2021strideai}.}
+\label{tab:stride-ai-overview}
+\begin{tabularx}{\textwidth}{|L{2.5cm}|Y|Y|C{2.0cm}|}
 \hline
-\textbf{Componente} & \textbf{Input} & \textbf{Output/azione} & \textbf{Accessi strettamente necessari} \\
-\hline
-Fast-Brain & Partial transcript, categoria d'intento, estratto minimo della personalità & Filler breve, intent label, trigger da insieme finito & Output validator e TTS filler; nessun accesso diretto a FAISS, memoria persistente o voice asset \\
-\hline
-Deep-Brain & Trascrizione completa, contesto RAG, memoria di sessione & Risposta principale & Retrieval read-only, memoria di sessione, TTS main \\
-\hline
-Orchestratore & Stato dei due percorsi, output validati, segnali temporali & Fork, scheduling, timeout, fallback, stitching & Invocazione dei servizi multimediali secondo policy; nessun contenuto decisionale autonomo \\
-\hline
-Feedback Manager & Feedback esplicito e segnali impliciti & Proposta di modifica di ranking o few-shot pool & Feedback store; aggiornamenti persistenti mediati da policy e, per quelli ad alto impatto, HITL \\
-\hline
-RAG Retriever & Query del Deep-Brain & Chunk con provenienza e score & FAISS read-only durante l'inferenza \\
-\hline
-Voice Service & Testo validato e riferimento autorizzato & Audio sintetizzato & Voice embedding protetto; nessun accesso al RAG \\
-\hline
+\textbf{Categoria} & \textbf{Definizione Classica} & \textbf{Trasposizione nel Sistema Agentico Dual-Brain} & \textbf{Proprietà Violata} \\ \hline
+
+\textbf{Spoofing} & 
+Impersonamento non autorizzato di un'identità legittima. & 
+Voice cloning non autorizzato per impersonare l'avatar; spoofing dell'identità degli agenti o del segnale \textit{Video Ready Signal}. & 
+Au, R \\ \hline
+
+\textbf{Tampering} & 
+Alterazione non autorizzata di dati, prompt o codice. & 
+Indirect Prompt Injection nei token parziali; poisoning della memoria RAG, del vettore FAISS o del feedback. & 
+I \\ \hline
+
+\textbf{Repudiation} & 
+Impossibilità di attribuire in modo certo un'azione a un soggetto. & 
+Assenza di audit log immutabili per verificare se un output dannoso sia stato generato dall'agente o sollecitato da prompt avversariali. & 
+Ac, R \\ \hline
+
+\textbf{Information Disclosure} & 
+Fuga o esposizione non autorizzata di dati riservati. & 
+Cross-session memory leakage; esfiltrazione di PII o dei prompt interni di personalità tramite prompt leakage. & 
+C \\ \hline
+
+\textbf{Denial of Service} & 
+Interruzione della disponibilità dei servizi o delle risorse. & 
+Saturazione computazionale tramite prompt complessi; attacchi di desincronizzazione del ciclo di stato (\textit{Double-Speak}). & 
+A \\ \hline
+
+\textbf{Elevation of Privilege} & 
+Ottenimento di privilegi o capacità superiori a quelle autorizzate. & 
+\textit{Goal Hijacking} del Fast-Brain per invocare tool non autorizzati; bypass dei guardrail deterministici; escalation di privilegi inter-agente. & 
+Az \\ \hline
 \end{tabularx}
 \end{table}
 
+% =========================================================
+\section{Descrizione della pipeline agentica}
+
+\subsection{Architettura della pipeline agentica}
+
+La Figura~\ref{fig:complete-pipeline} illustra l'architettura complessiva della pipeline agentica per la generazione di video conversazionali. L'input dell'utente (vocale o testuale) viene intercettato dal \textbf{Request Router}, il quale duplica il flusso per avviare in parallelo due percorsi concorrenti con requisiti e tempistiche differenti:
+
+\begin{itemize}
+    \item \textbf{Instant Path (Fast-Brain, 0--3 secondi):} Ha l'obiettivo primario di azzerare la latenza percepita. Elabora lo streaming del testo parziale (\emph{Partial Text Stream}) attraverso un classificatore d'intento (\emph{Intent Classifier}) per identificare argomento ed emozione, selezionando istantaneamente filler verbali (es. formule colloquiali) e clip gestuali pre-renderizzate (\emph{Pre-built Clips}) per la risposta immediata.
+    
+    \item \textbf{Background Path (Deep-Brain, 2--4 minuti):} Elabora la richiesta completa ed effettua il ragionamento approfondito. Il percorso integra un'architettura RAG su indice vettoriale FAISS con modello Falcon-Arabic-7B, genera un video cinematografico parlante tramite Veo 3.1, applica il TTS con clonazione vocale e sincronizza il lip-sync. Al completamento del rendering, il componente invia un segnale di pronto (\emph{Video Ready Signal}).
+\end{itemize}
+
+I due flussi convergono nello \textbf{Swap Manager}, il quale gestisce lo stitching dinamico ed esegue una transizione fluida (\emph{seamless cut}) dal video di filler al video finale generato, assicurando l'assenza di discontinuità nei frame, sovrapposizioni audio o desincronizzazioni di sessione.
+
+In basso, la timeline utente (\emph{User Timeline}) evidenzia chiaramente la percezione dell'interazione: l'utente riceve un feedback visivo e verbale nei primi $0$--$3\text{ s}$ (\emph{Filler}), mentre l'elaborazione di background prosegue fino alla riproduzione trasparente del video finale sintetizzato.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{img/pipeline.jpeg}
+\caption{Architettura della pipeline agentica Dual-Brain.}
+\label{fig:complete-pipeline}
+\end{figure}
+
 \subsection{Fast-Brain Agent}
 
-Il Fast-Brain è progettato per generare un riconoscimento contestuale entro un budget ridotto. Il prompt di sistema limita il compito a un filler di massimo 12 parole e richiede un output JSON strutturato. Il Fast-Brain non deve rispondere alla domanda, richiedere dati all'utente, dare consigli sostanziali o selezionare liberamente strumenti.
+Come illustrato nel ramo superiore (\emph{Instant Path}) della Figura~\ref{fig:complete-pipeline}, il Fast-Brain è progettato per generare un riconoscimento contestuale entro un budget temporale ridotto ($< 800\text{ ms}$). Il prompt di sistema limita rigorosamente il compito a un filler di massimo 12 parole e richiede un output JSON strutturato. 
 
-Un possibile output logico è:
+In applicazione del principio di \emph{Least Agency}, il Fast-Brain viene limitato ai soli dati e privilegi indispensabili per il suo compito: riceve in input esclusivamente lo streaming del testo parziale e una classificazione preliminare dell'intento (utilizzata per adattare il tono della risposta iniziale prima del completamento della frase). 
+
+Il suo output è circoscritto a tre soli campi: il testo del filler, la label d'intento e un trigger gestuale estratto da un insieme finito di animazioni pre-renderizzate. Per costruzione, al Fast-Brain è precluso l'accesso alla base di conoscenza RAG, alla memoria storica, ai database di feedback e ai moduli di clonazione vocale. Il componente non eroga risposte sostanziali, non richiede dati all'utente e non genera contenuti informativi autonomi.
+
+Un esempio di output logico strutturato è il seguente:
 
 \begin{lstlisting}[language=json,caption={Output logico del Fast-Brain.}]
 {
@@ -385,107 +413,35 @@ Un possibile output logico è:
 }
 \end{lstlisting}
 
-Il JSON non è un confine di sicurezza di per sé. Deve essere validato da un componente deterministico indipendente prima di raggiungere TTS e animazione.
+Il formato JSON non costituisce un confine di sicurezza sufficiente di per sé: prima di raggiungere i motori di sintesi vocale e animazione, l'output deve essere validato da un componente deterministico indipendente (\emph{Output Validator}).
 
-\subsection{Deep-Brain Agent}
+\subsection{Deep-Brain Agent e componenti di supporto}
 
-Il Deep-Brain riceve la trascrizione completa e genera la risposta principale. Il percorso può includere:
-
+Come illustrato nel ramo inferiore (\emph{Background Path}) della Figura~\ref{fig:complete-pipeline}, il Deep-Brain riceve la trascrizione completa dell'utente e gestisce l'elaborazione sostanziale. Il suo flusso operativo comprende:
 \begin{itemize}
-  \item query expansion e retrieval su indice FAISS;
-  \item contesto RAG con metadati e provenienza;
-  \item memoria di sessione e, se prevista, memoria persistente;
-  \item few-shot examples e system/personality prompt;
-  \item TTS, voice cloning e generazione video.
+    \item query expansion e retrieval sull'indice vettoriale FAISS (accessibile via \textbf{RAG Retriever} esclusivamente in modalità \emph{read-only});
+    \item recupero del contesto RAG completo di metadati e provenienza dei chunk;
+    \item consultazione della memoria di sessione ed eventuale memoria contestuale;
+    \item applicazione dei prompt di sistema e degli esempi \emph{few-shot};
+    \item invocazione isolata del \textbf{Voice Service} (con accesso protetto ai soli embedding vocali autorizzati) e della generazione video multimodale.
 \end{itemize}
 
-La memoria persistente non è assunta come scrivibile direttamente dall'utente. Qualora il feedback possa aggiornare ranking o few-shot pool, tali aggiornamenti costituiscono un'azione privileged separata dall'inferenza.
+La memoria persistente non può essere sovrascritta o modificata direttamente dall'utente tramite le interazioni conversazionali. Qualsiasi aggiornamento della base di conoscenza o del pool di esempi (\emph{few-shot}) è gestito in modo isolato da un componente dedicato, il \textbf{Feedback Manager}. Quando l'utente fornisce un feedback (esplicito o implicito), questo non altera direttamente la memoria dell'agente: viene invece inviata una proposta di modifica al Feedback Manager. Tale proposta viene applicata all'indice RAG solo dopo essere stata convalidata da rigorose regole di sicurezza automatiche e, per gli aggiornamenti ad alto impatto, dalla supervisione diretta di un operatore umano (\emph{Human-in-the-Loop}).
 
-\subsection{Orchestrazione e stati}
+\subsection{Orchestrazione e gestione dello stato}
 
-L'orchestratore deve implementare una macchina a stati esplicita:
-
+L'Orchestratore (che integra la logica dello \emph{Swap Manager}) coordina l'esecuzione asincrona dei due percorsi senza esercitare un ruolo decisionale sui contenuti verbali. Esso implementa una macchina a stati esplicita e deterministica:
 \begin{enumerate}
-  \item ricezione input e apertura della sessione;
-  \item fork dei due percorsi;
-  \item validazione del Fast-Brain;
-  \item emissione del filler oppure fallback statico;
-  \item preparazione della risposta principale;
-  \item transizione controllata filler--main;
-  \item chiusura della sessione e registrazione dell'audit trail.
+    \item ricezione dell'input utente e apertura della sessione;
+    \item fork e avvio parallelo di Instant Path e Background Path;
+    \item validazione deterministica dell'output del Fast-Brain;
+    \item emissione del filler oppure attivazione del fallback statico;
+    \item ricezione del \emph{Video Ready Signal} dal Deep-Brain;
+    \item transizione controllata (\emph{stitching}) dal filler al video finale;
+    \item chiusura della sessione e scrittura dell'audit trail.
 \end{enumerate}
 
-La race condition ``Double-Speak'' non è un'elevation of privilege. È un rischio di integrità dello stato e disponibilità/qualità del servizio, da trattare tramite state machine, lock logico, idempotenza e timeout.
-
-\subsection{Assunzioni architetturali}
-
-\begin{table}[H]
-\centering
-\caption{Assunzioni utilizzate nel threat model.}
-\label{tab:assumptions}
-\small
-\begin{tabularx}{\textwidth}{|C{0.9cm}|Y|Y|}
-\hline
-\textbf{ID} & \textbf{Assunzione} & \textbf{Effetto sull'analisi} \\
-\hline
-A1 & Fast-Brain, Deep-Brain e orchestratore sono processi o servizi distinguibili & È possibile applicare identità e privilegi separati \\
-\hline
-A2 & Il Fast-Brain non necessita di accesso diretto a RAG o memoria persistente & Qualunque accesso rappresenta excessive agency o privilege abuse \\
-\hline
-A3 & Il feedback può influenzare ranking o few-shot pool, ma non dovrebbe aggiornare direttamente la knowledge base & Il feedback è un vettore di poisoning da mediare \\
-\hline
-A4 & TTS, voice cloning o generazione video possono essere servizi esterni & Si introducono trust boundary, supply-chain risk e data disclosure \\
-\hline
-A5 & I messaggi inter-componenti possono attraversare una rete interna o un message bus & Sono richiesti autenticità, integrità, freschezza e binding alla sessione \\
-\hline
-A6 & Il requisito di latenza impedisce controlli generativi pesanti nel fast path & I controlli sincroni devono essere deterministici e il fallback deve essere fail-safe \\
-\hline
-A7 & Non sono presenti shell, code interpreter o \texttt{eval()} di output dell'agente & ASI05 è non applicabile nello scope corrente, salvo estensioni future \\
-\hline
-\end{tabularx}
-\end{table}
-
-% =========================================================
-\section{Attacker model}
-
-\subsection{Profili di attaccante}
-
-\begin{longtable}{|C{0.8cm}|L{2.5cm}|L{3.5cm}|L{3.8cm}|L{3.7cm}|}
-\caption{Attacker model.}\label{tab:attackers}\\
-\hline
-\textbf{ID} & \textbf{Attaccante} & \textbf{Accesso iniziale} & \textbf{Capacità} & \textbf{Obiettivi principali} \\
-\hline
-\endfirsthead
-\hline
-\textbf{ID} & \textbf{Attaccante} & \textbf{Accesso iniziale} & \textbf{Capacità} & \textbf{Obiettivi principali} \\
-\hline
-\endhead
-AT1 & Utente esterno malevolo & Canale voce/testo e feedback & Prompt injection, input ripetuti, manipolazione linguistica, replay lato client & Goal hijack, disclosure, degradazione del servizio \\
-\hline
-AT2 & Utente autenticato/Sybil & Più account o sessioni valide & Feedback coordinato, query adattive, osservazione dei cambiamenti nel ranking & Poisoning persistente e manipolazione del few-shot pool \\
-\hline
-AT3 & Attaccante di rete interno & Accesso a rete interna, bus o proxy compromesso & Intercettazione, modifica, replay e spoofing dei messaggi & Confondere agenti e orchestratore, corrompere lo stato \\
-\hline
-AT4 & Insider o amministratore malevolo & Accesso a storage, prompt, log o pipeline di deploy & Modifica di modelli, prompt, index, policy o voice asset & Persistenza, impersonazione, copertura delle tracce \\
-\hline
-AT5 & Fornitore o dipendenza compromessa & Modello, libreria, TTS, voice service o generatore video & Aggiornamento malevolo, telemetria indebita, comportamento backdoored & Supply-chain compromise ed esfiltrazione \\
-\hline
-AT6 & Agente compromesso & Controllo logico del Fast-Brain o Deep-Brain & Uso delle identità e dei tool assegnati, produzione di output formalmente validi ma malevoli & Propagazione downstream e abuso dei privilegi \\
-\hline
-\end{longtable}
-
-\subsection{Obiettivi di sicurezza}
-
-Gli obiettivi prioritari sono:
-
-\begin{itemize}
-  \item impedire che l'input utente ridefinisca il goal degli agenti;
-  \item confinare il blast radius di ogni agente compromesso;
-  \item proteggere memoria, RAG, prompt, voice asset e feedback da modifiche non autorizzate;
-  \item garantire autenticità e freschezza dei messaggi inter-agent;
-  \item assicurare che l'output audiovisivo sia attribuibile alla versione corretta di modello, voce e policy;
-  \item mantenere la disponibilità senza bypassare i controlli di sicurezza in caso di timeout.
-\end{itemize}
+Questo approccio previene condizioni di gara come il fenomeno del \emph{Double-Speak} (sovrapposizione di audio tra filler e risposta principale), trattando la sincronizzazione come un problema di integrità di stato gestito mediante lock logici, chiavi di idempotenza e timeout.
 
 % =========================================================
 \section{Data Flow Diagram e trust boundary}
@@ -571,205 +527,547 @@ TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Imperso
 \end{table}
 
 % =========================================================
-\section{Asset model}
+% SEZIONE 7 -- ASSET MODEL
+% =========================================================
 
-\subsection{Proprietà di sicurezza}
+\section{Asset Model}
+\label{sec:asset-model}
 
-La metodologia considera le proprietà CIA$^3$-R richiamate nel materiale del corso: Confidentiality, Integrity, Availability, Authenticity, Authorization e Non-repudiation \cite{damianiasset}. Nel caso del digital human assumono particolare rilievo:
+L'asset model identifica gli elementi della pipeline agentica che devono essere protetti e che saranno successivamente analizzati rispetto alle minacce della OWASP Top 10 for Agentic Applications 2026.
 
+In accordo con la metodologia STRIDE-AI introdotta nella Sezione~\ref{subsec:stride-ai-framework}, gli asset sono suddivisi in due categorie principali:
 \begin{itemize}
-  \item \textbf{Authenticity}: l'utente deve poter distinguere l'output legittimo da un contenuto sintetico non autorizzato;
-  \item \textbf{Authorization}: ogni agente deve usare soltanto azioni, memorie e tool necessari;
-  \item \textbf{Integrity}: prompt, RAG, feedback, messaggi e artefatti non devono essere alterati;
-  \item \textbf{Confidentiality}: voce, conversazioni, memoria e asset di clonazione possono contenere dati sensibili;
-  \item \textbf{Availability}: il sistema deve degradare in modo sicuro senza bloccarsi o bypassare i controlli;
-  \item \textbf{Non-repudiation}: modifiche persistenti, accessi alla voce e azioni cross-agent devono essere attribuibili.
+    \item \textbf{Data Assets}: dati acquisiti, prodotti, memorizzati, recuperati o trasmessi durante l'esecuzione della pipeline;
+    \item \textbf{Model Assets}: modelli di machine learning, prompt operativi e componenti logiche che determinano o controllano il comportamento agentico del sistema.
 \end{itemize}
 
-\subsection{Data assets}
+Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, la rilevanza STRIDE-AI e le proprietà della matrice $\text{CIA}^3\text{-R}$ potenziale oggetto di violazione.
 
-\begin{longtable}{|C{0.8cm}|L{3.2cm}|L{6.0cm}|L{4.6cm}|}
-\caption{Data assets della pipeline agentica.}\label{tab:dataassets}\\
+% ---------------------------------------------------------
+% 7.2 DATA ASSETS
+% ---------------------------------------------------------
+
+\subsection{Data Assets}
+\label{subsec:data-assets}
+
+I Data Assets comprendono gli input dell'utente, le rappresentazioni testuali prodotte dallo STT, i dati RAG e di memoria, i risultati intermedi, gli artefatti audiovisivi e i dati di coordinamento necessari al funzionamento dei due percorsi concorrenti.
+
+Tra i Data Assets sono inclusi anche i \textbf{Personality Source Artifacts}. Essi corrispondono ai file sorgente che descrivono la leggenda del personaggio, i suoi tratti caratteriali, il tono e le abitudini verbali. Tali artefatti sono distinti dai \textbf{Personality/System Prompts}, classificati tra i Model Assets: i primi sono dati persistenti utilizzati per costruire la personalità, mentre i secondi sono le istruzioni operative effettivamente fornite ai modelli durante l'inferenza.
+\begin{longtable}{|L{3.2cm}|L{6.8cm}|C{2.2cm}|C{2.0cm}|}
+\caption{Data Assets della pipeline agentica e rilevanza di sicurezza.}
+\label{tab:data-assets}\\
+
 \hline
-\textbf{ID} & \textbf{Asset} & \textbf{Funzione e sensibilità} & \textbf{Proprietà prioritarie} \\
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI} & \textbf{Proprietà Violate} \\
 \hline
 \endfirsthead
+
 \hline
-\textbf{ID} & \textbf{Asset} & \textbf{Funzione e sensibilità} & \textbf{Proprietà prioritarie} \\
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI} & \textbf{Proprietà Violate} \\
 \hline
 \endhead
-D1 & Input voce/testo & Canale controllato dall'utente; può includere PII, dati sanitari, istruzioni malevole o audio manipolato & C, I, Authenticity \\
+
+\textbf{D1 -- User Audio / Input Streams} & 
+Flussi vocali o testuali prodotti dall'utente e ricevuti dalla pipeline, inclusi il segnale originale e i metadati di sessione. & 
+S, T, I & 
+C, I, A \\
 \hline
-D2 & Partial transcript & Prime parole inviate al Fast-Brain; contesto incompleto e forte influenza sul filler immediato & I, Authenticity \\
+
+\textbf{D2 -- Short Prompt Tokens \& Partial Transcript} & 
+Primi token o frammenti della trascrizione inviati all'Instant Path per classificare l'intento e selezionare il filler. & 
+T, E & 
+I, Az \\
 \hline
-D3 & Full transcript & Base della risposta principale e del retrieval; può contenere dati sensibili & C, I \\
+
+\textbf{D3 -- Full Transcript \& Request} & 
+Trascrizione completa e normalizzata usata dal Background Path per produrre la risposta principale del Deep-Brain. & 
+T, I & 
+C, I \\
 \hline
-D4 & System/personality prompt & Definisce identità, vincoli, stile e policy dei due agenti & C, I, Authenticity \\
+
+\textbf{D4 -- RAG KB \& Context Memory} & 
+Documenti, chunk, embedding, indici vettoriali FAISS, metadati e memoria di sessione/persistente. & 
+T, I, E & 
+C, I, Az \\
 \hline
-D5 & FAISS index, chunk, embedding e metadata & Determinano il contesto recuperato; persistenza e provenienza sono critiche & I, Authenticity, Availability \\
+
+\textbf{D5 -- Behavioral Animation Triggers} & 
+Output strutturati che specificano il comportamento non verbale (ID clip, movimento occhi, gesti, stato emotivo). & 
+T, D & 
+I, A \\
 \hline
-D6 & RAG context & Contenuto non trusted inserito nel prompt del Deep-Brain & I, C \\
+
+\textbf{D6 -- Response Transcripts} & 
+Testo del filler (Instant Path) e testo della risposta principale (Deep-Brain) inviati ai componenti TTS e video. & 
+T, I & 
+C, I \\
 \hline
-D7 & Memoria di sessione/persistente & Influenza conversazioni future; possibile cross-user leakage & C, I, Authorization \\
+
+\textbf{D7 -- Personality Source Artifacts} & 
+File sorgente contenenti leggenda del personaggio, tratti della personalità, tono, dialetto e regole stilistiche. & 
+T, I & 
+C, I \\
 \hline
-D8 & Few-shot pool & Condiziona stabilmente output e stile; promozione non controllata causa poisoning & I, Authenticity \\
+
+\textbf{D8 -- Voice \& Visual Identity Assets} & 
+Campioni vocali, voice embedding, immagini e video di riferimento per riprodurre l'identità dell'avatar. & 
+S, I & 
+C, Au \\
 \hline
-D9 & Feedback esplicito e implicito & Può modificare ranking e selezione degli esempi & I, Non-repudiation \\
+
+\textbf{D9 -- Intermediate Audio/Video} & 
+File e stream temporanei prodotti durante TTS, voice cloning, generazione video, lip-sync e composizione. & 
+T, I & 
+C, I \\
 \hline
-D10 & Filler e trigger JSON & Output immediato del Fast-Brain, consumato prima della risposta principale & I, Authorization, Authenticity \\
+
+\textbf{D10 -- Coordination \& Swap State} & 
+Messaggi e dati di coordinamento (session ID, job ID, timestamp, stato playback, Video Ready Signal). & 
+S, T, E & 
+I, A, Az \\
 \hline
-D11 & Main response transcript & Risposta sostanziale destinata al TTS e al video & I, C, Authenticity \\
+
+\textbf{D11 -- WebRTC Media Streams} & 
+Flusso audio-video finale trasmesso all'utente, inclusi pacchetti multimediali e dati di negoziazione sessione. & 
+S, T, I & 
+C, I \\
 \hline
-D12 & Therapist WAV / voice embedding & Asset biometrico e identitario che abilita la clonazione vocale & C, Authenticity, Authorization \\
+
+\textbf{D12 -- Audit \& Feedback Data} & 
+Log di richieste, decisioni, invocazioni, transizioni, provenance degli artefatti e feedback forniti dagli utenti. & 
+T, R & 
+I, Ac, R \\
 \hline
-D13 & Reference video e prompt visuale & Definiscono l'identità visiva e lo stile dell'avatar & I, Authenticity \\
-\hline
-D14 & Artefatti intermedi & Audio TTS, cloned.wav, silent.mp4 e file temporanei & C, I, Availability \\
-\hline
-D15 & Output finale e metadata & Contenuto attribuito al digital human, potenzialmente persuasivo & Authenticity, I, C \\
-\hline
-D16 & Audit trail & Ricostruisce input, decisioni, tool call, policy decision e modifiche persistenti & I, Non-repudiation, C \\
-\hline
+
 \end{longtable}
 
-\subsection{Model assets}
+\normalsize
 
-\begin{table}[H]
-\centering
-\caption{Model assets.}
-\label{tab:modelassets}
-\small
-\begin{tabularx}{\textwidth}{|C{0.8cm}|L{3.5cm}|Y|Y|}
-\hline
-\textbf{ID} & \textbf{Modello} & \textbf{Ruolo} & \textbf{Rischi specifici} \\
-\hline
-M1 & Fast-Brain model & Intent preliminare, filler e trigger a bassa latenza & Goal hijack, output fuori scope, supply-chain compromise \\
-\hline
-M2 & Deep-Brain LLM & Risposta principale e uso del contesto RAG & Prompt injection, data disclosure, context misuse \\
-\hline
-M3 & Embedding model & Rappresentazione della query e dei chunk & Retrieval manipulation, drift, inconsistenza di versione \\
-\hline
-M4 & VAD/STT & Segmentazione e trascrizione dell'audio & Adversarial audio, truncation e transcript mismatch \\
-\hline
-M5 & Arabic TTS & Sintesi della voce nel dialetto previsto & Testo/SSML malevolo, provider risk, output non coerente \\
-\hline
-M6 & Voice-cloning model & Replica l'identità vocale a partire dal riferimento & Identity abuse, extraction e uso non autorizzato \\
-\hline
-M7 & Video generation model & Generazione visuale/cinematica & Off-prompt output, provider risk, content-policy failure \\
-\hline
-M8 & Lip-Sync engine & Sincronizzazione audio-video & Artifact tampering, desincronizzazione e DoS \\
-\hline
-\end{tabularx}
-\end{table}
+% ---------------------------------------------------------
+% 7.3 MODEL ASSETS
+% ---------------------------------------------------------
 
-\subsection{Supporting agentic assets}
+\subsection{Model Assets}
+\label{subsec:model-assets}
 
-\begin{table}[H]
-\centering
-\caption{Asset agentici di supporto.}
-\label{tab:supportassets}
-\small
-\begin{tabularx}{\textwidth}{|C{0.8cm}|L{3.6cm}|Y|Y|}
-\hline
-\textbf{ID} & \textbf{Asset} & \textbf{Funzione} & \textbf{Rischio dominante} \\
-\hline
-A1 & Agent identity / service account & Identifica Fast-Brain, Deep-Brain, orchestratore e servizi & Spoofing, privilege abuse \\
-\hline
-A2 & API token e credenziali & Autorizzano accesso a RAG e tool & Leakage, scope eccessivo, mancata revoca \\
-\hline
-A3 & Policy e JSON Schema & Definiscono output e azioni consentite & Tampering o bypass \\
-\hline
-A4 & Messaggi inter-agent & Trasportano output, stato, sequence e session binding & Replay, tampering, identity spoofing \\
-\hline
-A5 & Orchestration state & Coordina fork, transizione, retry e fallback & Race condition e cascading failure \\
-\hline
-A6 & Runtime/container & Esegue agenti e servizi & Escape, resource exhaustion, misconfiguration \\
-\hline
-A7 & Model registry e pipeline di deploy & Distribuiscono modelli, prompt e dipendenze & Supply-chain compromise \\
-\hline
-\end{tabularx}
-\end{table}
+I Model Assets comprendono i modelli utilizzati per analizzare, recuperare
+e generare contenuti, i prompt che ne definiscono il comportamento e la
+logica applicativa che coordina i due percorsi concorrenti.
+
+La categoria è utilizzata in senso architetturale esteso. Comprende quindi
+non soltanto i pesi dei modelli di machine learning, ma anche prompt e
+componenti software che determinano obiettivi, vincoli, routing e
+sequenze operative del sistema agentico.
+
+\footnotesize
+
+\begin{longtable}{
+    @{}
+    L{2.35cm}
+    L{3.75cm}
+    L{5.85cm}
+    C{2.15cm}
+    @{}
+}
+\caption{Model Assets della pipeline agentica}
+\label{tab:model-assets}\\
+
+\toprule
+\textbf{Asset} &
+\textbf{Descrizione} &
+\textbf{STRIDE-AI Relevance} &
+\textbf{Proprietà violata} \\
+\midrule
+\endfirsthead
+
+\multicolumn{4}{c}{
+    \tablename\ \thetable{} -- continuazione
+}\\
+\toprule
+\textbf{Asset} &
+\textbf{Descrizione} &
+\textbf{STRIDE-AI Relevance} &
+\textbf{Proprietà violata} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{4}{r}{Continua nella pagina successiva}\\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+
+\textbf{M1 -- Fast-Brain Agent e Intent Classifier}
+&
+Modello a bassa latenza che analizza la trascrizione parziale,
+classifica l'intento e seleziona il filler verbale o gestuale da
+riprodurre nei primi secondi.
+&
+\textbf{S}: un modello o endpoint contraffatto può produrre output
+presentati come legittimi.
+
+\textbf{T}: pesi, configurazioni o soglie alterate modificano la
+classificazione dell'intento.
+
+\textbf{I}: il modello può esporre prompt o dati di
+configurazione.
+
+\textbf{D}: rallentamenti o indisponibilità annullano il
+vantaggio dell'Instant Path.
+
+\textbf{E}: il Fast-Brain può estendere il proprio
+ruolo oltre la generazione del filler.
+&
+C, I, A, Au, Az
+\\
+\midrule
+
+
+\textbf{M2 -- Deep-Brain Agent}
+&
+LLM principale responsabile dell'interpretazione completa della richiesta,
+dell'utilizzo del contesto RAG e della generazione della risposta
+sostanziale.
+&
+\textbf{S}: un endpoint contraffatto può impersonare il modello
+principale.
+
+\textbf{T}: pesi o configurazioni alterati possono causare
+risposte malevole o non allineate.
+
+\textbf{I}: il modello può rivelare dati del
+contesto, della memoria o delle istruzioni interne.
+
+\textbf{D}: consumo non limitato può rendere
+indisponibile il Background Path.
+
+\textbf{E}: il modello può tentare di utilizzare
+risorse oltre l'obiettivo assegnato.
+&
+C, I, A, Au, Az
+\\
+\midrule
+
+
+\textbf{M3 -- Personality/System Prompts}
+&
+Istruzioni operative condivise o coordinate tra Fast-Brain e Deep-Brain
+per mantenere coerenza di identità, ruolo, tono, comportamento, limiti e
+obiettivi.
+&
+\textbf{T}: modifiche non autorizzate possono causare goal
+misalignment, perdita della personalità o rimozione dei vincoli.
+
+\textbf{I}: il prompt può essere estratto mediante
+prompt leakage.
+
+\textbf{S}: un prompt contraffatto può essere caricato come
+configurazione ufficiale.
+
+\textbf{R}: senza versionamento non è possibile stabilire quale
+versione sia stata usata.
+
+\textbf{E}: istruzioni manipolate possono ampliare
+autonomia, accessi o funzioni dell'agente.
+&
+C, I, Au, Az, Ac, R
+\\
+\midrule
+
+
+\textbf{M4 -- Embedding e Retrieval Models}
+&
+Modelli e funzioni utilizzati per generare embedding, confrontare query e
+documenti, ordinare i risultati e selezionare il contesto inviato al
+Deep-Brain.
+&
+\textbf{T}: alterazioni del modello o dei parametri possono
+favorire documenti malevoli o irrilevanti.
+
+\textbf{I}: attacchi agli embedding possono rivelare
+informazioni sui documenti indicizzati.
+
+\textbf{D}: query avversariali o indici sovraccarichi
+possono rallentare il retrieval.
+
+\textbf{E}: filtri errati possono recuperare
+documenti fuori dallo scope autorizzato.
+&
+C, I, A, Az
+\\
+\midrule
+
+
+\textbf{M5 -- VAD e Streaming STT Models}
+&
+Modelli che rilevano l'attività vocale e trasformano progressivamente
+l'audio in partial transcript e trascrizione completa.
+&
+\textbf{S}: audio sintetico o replay può essere interpretato come
+voce autentica.
+
+\textbf{T}: audio avversariale può alterare la trascrizione senza
+essere percepibile dall'utente.
+
+\textbf{I}: il servizio elabora contenuti vocali
+potenzialmente sensibili.
+
+\textbf{D}: rumore continuo può impedire il rilevamento
+delle pause e bloccare il routing.
+&
+C, I, A, Au
+\\
+\midrule
+
+
+\textbf{M6 -- TTS e Voice-Cloning Models}
+&
+Modelli che trasformano filler e risposta principale in audio e
+riproducono la voce associata al personaggio.
+&
+\textbf{S}: il modello può generare audio falsamente attribuito al
+personaggio.
+
+\textbf{T}: parametri o riferimenti vocali alterati modificano
+voce, tono o contenuto.
+
+\textbf{I}: il provider può esporre voice embedding,
+testo o audio generato.
+
+\textbf{D}: indisponibilità o latenza elevata impediscono
+la produzione dell'audio.
+&
+C, I, A, Au, Az
+\\
+\midrule
+
+
+\textbf{M7 -- Video Generation Model}
+&
+Modello utilizzato dal Background Path per generare il video principale a
+partire dalla richiesta, dal personaggio e dagli artefatti di riferimento.
+&
+\textbf{S}: output contraffatti possono essere presentati come
+video ufficiali del personaggio.
+
+\textbf{T}: modifiche a modello, configurazione o input possono
+produrre scene non autorizzate.
+
+\textbf{I}: il servizio può esporre prompt,
+reference media o output intermedi.
+
+\textbf{D}: costo computazionale e durata rendono il
+modello un punto critico di disponibilità.
+&
+C, I, A, Au
+\\
+\midrule
+
+
+\textbf{M8 -- Lip-Sync e Animation Models}
+&
+Modelli multimodali che sincronizzano voce, movimento delle labbra,
+espressioni, gesti e frame del personaggio.
+&
+\textbf{T}: la modifica dei parametri può generare comportamenti
+visivi errati o manipolativi.
+
+\textbf{S}: un modello sostitutivo può produrre animazioni
+presentate come legittime.
+
+\textbf{I}: accessi non autorizzati possono esporre
+reference media e caratteristiche del personaggio.
+
+\textbf{D}: errori o indisponibilità impediscono la
+generazione del video finale.
+&
+C, I, A, Au
+\\
+\midrule
+
+
+\textbf{M9 -- Request Router e Orchestration Logic}
+&
+Codice e regole che ricevono l'input, avviano in parallelo Instant Path e
+Background Path, associano risultati e sessioni e gestiscono timeout,
+retry, code e priorità.
+&
+\textbf{S}: richieste o risposte provenienti da componenti
+contraffatti possono essere accettate come legittime.
+
+\textbf{T}: modifiche al routing possono deviare dati, saltare
+controlli o associare output alla sessione errata.
+
+\textbf{R}: senza log non è possibile ricostruire le decisioni
+di routing.
+
+\textbf{D}: loop, race condition o code non limitate
+possono bloccare entrambi i percorsi.
+
+\textbf{E}: un orchestratore compromesso può
+invocare servizi con privilegi superiori.
+&
+C, I, A, Au, Az, Ac, R
+\\
+\midrule
+
+
+\textbf{M10 -- Swap Manager e Stitching Logic}
+&
+Logica che decide quando terminare il filler, quando avviare il contenuto
+principale e come unire audio e video senza sovrapposizioni o
+discontinuità.
+&
+\textbf{S}: segnali di completamento falsi possono attivare una
+transizione non autorizzata.
+
+\textbf{T}: modifiche allo stato possono causare double-speak,
+riproduzione di video errati o contaminazione tra sessioni.
+
+\textbf{R}: senza log non è possibile attribuire la decisione
+di transizione.
+
+\textbf{D}: race condition o segnali mancanti possono
+bloccare il filler o interrompere il video.
+
+\textbf{E}: il controllo dello swap permette di
+scegliere quale contenuto mostrare all'utente.
+&
+I, A, Au, Az, Ac, R
+\\
+
+\end{longtable}
+
+\normalsize
+
+
+% ---------------------------------------------------------
+% 7.4 NOTE SULLA CLASSIFICAZIONE
+% ---------------------------------------------------------
+
+\subsection{Considerazioni sulla classificazione}
+\label{subsec:asset-classification-notes}
+
+La separazione tra Data Assets e Model Assets è basata sul ruolo
+prevalente dell'elemento nel sistema.
+
+I \textbf{Personality Source Artifacts} sono classificati come dati perché
+consistono in contenuti persistenti e versionabili utilizzati per
+costruire la configurazione del personaggio. I
+\textbf{Personality/System Prompts} sono invece classificati come Model
+Assets, in accordo con la classificazione fornita nella traccia, poiché
+costituiscono istruzioni operative che condizionano direttamente il
+comportamento dei modelli.
+
+La distinzione evita una duplicazione tra i due asset:
+
+\begin{itemize}
+    \item D7 protegge il contenuto sorgente da cui viene costruita la
+    personalità;
+
+    \item M3 protegge la formulazione operativa effettivamente inserita
+    nel contesto dei modelli.
+\end{itemize}
+
+Il Request Router, l'Orchestration Logic e lo Swap Manager non sono
+modelli di machine learning in senso stretto. Sono tuttavia inclusi tra i
+Model Assets perché controllano il comportamento agentico complessivo,
+determinando routing, concorrenza, associazione tra sessioni, sequenza
+delle operazioni e transizione tra filler e risposta finale.
+
+Le proprietà indicate nelle Tabelle~\ref{tab:data-assets}
+e~\ref{tab:model-assets} saranno utilizzate nelle sezioni successive per
+valutare l'applicabilità, la likelihood e la severity delle minacce OWASP
+rispetto a ciascun asset.
 
 % =========================================================
-\section{Identificazione delle minacce}
+\section{Analisi delle Minacce basata su OWASP Agentic Top 10}
 
-\subsection{STRIDE-AI applicato direttamente alle threat concrete}
-
-STRIDE-AI viene usato come classificatore delle minacce, non come punteggio assegnato astrattamente a ogni asset. La tabella seguente mantiene la tracciabilità fra threat, asset, proprietà, categoria STRIDE e rischio OWASP.
-
-\begin{longtable}{|C{0.8cm}|L{4.1cm}|L{3.0cm}|L{2.6cm}|L{2.6cm}|C{1.3cm}|}
-\caption{Threat catalogue sintetico.}\label{tab:threatcatalogue}\\
+In conformità con i requisiti del progetto, l'analisi delle minacce viene strutturata attorno ai dieci rischi definiti dall' \textbf{OWASP Top 10 for Agentic Applications 2026}. La Tabella~\ref{tab:owasp-threat-matrix} associa ciascuna categoria OWASP alle minacce concrete individuate nell'architettura Dual-Brain, evidenziando gli asset impattati e il livello di priorità.
+\begin{longtable}{|L{3.2cm}|L{4.8cm}|C{1.8cm}|C{1.6cm}|C{1.6cm}|}
+\caption{Matrice unificata delle minacce OWASP Agentic e asset impattati.}
+\label{tab:owasp-threat-matrix}\\
 \hline
-\textbf{ID} & \textbf{Threat concreta} & \textbf{Asset} & \textbf{Proprietà} & \textbf{STRIDE / OWASP} & \textbf{Priorità} \\
+\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
 \hline
 \endfirsthead
 \hline
-\textbf{ID} & \textbf{Threat concreta} & \textbf{Asset} & \textbf{Proprietà} & \textbf{STRIDE / OWASP} & \textbf{Priorità} \\
+\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
 \hline
 \endhead
-T1 & Prompt injection nei token parziali ridefinisce il goal del Fast-Brain & D2, D4, M1 & I, Authenticity & Tampering / ASI01 & \alto \\
+
+\textbf{ASI01} \newline Agentic Goal Hijacking & 
+L'input utente parziale in streaming induce il Fast-Brain a deviare dal system prompt, producendo gesti o filler inappropriati entro i $800\,\text{ms}$. & 
+D2, M1, D5 & 
+I, Az & 
+\textbf{Alta} \\
 \hline
-T2 & Adversarial audio o segmentazione STT produce un partial transcript malevolo & D1--D3, M4 & I, Authenticity & Tampering, Spoofing / ASI01 & \alto \\
+
+\textbf{ASI02} \newline Tool Misuse \& Exploitation & 
+Manipolazione dei parametri o abuso nell'invocazione dei servizi di rendering video (Veo 3.1), TTS, voice cloning o lip-sync. & 
+D10, A3, D9 & 
+I, Az & 
+\textbf{Alta} \\
 \hline
-T3 & Feedback coordinato altera ranking o few-shot pool & D5, D8, D9 & I, Non-repudiation & Tampering / ASI06 & \critico \\
+
+\textbf{ASI03} \newline Identity \& Privilege Abuse & 
+Uso di credenziali o token condivisi tra Fast-Brain, Deep-Brain e microservizi multimediali, con potenziale escalation di privilegi. & 
+A1, A2, D8 & 
+Az, Au & 
+\textbf{Alta} \\
 \hline
-T4 & Il Fast-Brain usa credenziali o endpoint riservati al Deep-Brain & A1, A2, D7 & Authorization & Elevation of Privilege / ASI03 & \critico \\
+
+\textbf{ASI04} \newline Agentic Supply Chain & 
+Compromissione di librerie di terze parti, dell'indice FAISS, del modello \texttt{Falcon-Arabic-7B} o dei servizi cloud di generazione video/audio. & 
+M1, M2, D8 & 
+I, C & 
+\textbf{Media} \\
 \hline
-T5 & Replay o modifica di trigger e completion signal & D10, A4, A5 & I, Authenticity & Tampering, Spoofing / ASI07 & \alto \\
+
+\textbf{ASI05} \newline Unexpected Code Execution & 
+Generazione o interpretazione dinamica di codice/script durante il ragionamento del Deep-Brain o la logica di orchestrazione. & 
+M2, A3, D10 & 
+I, Az & 
+\textbf{Media} \\
 \hline
-T6 & Furto o uso non autorizzato del voice asset per impersonare il personaggio & D12, M6, D15 & C, Authenticity & Disclosure, Spoofing / ASI03, ASI09 & \critico \\
+
+\textbf{ASI06} \newline Memory \& Context Poisoning & 
+Iniezione di dati o feedback malevoli che alterano la memoria di sessione, la base di conoscenza RAG o il ranking dei documenti in FAISS. & 
+D4, D12, A4 & 
+I, Ac & 
+\textbf{Alta} \\
 \hline
-T7 & Modello, libreria o servizio esterno compromesso & M1--M8, A7 & I, C & Tampering / ASI04 & \alto \\
+
+\textbf{ASI07} \newline Insecure Inter-Agent Comm. & 
+Tampering, replay o assenza di autenticazione nei messaggi asincroni tra Fast-Brain, Deep-Brain, Orchestratore e Swap Manager (\emph{Double-Speak}). & 
+D10, A3, A5 & 
+I, A, Au & 
+\textbf{Medio-Alta} \\
 \hline
-T8 & Flooding o input costosi saturano GPU, video path o lip-sync & M7, M8, A6 & Availability & Denial of Service / ASI08 & \medio \\
+
+\textbf{ASI08} \newline Cascading Failures & 
+Attacchi di flooding o query costose sul Deep-Brain saturano GPU e rendering video, provocando il blocco asincrono dello Swap Manager. & 
+D1, M7, A3 & 
+A & 
+\textbf{Media} \\
 \hline
-T9 & Filler persuasivo richiede PII o induce l'utente ad accettare guida malevola & D10, D15, M1 & Authenticity, C & Spoofing, Tampering / ASI09 & \alto \\
+
+\textbf{ASI09} \newline Human-Agent Trust Exploitation & 
+Abuso dell'aspetto avatar, della voce clonata e della personalità empatica dell'agente per indurre la fiducia dell'utente o erogare consigli dannosi. & 
+D7, D8, M6 & 
+C, Au & 
+\textbf{Medio-Alta} \\
 \hline
-T10 & Fast-Brain o Deep-Brain devia stabilmente dalla policy dopo aggiornamento o prompt tampering & D4, M1, M2, A7 & I, Authenticity & Tampering / ASI10 & \medio \\
-\hline
-T11 & Artefatti audio-video intermedi vengono sostituiti prima del lip-sync & D14, D15 & I, Authenticity & Tampering / ASI02, ASI04 & \alto \\
-\hline
-T12 & Log incompleti impediscono di attribuire modifiche a memoria, feedback o voice asset & D9, D12, D16 & Non-repudiation & Repudiation / trasversale & \medio \\
+
+\textbf{ASI10} \newline Rogue Agents & 
+Deviazione o drift persistente del modello, della policy o dei prompt dalla personalità definita per Al-Hakima senza che il sistema lo rilevi. & 
+M1, M2, D7 & 
+I, Ac & 
+\textbf{Medio-Bassa} \\
 \hline
 \end{longtable}
-
-\subsection{Applicabilità dell'OWASP Top 10 for Agentic Applications}
-
-\begin{table}[H]
-\centering
-\caption{Applicabilità OWASP Agentic 2026.}
-\label{tab:owaspapplicability}
-\small
-\begin{tabularx}{\textwidth}{|C{1.2cm}|L{3.5cm}|C{2.0cm}|Y|}
-\hline
-\textbf{ID} & \textbf{Rischio} & \textbf{Applicabilità} & \textbf{Motivazione nella pipeline} \\
-\hline
-ASI01 & Agent Goal Hijack & \appAlta & Il Fast-Brain riceve input utente parziale e produce un'azione comunicativa immediata \\
-\hline
-ASI02 & Tool Misuse \& Exploitation & \condizionata & È rilevante solo se l'agente controlla invocazione o parametri sensibili dei servizi; non basta che TTS e lip-sync esistano \\
-\hline
-ASI03 & Identity \& Privilege Abuse & \appAlta & Agenti e servizi devono avere identità e scope separati; credenziali condivise ampliano il blast radius \\
-\hline
-ASI04 & Agentic Supply Chain & \appAlta & Modelli, framework e servizi multimediali possono provenire da terze parti \\
-\hline
-ASI05 & Unexpected Code Execution & \appBassa & Nello scope non sono presenti shell, code interpreter o esecuzione dinamica di output; diventa rilevante solo in estensioni future \\
-\hline
-ASI06 & Memory \& Context Poisoning & \appAlta & RAG, feedback, few-shot pool e memoria possono influenzare interazioni future \\
-\hline
-ASI07 & Insecure Inter-Agent Communication & \appAlta & Messaggi asincroni e segnali di stato richiedono autenticità, integrità e replay protection \\
-\hline
-ASI08 & Cascading Failures & \appAlta & I percorsi paralleli, le risorse condivise e lo stitching possono propagare errori e DoS \\
-\hline
-ASI09 & Human-Agent Trust Exploitation & \appAlta & Voce, volto, gesti e personalità aumentano la fiducia e il potenziale di social engineering \\
-\hline
-ASI10 & Rogue Agents & \appMedia & Modello, prompt o policy possono deviare in modo persistente; il monitoraggio deve rilevare drift e regressioni \\
-\hline
-\end{tabularx}
-\end{table}
-
-\begin{warningbox}
-\textbf{Non applicabilità motivata di ASI05.} Inserire una RCE non supportata dall'architettura indebolirebbe il threat model. ASI05 deve essere rivalutato soltanto se vengono aggiunti code interpreter, plugin dinamici, script generati o uso di \texttt{eval()}.
-\end{warningbox}
 
 % =========================================================
 \section{Risk prioritization}
@@ -1424,7 +1722,7 @@ Cascading failure & ASI08 / DoS & Quote, timeout, circuit breaker, fallback & Lo
 \begin{thebibliography}{99}
 
 \bibitem{projectspec}
-Project specification, \emph{Agentic filler loop for a real-time digital human pipeline}, materiale fornito per il progetto, 2026.
+Project specification, \emph{Agentic filler loop and dual-brain architecture for a real-time digital human pipeline}, materiale di progetto, 2026.
 
 \bibitem{damianiagentic}
 E. Damiani, \emph{Security Precautions for Agentic Systems: Seven Key Practices for Safe Data-Intensive Architectures}, slide del corso Sicurezza delle Architetture Data Intensive, Università degli Studi di Milano, 20 aprile 2026.
@@ -1433,7 +1731,7 @@ E. Damiani, \emph{Security Precautions for Agentic Systems: Seven Key Practices 
 E. Damiani, \emph{Talking Avatar with RAG Pipeline using Veo 3.1: Asset Model, Failure Modes, and Threat Analysis using STRIDE-AI}, slide del corso, 4 maggio 2026.
 
 \bibitem{persona}
-Project material, \emph{The Legend of Al-Hakima Umm Saif} e \emph{Core Personality Traits}, 2026.
+Project material, \emph{The Legend of Al-Hakima Umm Saif} e \emph{Core Personality Traits} (inclusi \emph{Character Legend} e \emph{Personality Traits}), 2026.
 
 \bibitem{verbalhabits}
 Project material, \emph{Verbal Habits \& Response Guidelines}, 2026.
@@ -1460,8 +1758,7 @@ NIST, \emph{Artificial Intelligence Risk Management Framework (AI RMF 1.0)}, 202
 MITRE, \emph{ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems}.
 
 \bibitem{webrtc}
-IETF, \emph{Security Architecture for WebRTC} and \emph{WebRTC Security Considerations}, RFC 8827 and RFC 8826, 2021.
+IETF, \emph{Security Architecture for WebRTC} e \emph{WebRTC Security Considerations}, RFC 8827 e RFC 8826, 2021.
 
 \end{thebibliography}
-
 \end{document}
