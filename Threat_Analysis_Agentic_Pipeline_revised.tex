@@ -527,7 +527,7 @@ TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Imperso
 \end{table}
 
 % =========================================================
-% SEZIONE 7 -- ASSET MODEL
+% ASSET MODEL
 % =========================================================
 
 \section{Asset Model}
@@ -544,107 +544,166 @@ In accordo con la metodologia STRIDE-AI introdotta nella Sezione~\ref{subsec:str
 Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, la rilevanza STRIDE-AI e le proprietà della matrice $\text{CIA}^3\text{-R}$ potenziale oggetto di violazione.
 
 % ---------------------------------------------------------
-% 7.2 DATA ASSETS
+% DATA ASSETS
 % ---------------------------------------------------------
 
 \subsection{Data Assets}
 \label{subsec:data-assets}
 
-I Data Assets comprendono gli input dell'utente, le rappresentazioni testuali prodotte dallo STT, i dati RAG e di memoria, i risultati intermedi, gli artefatti audiovisivi e i dati di coordinamento necessari al funzionamento dei due percorsi concorrenti.
+I \textit{Data Assets} comprendono le informazioni e gli artefatti digitali che fluiscono attraverso la pipeline agentica o che ne alimentano il funzionamento. Essi includono gli input vocali e testuali dell'utente, le trascrizioni generate dallo STT, i documenti e la memoria di contesto per il RAG, gli artefatti audiovisivi intermedi e finali, i dati di sincronizzazione della sessione e i log di sistema.
 
-Tra i Data Assets sono inclusi anche i \textbf{Personality Source Artifacts}. Essi corrispondono ai file sorgente che descrivono la leggenda del personaggio, i suoi tratti caratteriali, il tono e le abitudini verbali. Tali artefatti sono distinti dai \textbf{Personality/System Prompts}, classificati tra i Model Assets: i primi sono dati persistenti utilizzati per costruire la personalità, mentre i secondi sono le istruzioni operative effettivamente fornite ai modelli durante l'inferenza.
-\begin{longtable}{|L{3.2cm}|L{6.8cm}|C{2.2cm}|C{2.0cm}|}
-\caption{Data Assets della pipeline agentica e rilevanza di sicurezza.}
+Rientrano in questa categoria anche i materiali sorgente che definiscono l'identità del digital human (\textbf{Personality Source Artifacts}), intesi come asset informativi persistenti distinti dalle istruzioni operative inviate ai modelli a runtime.
+
+La Tabella~\ref{tab:data-assets} illustra i Data Assets individuati, le relative minacce STRIDE-AI e le proprietà $CIA^3$-R maggiormente esposte a rischio.
+\footnotesize
+
+\begin{longtable}{
+    @{}
+    L{2.35cm}
+    L{3.75cm}
+    L{5.85cm}
+    C{2.15cm}
+    @{}
+}
+\caption{Data Assets della pipeline agentica}
 \label{tab:data-assets}\\
 
-\hline
-\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI} & \textbf{Proprietà Violate} \\
-\hline
+\toprule
+\textbf{Asset} &
+\textbf{Descrizione} &
+\textbf{STRIDE-AI Relevance} &
+\textbf{Proprietà $CIA^3$-R Violate} \\
+\midrule
 \endfirsthead
 
-\hline
-\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI} & \textbf{Proprietà Violate} \\
-\hline
+\multicolumn{4}{c}{
+    \tablename\ \thetable{} -- continuazione
+}\\
+\toprule
+\textbf{Asset} &
+\textbf{Descrizione} &
+\textbf{STRIDE-AI Relevance} &
+\textbf{Proprietà $CIA^3$-R Violate} \\
+\midrule
 \endhead
+
+\midrule
+\multicolumn{4}{r}{Continua nella pagina successiva}\\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
 
 \textbf{D1 -- User Audio / Input Streams} & 
 Flussi vocali o testuali prodotti dall'utente e ricevuti dalla pipeline, inclusi il segnale originale e i metadati di sessione. & 
-S, T, I & 
-C, I, A \\
+\textbf{S}: iniezione di flussi vocali o messaggi contraffatti mediante session hijacking.
+
+\textbf{T}: manipolazione del segnale audio o del testo in transito prima dell'elaborazione.
+
+\textbf{I}: intercettazione non autorizzata (eavesdropping) del flusso audio dell'utente. & 
+C, I, Au \\
 \hline
 
 \textbf{D2 -- Short Prompt Tokens \& Partial Transcript} & 
 Primi token o frammenti della trascrizione inviati all'Instant Path per classificare l'intento e selezionare il filler. & 
-T, E & 
+\textbf{T}: alterazione dei primi token per forzare la classificazione di un intento errato.
+
+\textbf{E}: iniezione di istruzioni malevole nel partial transcript per deviare il comportamento del Fast-Brain. & 
 I, Az \\
 \hline
 
 \textbf{D3 -- Full Transcript \& Request} & 
 Trascrizione completa e normalizzata usata dal Background Path per produrre la risposta principale del Deep-Brain. & 
-T, I & 
+\textbf{T}: indirect prompt injection nel testo trascritto per manipolare le istruzioni inviate all'LLM.
+
+\textbf{I}: lettura non autorizzata dei prompt utente contenenti dati personali o sensibili. & 
 C, I \\
 \hline
 
 \textbf{D4 -- RAG KB \& Context Memory} & 
 Documenti, chunk, embedding, indici vettoriali FAISS, metadati e memoria di sessione/persistente. & 
-T, I, E & 
+\textbf{T}: avvelenamento della conoscenza (\textit{data poisoning}) o manipolazione dei vettori nell'indice.
+
+\textbf{I}: accesso non autorizzato e fuga di dati riservati memorizzati nella Knowledge Base.
+
+\textbf{E}: escalation di privilegi per accedere a documenti o chunk riservati ad altri utenti. & 
 C, I, Az \\
 \hline
 
 \textbf{D5 -- Behavioral Animation Triggers} & 
 Output strutturati che specificano il comportamento non verbale (ID clip, movimento occhi, gesti, stato emotivo). & 
-T, D & 
+\textbf{T}: manomissione dei trigger per forzare posture o espressioni dell'avatar inappropriate o offensive.
+
+\textbf{D}: iniezione di trigger invalidi o corrotti che mandano in crash il motore di animazione. & 
 I, A \\
 \hline
 
 \textbf{D6 -- Response Transcripts} & 
 Testo del filler (Instant Path) e testo della risposta principale (Deep-Brain) inviati ai componenti TTS e video. & 
-T, I & 
+\textbf{T}: modifica in transito del testo generato prima che venga inviato al sintetizzatore vocale.
+
+\textbf{I}: estrazione non autorizzata dei testi di risposta contenenti dati o logica riservata. & 
 C, I \\
 \hline
 
 \textbf{D7 -- Personality Source Artifacts} & 
 File sorgente contenenti leggenda del personaggio, tratti della personalità, tono, dialetto e regole stilistiche. & 
-T, I & 
+\textbf{T}: manomissione dei file sorgente della personalità per corrompere il comportamento globale del sistema.
+
+\textbf{I}: esfiltrazione degli artefatti della personalità e del sistema di regole protetto da IP. & 
 C, I \\
 \hline
 
 \textbf{D8 -- Voice \& Visual Identity Assets} & 
 Campioni vocali, voice embedding, immagini e video di riferimento per riprodurre l'identità dell'avatar. & 
-S, I & 
+\textbf{S}: espropriazione o riutilizzo non autorizzato dei dataset di identità per creare clone non autorizzati.
+
+\textbf{I}: accesso e sottrazione dei file di riferimento e degli embedding dell'identità visiva e vocale. & 
 C, Au \\
 \hline
 
 \textbf{D9 -- Intermediate Audio/Video} & 
 File e stream temporanei prodotti durante TTS, voice cloning, generazione video, lip-sync e composizione. & 
-T, I & 
+\textbf{T}: sostituzione o alterazione dei segmenti audio/video temporanei prima dello stitching.
+
+\textbf{I}: accesso ai file temporanei salvati nel buffer di sistema o nei dati di cache. & 
 C, I \\
 \hline
 
 \textbf{D10 -- Coordination \& Swap State} & 
 Messaggi e dati di coordinamento (session ID, job ID, timestamp, stato playback, Video Ready Signal). & 
-S, T, E & 
+\textbf{S}: invio di falsi segnali di sincronizzazione (\textit{Video Ready Signal}) impersonando l'orchestratore.
+
+\textbf{T}: alterazione di session ID o timestamp per causare sovrapposizioni tra utenti o deserializzazione errata.
+
+\textbf{E}: manomissione dello stato di sessione per dirottare o scambiare i flussi multimediali. & 
 I, A, Az \\
 \hline
 
 \textbf{D11 -- WebRTC Media Streams} & 
 Flusso audio-video finale trasmesso all'utente, inclusi pacchetti multimediali e dati di negoziazione sessione. & 
-S, T, I & 
+\textbf{S}: man-in-the-middle per impersonare l'agente o intercettare il canale di streaming finale.
+
+\textbf{T}: alterazione o iniezione di frame dannosi nei pacchetti multimediali WebRTC.
+
+\textbf{I}: intercettazione (eavesdropping) dei flussi multimediali in uscita rivolti all'utente. & 
 C, I \\
 \hline
 
 \textbf{D12 -- Audit \& Feedback Data} & 
 Log di richieste, decisioni, invocazioni, transizioni, provenance degli artefatti e feedback forniti dagli utenti. & 
-T, R & 
+\textbf{T}: cancellazione o alterazione delle righe di log per nascondere attività avversariali o malevole.
+
+\textbf{R}: manomissione della tracciabilità rendendo impossibile l'imputabilità e la forensic analysis. & 
 I, Ac, R \\
 \hline
 
 \end{longtable}
 
 \normalsize
-
 % ---------------------------------------------------------
-% 7.3 MODEL ASSETS
+%  MODEL ASSETS
 % ---------------------------------------------------------
 
 \subsection{Model Assets}
@@ -676,7 +735,7 @@ sequenze operative del sistema agentico.
 \textbf{Asset} &
 \textbf{Descrizione} &
 \textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà violata} \\
+\textbf{Proprietà $CIA^3$-R Violate} \\
 \midrule
 \endfirsthead
 
@@ -705,22 +764,11 @@ Modello a bassa latenza che analizza la trascrizione parziale,
 classifica l'intento e seleziona il filler verbale o gestuale da
 riprodurre nei primi secondi.
 &
-\textbf{S}: un modello o endpoint contraffatto può produrre output
-presentati come legittimi.
+\textbf{T}: alterazione di soglie o prompt di classificazione per forzare la selezione di filler errati.
 
-\textbf{T}: pesi, configurazioni o soglie alterate modificano la
-classificazione dell'intento.
-
-\textbf{I}: il modello può esporre prompt o dati di
-configurazione.
-
-\textbf{D}: rallentamenti o indisponibilità annullano il
-vantaggio dell'Instant Path.
-
-\textbf{E}: il Fast-Brain può estendere il proprio
-ruolo oltre la generazione del filler.
+\textbf{E}: esecuzione di risposte non autorizzate o estensione del ruolo oltre la generazione del filler.
 &
-C, I, A, Au, Az
+I, Az
 \\
 \midrule
 
@@ -731,22 +779,13 @@ LLM principale responsabile dell'interpretazione completa della richiesta,
 dell'utilizzo del contesto RAG e della generazione della risposta
 sostanziale.
 &
-\textbf{S}: un endpoint contraffatto può impersonare il modello
-principale.
+\textbf{T}: indirect prompt injection o manipolazione della risposta generata.
 
-\textbf{T}: pesi o configurazioni alterati possono causare
-risposte malevole o non allineate.
+\textbf{I}: esposizione incontrollata di istruzioni interne o contesti RAG riservati.
 
-\textbf{I}: il modello può rivelare dati del
-contesto, della memoria o delle istruzioni interne.
-
-\textbf{D}: consumo non limitato può rendere
-indisponibile il Background Path.
-
-\textbf{E}: il modello può tentare di utilizzare
-risorse oltre l'obiettivo assegnato.
+\textbf{E}: abusi nell'uso di tool per estendere la propria autonomia oltre lo scope assegnato.
 &
-C, I, A, Au, Az
+C, I, Az
 \\
 \midrule
 
@@ -757,22 +796,11 @@ Istruzioni operative condivise o coordinate tra Fast-Brain e Deep-Brain
 per mantenere coerenza di identità, ruolo, tono, comportamento, limiti e
 obiettivi.
 &
-\textbf{T}: modifiche non autorizzate possono causare goal
-misalignment, perdita della personalità o rimozione dei vincoli.
+\textbf{T}: manomissione delle istruzioni per causare goal misalignment o rimuovere i guardrail.
 
-\textbf{I}: il prompt può essere estratto mediante
-prompt leakage.
-
-\textbf{S}: un prompt contraffatto può essere caricato come
-configurazione ufficiale.
-
-\textbf{R}: senza versionamento non è possibile stabilire quale
-versione sia stata usata.
-
-\textbf{E}: istruzioni manipolate possono ampliare
-autonomia, accessi o funzioni dell'agente.
+\textbf{I}: estrazione indiretta del sistema di prompt tramite attacchi di prompt leakage.
 &
-C, I, Au, Az, Ac, R
+C, I
 \\
 \midrule
 
@@ -783,19 +811,11 @@ Modelli e funzioni utilizzati per generare embedding, confrontare query e
 documenti, ordinare i risultati e selezionare il contesto inviato al
 Deep-Brain.
 &
-\textbf{T}: alterazioni del modello o dei parametri possono
-favorire documenti malevoli o irrilevanti.
+\textbf{T}: alterazione dei parametri di embedding per alterare i punteggi di similarità o favorire documenti malevoli.
 
-\textbf{I}: attacchi agli embedding possono rivelare
-informazioni sui documenti indicizzati.
-
-\textbf{D}: query avversariali o indici sovraccarichi
-possono rallentare il retrieval.
-
-\textbf{E}: filtri errati possono recuperare
-documenti fuori dallo scope autorizzato.
+\textbf{I}: inversione degli embedding per ricostruire il testo di documenti riservati.
 &
-C, I, A, Az
+C, I
 \\
 \midrule
 
@@ -805,19 +825,11 @@ C, I, A, Az
 Modelli che rilevano l'attività vocale e trasformano progressivamente
 l'audio in partial transcript e trascrizione completa.
 &
-\textbf{S}: audio sintetico o replay può essere interpretato come
-voce autentica.
+\textbf{S}: audio sintetico o attacchi di replay interpretati dal VAD/STT come voce reale dell'utente.
 
-\textbf{T}: audio avversariale può alterare la trascrizione senza
-essere percepibile dall'utente.
-
-\textbf{I}: il servizio elabora contenuti vocali
-potenzialmente sensibili.
-
-\textbf{D}: rumore continuo può impedire il rilevamento
-delle pause e bloccare il routing.
+\textbf{T}: rumore avversariale impercettibile inserito nell'audio per alterare la trascrizione.
 &
-C, I, A, Au
+Au, I
 \\
 \midrule
 
@@ -827,19 +839,11 @@ C, I, A, Au
 Modelli che trasformano filler e risposta principale in audio e
 riproducono la voce associata al personaggio.
 &
-\textbf{S}: il modello può generare audio falsamente attribuito al
-personaggio.
+\textbf{S}: generazione non autorizzata di tracce audio per impersonare il digital human (voice spoofing).
 
-\textbf{T}: parametri o riferimenti vocali alterati modificano
-voce, tono o contenuto.
-
-\textbf{I}: il provider può esporre voice embedding,
-testo o audio generato.
-
-\textbf{D}: indisponibilità o latenza elevata impediscono
-la produzione dell'audio.
+\textbf{T}: alterazione dei parametri di sintesi vocale per distorcere tono, prosodia o contenuto.
 &
-C, I, A, Au, Az
+Au, I
 \\
 \midrule
 
@@ -849,19 +853,11 @@ C, I, A, Au, Az
 Modello utilizzato dal Background Path per generare il video principale a
 partire dalla richiesta, dal personaggio e dagli artefatti di riferimento.
 &
-\textbf{S}: output contraffatti possono essere presentati come
-video ufficiali del personaggio.
+\textbf{S}: sintesi di frame o video malevoli presentati come output ufficiali del personaggio.
 
-\textbf{T}: modifiche a modello, configurazione o input possono
-produrre scene non autorizzate.
-
-\textbf{I}: il servizio può esporre prompt,
-reference media o output intermedi.
-
-\textbf{D}: costo computazionale e durata rendono il
-modello un punto critico di disponibilità.
+\textbf{D}: sovraccarico di richieste computazionalmente onerose per saturare la risorsa e bloccare il Background Path.
 &
-C, I, A, Au
+Au, A
 \\
 \midrule
 
@@ -871,19 +867,11 @@ C, I, A, Au
 Modelli multimodali che sincronizzano voce, movimento delle labbra,
 espressioni, gesti e frame del personaggio.
 &
-\textbf{T}: la modifica dei parametri può generare comportamenti
-visivi errati o manipolativi.
+\textbf{T}: alterazione dei parametri di sincronizzazione o iniezione di artefatti visivi impropri.
 
-\textbf{S}: un modello sostitutivo può produrre animazioni
-presentate come legittime.
-
-\textbf{I}: accessi non autorizzati possono esporre
-reference media e caratteristiche del personaggio.
-
-\textbf{D}: errori o indisponibilità impediscono la
-generazione del video finale.
+\textbf{D}: errore di rendering o eccezione nel modello che interrompe la riproduzione dello streaming video.
 &
-C, I, A, Au
+I, A
 \\
 \midrule
 
@@ -894,22 +882,13 @@ Codice e regole che ricevono l'input, avviano in parallelo Instant Path e
 Background Path, associano risultati e sessioni e gestiscono timeout,
 retry, code e priorità.
 &
-\textbf{S}: richieste o risposte provenienti da componenti
-contraffatti possono essere accettate come legittime.
+\textbf{T}: manomissione delle regole di routing per bypassare i controlli o inviare dati alla sessione errata.
 
-\textbf{T}: modifiche al routing possono deviare dati, saltare
-controlli o associare output alla sessione errata.
+\textbf{D}: loop di invocazione, race condition o esaurimento code per bloccare l'orchestratore.
 
-\textbf{R}: senza log non è possibile ricostruire le decisioni
-di routing.
-
-\textbf{D}: loop, race condition o code non limitate
-possono bloccare entrambi i percorsi.
-
-\textbf{E}: un orchestratore compromesso può
-invocare servizi con privilegi superiori.
+\textbf{E}: violazione dei confini di isolamento tra Instant e Background Path.
 &
-C, I, A, Au, Az, Ac, R
+I, A, Az
 \\
 \midrule
 
@@ -920,22 +899,11 @@ Logica che decide quando terminare il filler, quando avviare il contenuto
 principale e come unire audio e video senza sovrapposizioni o
 discontinuità.
 &
-\textbf{S}: segnali di completamento falsi possono attivare una
-transizione non autorizzata.
+\textbf{S}: iniettare un falso segnale di completamento (\textit{Video Ready Signal}) per forzare uno swap prematuro.
 
-\textbf{T}: modifiche allo stato possono causare double-speak,
-riproduzione di video errati o contaminazione tra sessioni.
-
-\textbf{R}: senza log non è possibile attribuire la decisione
-di transizione.
-
-\textbf{D}: race condition o segnali mancanti possono
-bloccare il filler o interrompere il video.
-
-\textbf{E}: il controllo dello swap permette di
-scegliere quale contenuto mostrare all'utente.
+\textbf{T}: alterazione dello stato di transizione causando sovrapposizione audio/video o miscelazione di sessioni.
 &
-I, A, Au, Az, Ac, R
+Au, I
 \\
 
 \end{longtable}
@@ -944,57 +912,45 @@ I, A, Au, Az, Ac, R
 
 
 % ---------------------------------------------------------
-% 7.4 NOTE SULLA CLASSIFICAZIONE
+%  NOTE SULLA CLASSIFICAZIONE
 % ---------------------------------------------------------
-
 \subsection{Considerazioni sulla classificazione}
 \label{subsec:asset-classification-notes}
 
-La separazione tra Data Assets e Model Assets è basata sul ruolo
-prevalente dell'elemento nel sistema.
+La separazione tra \textit{Data Assets} e \textit{Model Assets} si basa sul ruolo
+prevalente svolto dal singolo elemento all'interno dell'architettura agentica.
 
-I \textbf{Personality Source Artifacts} sono classificati come dati perché
-consistono in contenuti persistenti e versionabili utilizzati per
-costruire la configurazione del personaggio. I
-\textbf{Personality/System Prompts} sono invece classificati come Model
-Assets, in accordo con la classificazione fornita nella traccia, poiché
-costituiscono istruzioni operative che condizionano direttamente il
-comportamento dei modelli.
+In particolare, i \textbf{Personality Source Artifacts} (D7) sono classificati come dati
+poiché costituiscono i contenuti sorgente, persistenti e versionabili, utilizzati per
+definire la conoscenza e l'identità del personaggio. Diversamente, i 
+\textbf{Personality/System Prompts} (M3) rientrano nei \textit{Model Assets} in accordo
+con le specifiche della traccia, poiché rappresentano le istruzioni operative runtime
+iniettate nel contesto dei modelli per condizionarne direttamente il comportamento.
 
-La distinzione evita una duplicazione tra i due asset:
-
+Tale distinzione previene sovrapposizioni analitiche:
 \begin{itemize}
-    \item D7 protegge il contenuto sorgente da cui viene costruita la
-    personalità;
-
-    \item M3 protegge la formulazione operativa effettivamente inserita
-    nel contesto dei modelli.
+    \item \textbf{D7} protegge l'integrità e la riservatezza del materiale sorgente da cui viene derivata la personalità;
+    \item \textbf{M3} protegge la formulazione operativa e l'esecuzione contestuale delle istruzioni fornite agli agenti.
 \end{itemize}
 
-Il Request Router, l'Orchestration Logic e lo Swap Manager non sono
-modelli di machine learning in senso stretto. Sono tuttavia inclusi tra i
-Model Assets perché controllano il comportamento agentico complessivo,
-determinando routing, concorrenza, associazione tra sessioni, sequenza
-delle operazioni e transizione tra filler e risposta finale.
+I componenti di coordinamento (\textit{Request Router}, \textit{Orchestration Logic} e \textit{Swap Manager}), pur non essendo modelli di Machine Learning in senso stretto, vengono inclusi tra i \textit{Model Assets} adottando una visione architetturale estesa. Essi governano infatti l'autonomia e la logica decisionale del sistema, determinando il routing dei dati, la concorrenza tra i percorsi (\textit{Instant} e \textit{Background Path}), l'isolamento delle sessioni e la gestione delle transizioni.
 
-Le proprietà indicate nelle Tabelle~\ref{tab:data-assets}
-e~\ref{tab:model-assets} saranno utilizzate nelle sezioni successive per
-valutare l'applicabilità, la likelihood e la severity delle minacce OWASP
-rispetto a ciascun asset.
-
+Infine, la mappatura delle proprietà di sicurezza $CIA^3$-R associate a ciascun asset costituisce il presupposto metodologico per le successive sezioni, in cui verranno valutate l'applicabilità, la probabilità (\textit{likelihood}) e l'impatto (\textit{severity}) delle minacce (inclusa la tassonomia OWASP Top 10 per LLM/AI).
 % =========================================================
 \section{Analisi delle Minacce basata su OWASP Agentic Top 10}
 
 In conformità con i requisiti del progetto, l'analisi delle minacce viene strutturata attorno ai dieci rischi definiti dall' \textbf{OWASP Top 10 for Agentic Applications 2026}. La Tabella~\ref{tab:owasp-threat-matrix} associa ciascuna categoria OWASP alle minacce concrete individuate nell'architettura Dual-Brain, evidenziando gli asset impattati e il livello di priorità.
-\begin{longtable}{|L{3.2cm}|L{4.8cm}|C{1.8cm}|C{1.6cm}|C{1.6cm}|}
+\begingroup
+\setlength{\tabcolsep}{4pt} % Riduce il margine interno delle celle per evitare che il testo tocchi i bordi
+\begin{longtable}{|L{2.8cm}|L{4.7cm}|C{2.3cm}|C{2.1cm}|C{1.7cm}|}
 \caption{Matrice unificata delle minacce OWASP Agentic e asset impattati.}
 \label{tab:owasp-threat-matrix}\\
 \hline
-\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
+\textbf{Rischio} \newline \textbf{OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset} \newline \textbf{Impattati} & \textbf{Proprietà $CIA^3$-R Violate} & \textbf{Priorità} \\
 \hline
 \endfirsthead
 \hline
-\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
+\textbf{Rischio} \newline \textbf{OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset} \newline \textbf{Impattati} & \textbf{Proprietà $CIA^3$-R Violate} & \textbf{Priorità} \\
 \hline
 \endhead
 
@@ -1007,14 +963,14 @@ I, Az &
 
 \textbf{ASI02} \newline Tool Misuse \& Exploitation & 
 Manipolazione dei parametri o abuso nell'invocazione dei servizi di rendering video (Veo 3.1), TTS, voice cloning o lip-sync. & 
-D10, A3, D9 & 
+D10, D9 & 
 I, Az & 
 \textbf{Alta} \\
 \hline
 
 \textbf{ASI03} \newline Identity \& Privilege Abuse & 
 Uso di credenziali o token condivisi tra Fast-Brain, Deep-Brain e microservizi multimediali, con potenziale escalation di privilegi. & 
-A1, A2, D8 & 
+D8 & 
 Az, Au & 
 \textbf{Alta} \\
 \hline
@@ -1028,28 +984,28 @@ I, C &
 
 \textbf{ASI05} \newline Unexpected Code Execution & 
 Generazione o interpretazione dinamica di codice/script durante il ragionamento del Deep-Brain o la logica di orchestrazione. & 
-M2, A3, D10 & 
+M2, D10 & 
 I, Az & 
 \textbf{Media} \\
 \hline
 
 \textbf{ASI06} \newline Memory \& Context Poisoning & 
 Iniezione di dati o feedback malevoli che alterano la memoria di sessione, la base di conoscenza RAG o il ranking dei documenti in FAISS. & 
-D4, D12, A4 & 
+D4, D12 & 
 I, Ac & 
 \textbf{Alta} \\
 \hline
 
 \textbf{ASI07} \newline Insecure Inter-Agent Comm. & 
 Tampering, replay o assenza di autenticazione nei messaggi asincroni tra Fast-Brain, Deep-Brain, Orchestratore e Swap Manager (\emph{Double-Speak}). & 
-D10, A3, A5 & 
+D10 & 
 I, A, Au & 
 \textbf{Medio-Alta} \\
 \hline
 
 \textbf{ASI08} \newline Cascading Failures & 
 Attacchi di flooding o query costose sul Deep-Brain saturano GPU e rendering video, provocando il blocco asincrono dello Swap Manager. & 
-D1, M7, A3 & 
+D1, M7 & 
 A & 
 \textbf{Media} \\
 \hline
@@ -1068,6 +1024,7 @@ I, Ac &
 \textbf{Medio-Bassa} \\
 \hline
 \end{longtable}
+\endgroup
 
 % =========================================================
 \section{Risk prioritization}
