@@ -940,15 +940,17 @@ Infine, la mappatura delle proprietà di sicurezza $CIA^3$-R associate a ciascun
 \section{Analisi delle Minacce basata su OWASP Agentic Top 10}
 
 In conformità con i requisiti del progetto, l'analisi delle minacce viene strutturata attorno ai dieci rischi definiti dall' \textbf{OWASP Top 10 for Agentic Applications 2026}. La Tabella~\ref{tab:owasp-threat-matrix} associa ciascuna categoria OWASP alle minacce concrete individuate nell'architettura Dual-Brain, evidenziando gli asset impattati e il livello di priorità.
-\begin{longtable}{|L{3.2cm}|L{4.8cm}|C{1.8cm}|C{1.6cm}|C{1.6cm}|}
+\begingroup
+\setlength{\tabcolsep}{4pt} % Riduce il margine interno delle celle per evitare che il testo tocchi i bordi
+\begin{longtable}{|L{2.8cm}|L{4.7cm}|C{2.3cm}|C{2.1cm}|C{1.7cm}|}
 \caption{Matrice unificata delle minacce OWASP Agentic e asset impattati.}
 \label{tab:owasp-threat-matrix}\\
 \hline
-\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
+\textbf{Rischio} \newline \textbf{OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset} \newline \textbf{Impattati} & \textbf{Proprietà $CIA^3$-R Violate} & \textbf{Priorità} \\
 \hline
 \endfirsthead
 \hline
-\textbf{Rischio OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset Impattati} & \textbf{Proprietà Violate} & \textbf{Priorità} \\
+\textbf{Rischio} \newline \textbf{OWASP} & \textbf{Threat Concreta e Motivazione nella Pipeline} & \textbf{Asset} \newline \textbf{Impattati} & \textbf{Proprietà $CIA^3$-R Violate} & \textbf{Priorità} \\
 \hline
 \endhead
 
@@ -961,14 +963,14 @@ I, Az &
 
 \textbf{ASI02} \newline Tool Misuse \& Exploitation & 
 Manipolazione dei parametri o abuso nell'invocazione dei servizi di rendering video (Veo 3.1), TTS, voice cloning o lip-sync. & 
-D10, A3, D9 & 
+D10, D9 & 
 I, Az & 
 \textbf{Alta} \\
 \hline
 
 \textbf{ASI03} \newline Identity \& Privilege Abuse & 
 Uso di credenziali o token condivisi tra Fast-Brain, Deep-Brain e microservizi multimediali, con potenziale escalation di privilegi. & 
-A1, A2, D8 & 
+D8 & 
 Az, Au & 
 \textbf{Alta} \\
 \hline
@@ -982,28 +984,28 @@ I, C &
 
 \textbf{ASI05} \newline Unexpected Code Execution & 
 Generazione o interpretazione dinamica di codice/script durante il ragionamento del Deep-Brain o la logica di orchestrazione. & 
-M2, A3, D10 & 
+M2, D10 & 
 I, Az & 
 \textbf{Media} \\
 \hline
 
 \textbf{ASI06} \newline Memory \& Context Poisoning & 
 Iniezione di dati o feedback malevoli che alterano la memoria di sessione, la base di conoscenza RAG o il ranking dei documenti in FAISS. & 
-D4, D12, A4 & 
+D4, D12 & 
 I, Ac & 
 \textbf{Alta} \\
 \hline
 
 \textbf{ASI07} \newline Insecure Inter-Agent Comm. & 
 Tampering, replay o assenza di autenticazione nei messaggi asincroni tra Fast-Brain, Deep-Brain, Orchestratore e Swap Manager (\emph{Double-Speak}). & 
-D10, A3, A5 & 
+D10 & 
 I, A, Au & 
 \textbf{Medio-Alta} \\
 \hline
 
 \textbf{ASI08} \newline Cascading Failures & 
 Attacchi di flooding o query costose sul Deep-Brain saturano GPU e rendering video, provocando il blocco asincrono dello Swap Manager. & 
-D1, M7, A3 & 
+D1, M7 & 
 A & 
 \textbf{Media} \\
 \hline
@@ -1022,6 +1024,7 @@ I, Ac &
 \textbf{Medio-Bassa} \\
 \hline
 \end{longtable}
+\endgroup
 
 % =========================================================
 \section{Risk prioritization}
