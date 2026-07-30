@@ -1027,36 +1027,42 @@ I, Ac &
 \endgroup
 
 % =========================================================
-\section{Risk prioritization}
+\section{Risk Prioritization}
+\label{sec:risk-prioritization}
 
-\subsection{Criteri}
+\subsection{Criteri di Valutazione e Metodologia}
 
-Il rischio è valutato qualitativamente come combinazione di likelihood e impact. Non viene usato RPN. La likelihood considera accessibilità del vettore, privilegi richiesti, complessità, ripetibilità e controlli esistenti. L'impact considera dati esposti, persistenza, utenti coinvolti, propagazione, perdita di autenticità, indisponibilità e danno reputazionale.
+La prioritizzazione dei rischi adotta un approccio qualitativo basato sulla combinazione di probabilità di accadimento (\emph{Likelihood}) e gravità delle conseguenze (\emph{Severity}), in conformità con la metodologia STRIDE-AI \cite{cyrille2026strideai} e con il framework OWASP AIVSS presentato a lezione \cite{damianiagentic}. Per mantenere l'analisi snella ed efficace, si evita l'impiego del calcolo quantitativo dell'RPN (\emph{Risk Priority Number}), prediligendo una classificazione categoriale.
 
-Sono inoltre considerati quattro amplificatori agentici richiamati nelle metriche AIVSS presentate nel corso \cite{damianiagentic}:
+La \textbf{Likelihood} misura la fattibilità dell'attacco considerando l'accessibilità del vettore, i privilegi richiesti, la complessità tecnica, la ripetibilità e i controlli o \emph{guardrails} esistenti.
 
+La \textbf{Severity} misura la gravità dell'impatto potenziale sui pilastri di sicurezza (Confidenzialità, Integrità e Disponibilità), valutando i dati esposti, la persistenza del danno (es. inquinamento della memoria), il numero di utenti coinvolti, la propagazione ad altri moduli, la perdita di autenticità e il danno reputazionale.
+
+Inoltre, il calcolo integra i quattro amplificatori agentici definiti nelle metriche AIVSS \cite{damianiagentic}:
 \begin{itemize}
-  \item autonomia dell'agente;
-  \item memoria persistente;
-  \item interazione multi-agent;
-  \item criticità della decisione e potere persuasivo dell'output.
+    \item \textbf{Autonomia dell'agente:} il grado di indipendenza decisionale ed esecutiva;
+    \item \textbf{Memoria persistente:} il livello di conservazione e riutilizzo dello stato;
+    \item \textbf{Interazione multi-agente:} la complessità dello scambio di dati e comandi tra agenti;
+    \item \textbf{Criticità della decisione e potere persuasivo:} l'impatto potenziale degli output verso utenti o sistemi downstream.
 \end{itemize}
 
-\subsection{Matrice qualitativa}
+\subsection{Matrice Qualitativa di Rischio}
+
+La combinazione di \emph{Likelihood} e \emph{Severity} determina la classe di rischio qualitativa su tre livelli (\textbf{Basso}, \textbf{Medio}, \textbf{Alto}).
 
 \begin{table}[H]
 \centering
-\caption{Matrice likelihood $\times$ impact.}
+\caption{Matrice qualitativa di valutazione del rischio ($\text{Likelihood} \times \text{Severity}$).}
 \label{tab:riskmatrix}
 \begin{tabular}{|c|c|c|c|}
 \hline
- & \textbf{Impact basso} & \textbf{Impact medio} & \textbf{Impact alto} \\
+ & \textbf{Severity Bassa} & \textbf{Severity Media} & \textbf{Severity Alta} \\
 \hline
-\textbf{Likelihood alta} & \medio & \alto & \critico \\
+\textbf{Likelihood Alta} & \medio & \alto & \alto \\
 \hline
-\textbf{Likelihood media} & \basso & \medio & \alto \\
+\textbf{Likelihood Media} & \basso & \medio & \alto \\
 \hline
-\textbf{Likelihood bassa} & \basso & \basso & \medio \\
+\textbf{Likelihood Bassa} & \basso & \basso & \medio \\
 \hline
 \end{tabular}
 \end{table}
@@ -1716,6 +1722,9 @@ MITRE, \emph{ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Sys
 
 \bibitem{webrtc}
 IETF, \emph{Security Architecture for WebRTC} e \emph{WebRTC Security Considerations}, RFC 8827 e RFC 8826, 2021.
+
+\bibitem{cyrille2026strideai}
+T.~N.~R. Cyrille e F.~Schwarz, \emph{STRIDE-AI: A Threat Modeling Framework for Generative AI Security Assessment}, arXiv preprint arXiv:2605.17163, 2026.
 
 \end{thebibliography}
 \end{document}
