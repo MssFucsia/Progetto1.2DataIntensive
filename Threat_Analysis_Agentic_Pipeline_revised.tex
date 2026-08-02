@@ -109,6 +109,9 @@
   columns=fullflexible
 }
 
+\usepackage{enumitem}
+\usepackage{caption}
+
 % =========================================================
 % LISTE
 % =========================================================
@@ -209,7 +212,7 @@ Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso:
 
 Nelle architetture tradizionali per digital human embodied, il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
 
-Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o brevi locuzioni interiettive) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
+Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o DA CAMBIARE brevi locuzioni interiettive) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
 
 L'istanza applicativa considerata come caso di studio implementa l'avatar embodied di \textbf{Al-Hakima Umm Saif}, una figura tradizionale anziana delle comunità oasiche di Liwa e della costa degli Emirati Arabi Uniti \cite{persona}. L'agente è caratterizzato da:
 \begin{itemize}
@@ -373,77 +376,574 @@ Az \\ \hline
 
 % =========================================================
 \section{Descrizione della pipeline agentica}
+\label{sec:pipeline-description}
 
 \subsection{Architettura della pipeline agentica}
 
-La Figura~\ref{fig:complete-pipeline} illustra l'architettura complessiva della pipeline agentica per la generazione di video conversazionali. L'input dell'utente (vocale o testuale) viene intercettato dal \textbf{Request Router}, il quale duplica il flusso per avviare in parallelo due percorsi concorrenti con requisiti e tempistiche differenti:
+La Figura~\ref{fig:complete-pipeline} illustra l'architettura complessiva
+della pipeline agentica impiegata per la generazione di video
+conversazionali. L'obiettivo del sistema è mascherare la latenza
+computazionale introdotta dalla generazione della risposta testuale,
+dalla sintesi vocale, dal rendering video e dal lip-sync, fornendo
+all'utente un riscontro audiovisivo immediato e coerente con il contesto
+della conversazione \cite{projectspec}.
+
+Quando l'utente inizia a parlare o a digitare, il modulo di acquisizione
+raccoglie progressivamente l'input tramite VAD, streaming STT o
+trascrizione testuale. La richiesta viene quindi intercettata dal
+\textbf{Request Router}, che associa l'input a una sessione e avvia due
+percorsi paralleli caratterizzati da requisiti temporali e funzionali
+differenti:
 
 \begin{itemize}
-    \item \textbf{Instant Path (Fast-Brain, 0--3 secondi):} Ha l'obiettivo primario di azzerare la latenza percepita. Elabora lo streaming del testo parziale (\emph{Partial Text Stream}) attraverso un classificatore d'intento (\emph{Intent Classifier}) per identificare argomento ed emozione, selezionando istantaneamente filler verbali (es. formule colloquiali) e clip gestuali pre-renderizzate (\emph{Pre-built Clips}) per la risposta immediata.
-    
-    \item \textbf{Background Path (Deep-Brain, 2--4 minuti):} Elabora la richiesta completa ed effettua il ragionamento approfondito. Il percorso integra un'architettura RAG su indice vettoriale FAISS con modello Falcon-Arabic-7B, genera un video cinematografico parlante tramite Veo 3.1, applica il TTS con clonazione vocale e sincronizza il lip-sync. Al completamento del rendering, il componente invia un segnale di pronto (\emph{Video Ready Signal}).
+
+    \item \textbf{Instant Path -- Fast-Brain.}
+    Il percorso immediato ha lo scopo di ridurre la latenza percepita
+    dall'utente. Durante la fase di ascolto riceve una porzione limitata
+    della trascrizione in streaming e ne effettua una classificazione
+    preliminare per riconoscere intento, argomento e tono emotivo.
+
+    Entro un budget temporale inferiore a
+    $800\,\text{ms}$, il Fast-Brain seleziona un breve filler verbale e
+    un comportamento gestuale da un insieme finito di animazioni
+    pre-renderizzate. La decisione iniziale viene completata nei primi
+    $0$--$3\,\text{s}$, ma le clip selezionate possono essere ripetute o
+    concatenate per coprire l'intero tempo di elaborazione del
+    Deep-Brain.
+
+    \item \textbf{Background Path -- Deep-Brain.}
+    Il percorso di background riceve la richiesta completa e produce la
+    risposta sostanziale. Il Deep-Brain effettua il ragionamento
+    approfondito, recupera il contesto mediante la pipeline RAG su
+    indice vettoriale FAISS, applica i prompt di sistema e di
+    personalità e genera il testo definitivo della risposta.
+
+    Il risultato viene successivamente inviato ai servizi di sintesi
+    vocale, clonazione della voce, generazione video multimodale e
+    lip-sync. Nella configurazione considerata, la produzione del video
+    cinematografico completo può richiedere alcuni minuti. Al termine
+    del rendering viene emesso un messaggio autenticato di completamento,
+    denominato \emph{Video Ready Signal}.
+
 \end{itemize}
 
-I due flussi convergono nello \textbf{Swap Manager}, il quale gestisce lo stitching dinamico ed esegue una transizione fluida (\emph{seamless cut}) dal video di filler al video finale generato, assicurando l'assenza di discontinuità nei frame, sovrapposizioni audio o desincronizzazioni di sessione.
+I due percorsi convergono nello \textbf{Swap Manager}, integrato
+nell'Orchestratore. Tale componente controlla lo stato della sessione,
+la riproduzione delle clip di filler e la disponibilità del video finale.
+Quando la risposta del Deep-Brain è pronta, lo Swap Manager individua un
+punto di transizione audiovisiva sicuro ed esegue uno
+\emph{seamless cut} tra il flusso pre-renderizzato e il video generato.
 
-In basso, la timeline utente (\emph{User Timeline}) evidenzia chiaramente la percezione dell'interazione: l'utente riceve un feedback visivo e verbale nei primi $0$--$3\text{ s}$ (\emph{Filler}), mentre l'elaborazione di background prosegue fino alla riproduzione trasparente del video finale sintetizzato.
+La transizione deve avvenire evitando frame discontinui, sovrapposizioni
+audio, scatti nella postura del personaggio e associazioni errate tra il
+video prodotto e la sessione utente. Lo stitching non viene pertanto
+deciso dal modello linguistico, ma da una macchina a stati deterministica
+che opera su identificatori di sessione, stato della riproduzione,
+timestamp e segnali di completamento validati.
+
+La timeline riportata nella parte inferiore della
+Figura~\ref{fig:complete-pipeline} mostra la differenza tra latenza reale
+e latenza percepita. L'utente riceve nei primi secondi un riconoscimento
+verbale e gestuale, mentre l'elaborazione più onerosa continua in
+background. Il video definitivo viene riprodotto solamente quando tutti
+gli artefatti necessari sono stati prodotti, validati e associati alla
+sessione corretta.
 
 \begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{img/pipeline.jpeg}
-\caption{Architettura della pipeline agentica Dual-Brain.}
-\label{fig:complete-pipeline}
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/pipeline.jpeg}
+    \caption{Architettura della pipeline agentica Dual-Brain.}
+    \label{fig:complete-pipeline}
 \end{figure}
+
+
+\subsection{Sequenza audiovisiva e storyboard}
+
+La Figura~\ref{fig:storyboard-pipeline} rappresenta la pipeline dal punto
+di vista dell'utente e mostra come i due percorsi computazionali vengano
+tradotti in una sequenza continua di scene audiovisive.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{img/Intera_pipeline.png}
+    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza
+    delle scene percepite dall'utente.}
+    \label{fig:storyboard-pipeline}
+\end{figure}
+
+I numeri riportati nell'angolo superiore delle singole clip sono
+\textbf{identificatori delle scene pre-renderizzate} e non indicano il
+loro ordine cronologico. L'ordine temporale effettivo è rappresentato
+dalle frecce della storyboard ed è articolato nelle seguenti fasi:
+
+% =========================================================
+% SEQUENZA DELLE SCENE
+% =========================================================
+
+\begin{enumerate}[
+    leftmargin=*,
+    itemsep=0.5em,
+    topsep=0pt,
+    parsep=0.3em
+]
+
+    \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).}  
+    In assenza di interazione, il digital human si trova nello stato
+    iniziale \texttt{IDLE\_READING}. La donna è raffigurata mentre legge
+    un libro antico. La clip è riproducibile in loop e costituisce lo
+    stato di riposo del sistema.
+
+\end{enumerate}
+
+% Idle Reading e Listening affiancate
+\begin{center}
+\begin{minipage}[t]{0.48\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.56\linewidth]{img/1_Idle_reading.png}
+    \captionof{figure}{Stato iniziale: \emph{Idle Reading}.}
+    \label{fig:idle-reading}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.56\linewidth]{img/2_listening.png}
+    \captionof{figure}{Stato del digital human: \emph{Listening}.}
+    \label{fig:listening}
+\end{minipage}
+\end{center}
+
+\begin{enumerate}[
+    leftmargin=*,
+    start=2,
+    itemsep=0.5em,
+    topsep=0.4em,
+    parsep=0.3em
+]
+
+    \item \textbf{Listening(Figura~\ref{fig:listening}).}
+    Quando l'utente inizia a parlare o a digitare, l'Orchestratore
+    interrompe il loop di lettura e attiva la scena
+    \texttt{LISTENING}. La donna alza lo sguardo e assume una postura
+    attenta, fornendo un riscontro visivo immediato prima che la
+    richiesta sia completa.
+
+    Durante questa fase, lo streaming STT o il canale testuale produce
+    i token parziali utilizzati per la classificazione preliminare
+    dell'intento.
+
+\end{enumerate}
+
+% Thinking a destra delle fasi 3 e 4
+\noindent
+\begin{minipage}[t]{0.62\textwidth}
+    \vspace{0pt}
+
+    \begin{enumerate}[
+        leftmargin=*,
+        start=3,
+        itemsep=0.7em,
+        topsep=0pt,
+        parsep=0.3em
+    ]
+
+        \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
+        Quando l'utente completa e invia la richiesta, la pipeline passa
+        alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
+        leggermente e assume una postura riflessiva.
+
+        Nello stesso istante, il Request Router esegue il fork della
+        richiesta: il Fast-Brain genera il riconoscimento immediato,
+        mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
+
+        \item \textbf{Filler verbale e gestuale.}
+        Il Fast-Brain produce una breve frase rassicurante, coerente con
+        l'intento e con il tono dell'utente. Il filler può essere
+        riprodotto durante la conclusione della scena
+        \texttt{THINKING} o durante l'ingresso nella prima clip di
+        attesa.
+
+        Il filler non deve anticipare la risposta sostanziale,
+        introdurre nuove informazioni o porre ulteriori domande. La sua
+        funzione è esclusivamente quella di confermare che la richiesta
+        è stata ricevuta e che il sistema la sta elaborando.
+
+    \end{enumerate}
+
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.34\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.78\linewidth]{img/3_thinking.png}
+    \captionof{figure}{Stato del digital human: \emph{Thinking}.}
+    \label{fig:thinking}
+\end{minipage}
+
+\vspace{0.7em}
+
+\begin{enumerate}[
+    leftmargin=*,
+    start=5,
+    itemsep=0.5em,
+    topsep=0pt,
+    parsep=0.3em
+]
+
+    \item \textbf{Search (Figura~\ref{fig:search}).}
+    Dopo il riconoscimento iniziale viene attivata la clip
+    \texttt{SEARCH}, nella quale la donna consulta una libreria e cerca
+    tra i libri. La scena rappresenta visivamente la fase di recupero
+    delle informazioni eseguita in background dal Deep-Brain.
+
+\end{enumerate}
+
+% Search e Preparing affiancate
+\begin{center}
+\begin{minipage}[t]{0.48\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.56\linewidth]{img/4_search.png}
+    \captionof{figure}{Stato del digital human: \emph{Search}.}
+    \label{fig:search}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.56\linewidth]{img/5_preparing.png}
+    \captionof{figure}{Stato del digital human: \emph{Preparing}.}
+    \label{fig:preparing}
+\end{minipage}
+\end{center}
+
+\begin{enumerate}[
+    leftmargin=*,
+    start=6,
+    itemsep=0.5em,
+    topsep=0.4em,
+    parsep=0.3em
+]
+
+    \item \textbf{Preparing (Figura~\ref{fig:preparing}).}
+    Se l'elaborazione non è ancora terminata, l'Orchestratore prosegue
+    con la scena \texttt{PREPARING}, nella quale la donna prepara erbe
+    e tè. Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono
+    il pool principale di filler gestuali e possono essere alternate,
+    estese o riprodotte in loop fino alla ricezione del
+    \emph{Video Ready Signal}.
+
+\end{enumerate}
+
+% Approach con immagine a destra
+\noindent
+\begin{minipage}[t]{0.62\textwidth}
+    \vspace{0pt}
+
+    \begin{enumerate}[
+        leftmargin=*,
+        start=7,
+        itemsep=0.5em,
+        topsep=0pt,
+        parsep=0.3em
+    ]
+
+        \item \textbf{Approach (Figura~\ref{fig:approach}).}
+        Quando il video finale è pronto e ha superato i controlli
+        previsti, lo Swap Manager attiva la scena
+        \texttt{APPROACH}. La donna si avvicina alla posizione dalla
+        quale inizierà a parlare.
+
+        Questa clip svolge la funzione di ponte audiovisivo: consente
+        di riportare il personaggio in una posa, un'inquadratura e una
+        condizione audio compatibili con il primo frame della risposta
+        generata.
+
+    \end{enumerate}
+
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.34\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.6\linewidth]{img/6_approach.png}
+    \captionof{figure}{Stato del digital human: \emph{Approach}.}
+    \label{fig:approach}
+\end{minipage}
+
+\vspace{0.7em}
+
+% Answer con immagine a destra
+\noindent
+\begin{minipage}[t]{0.62\textwidth}
+    \vspace{0pt}
+
+    \begin{enumerate}[
+        leftmargin=*,
+        start=8,
+        itemsep=0.5em,
+        topsep=0pt,
+        parsep=0.3em
+    ]
+
+        \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
+        In corrispondenza di un punto di taglio sicuro, lo Swap Manager
+        sostituisce il flusso di filler con il video prodotto dal
+        Deep-Brain. Inizia quindi la scena
+        \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
+        la risposta completa con voce sintetizzata, gestualità coerente
+        e sincronizzazione labiale.
+
+        La risposta può essere composta da più clip generate, purché
+        risultino associate alla stessa sessione e vengano riprodotte
+        nell'ordine previsto.
+
+    \end{enumerate}
+
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.34\textwidth}
+    \vspace{0pt}
+    \centering
+    \includegraphics[width=0.90\linewidth]{img/7_answer.png}
+    \captionof{figure}{Stato del digital human: \emph{Answer}.}
+    \label{fig:answer}
+\end{minipage}
+
+\vspace{0.7em}
+
+\begin{enumerate}[
+    leftmargin=*,
+    start=9,
+    itemsep=0.5em,
+    topsep=0pt,
+    parsep=0.3em
+]
+
+    \item \textbf{Blessing e ritorno allo stato iniziale (Figura~\ref{fig:blessing}).}
+    Al termine della risposta viene riprodotta la scena
+    \texttt{BLESSING}, che fornisce una breve chiusura gestuale e
+    affettiva coerente con la personalità del personaggio.
+
+    % Blessing e ritorno a Idle Reading affiancate
+    \begin{center}
+    \begin{minipage}[t]{0.46\textwidth}
+        \vspace{0pt}
+        \centering
+        \includegraphics[width=0.58\linewidth]{img/8_blessing.png}
+        \captionof{figure}{Stato del digital human: \emph{Blessing}.}
+        \label{fig:blessing}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.46\textwidth}
+        \vspace{0pt}
+        \centering
+        \includegraphics[width=0.58\linewidth]{img/9_return_reading.png}
+        \captionof{figure}{Ritorno allo stato \emph{Idle Reading}.}
+        \label{fig:back-reading}
+    \end{minipage}
+    \end{center}
+
+    Conclusa la scena, l'Orchestratore chiude il turno conversazionale,
+    registra gli eventi nell'audit trail e riporta il digital human
+    nello stato \texttt{IDLE\_READING}, rendendolo disponibile per una
+    nuova richiesta.
+
+\end{enumerate}
+
+Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono una
+rappresentazione narrativa dell'attesa e non una prova diretta che, in
+un dato istante, il sistema stia eseguendo esattamente l'operazione
+mostrata. Questa distinzione deve essere comunicata chiaramente
+nell'interfaccia, affinché l'antropomorfizzazione del personaggio non
+induca l'utente a sovrastimare la consapevolezza, l'affidabilità o lo
+stato effettivo dell'agente.
+
 
 \subsection{Fast-Brain Agent}
 
-Come illustrato nel ramo superiore (\emph{Instant Path}) della Figura~\ref{fig:complete-pipeline}, il Fast-Brain è progettato per generare un riconoscimento contestuale entro un budget temporale ridotto ($< 800\text{ ms}$). Il prompt di sistema limita rigorosamente il compito a un filler di massimo 12 parole e richiede un output JSON strutturato. 
+Come illustrato nell'\emph{Instant Path} della
+Figura~\ref{fig:complete-pipeline}, il Fast-Brain è progettato per
+produrre un riconoscimento contestuale entro un budget temporale
+inferiore a $800\,\text{ms}$.
 
-In applicazione del principio di \emph{Least Agency}, il Fast-Brain viene limitato ai soli dati e privilegi indispensabili per il suo compito: riceve in input esclusivamente lo streaming del testo parziale e una classificazione preliminare dell'intento (utilizzata per adattare il tono della risposta iniziale prima del completamento della frase). 
+Il componente può iniziare a elaborare i token parziali già durante lo
+stato \texttt{LISTENING}. Quando viene rilevata la conclusione del turno
+utente, il Fast-Brain utilizza la porzione di trascrizione disponibile
+per:
 
-Il suo output è circoscritto a tre soli campi: il testo del filler, la label d'intento e un trigger gestuale estratto da un insieme finito di animazioni pre-renderizzate. Per costruzione, al Fast-Brain è precluso l'accesso alla base di conoscenza RAG, alla memoria storica, ai database di feedback e ai moduli di clonazione vocale. Il componente non eroga risposte sostanziali, non richiede dati all'utente e non genera contenuti informativi autonomi.
+\begin{itemize}
 
-Un esempio di output logico strutturato è il seguente:
+    \item classificare preliminarmente l'intento della richiesta;
+    \item determinare il tono emotivo appropriato;
+    \item selezionare un filler verbale di massimo 12 parole;
+    \item selezionare una clip o una sequenza di clip gestuali
+    pre-renderizzate;
+    \item produrre i metadati necessari all'associazione e
+    all'ordinamento degli eventi di sessione.
 
-\begin{lstlisting}[language=json,caption={Output logico del Fast-Brain.}]
+\end{itemize}
+
+In applicazione del principio di \emph{Least Agency}, il Fast-Brain
+riceve esclusivamente i dati e i privilegi necessari alla produzione
+del filler. Non può accedere direttamente all'indice RAG, alla memoria
+persistente, ai database di feedback, agli embedding vocali o ai servizi
+di generazione del video definitivo.
+
+Il Fast-Brain non deve fornire una risposta sostanziale, presentare come
+certe informazioni non ancora recuperate, richiedere dati sensibili
+all'utente o modificare autonomamente la memoria del sistema. La sua
+autonomia è limitata alla scelta di una frase di riconoscimento e di un
+comportamento audiovisivo tra alternative preventivamente autorizzate.
+
+L'output comprende cinque campi logici: identificatore di sessione,
+intento, trigger gestuale, filler verbale e numero di sequenza. Un
+esempio è riportato di seguito:
+
+\begin{lstlisting}[language=json,
+caption={Esempio di output logico del Fast-Brain.}]
 {
   "session_id": "9f4b...",
   "intent": "complex_analytical",
   "trigger": "GAZE_UP_LEFT",
-  "filler": "That is an important question; let me consider it carefully.",
+  "filler": "That is important; let me consider it carefully.",
   "sequence": 12
 }
 \end{lstlisting}
 
-Il formato JSON non costituisce un confine di sicurezza sufficiente di per sé: prima di raggiungere i motori di sintesi vocale e animazione, l'output deve essere validato da un componente deterministico indipendente (\emph{Output Validator}).
+Il formato JSON non rappresenta, da solo, un confine di sicurezza.
+Prima di essere utilizzato dall'Orchestratore, l'output deve essere
+esaminato da un \textbf{Output Validator} deterministico, che verifica:
+
+\begin{itemize}
+
+    \item la conformità allo schema previsto;
+    \item la validità del \texttt{session\_id};
+    \item la monotonicità del numero di sequenza;
+    \item l'appartenenza del trigger a una allowlist di animazioni;
+    \item la lunghezza e il contenuto del filler;
+    \item l'assenza di comandi, markup o dati sensibili;
+    \item la compatibilità della transizione con lo stato corrente.
+
+\end{itemize}
+
+In caso di errore, timeout o violazione delle regole, l'output viene
+scartato e sostituito con una clip di fallback statica e preventivamente
+approvata.
+
 
 \subsection{Deep-Brain Agent e componenti di supporto}
 
-Come illustrato nel ramo inferiore (\emph{Background Path}) della Figura~\ref{fig:complete-pipeline}, il Deep-Brain riceve la trascrizione completa dell'utente e gestisce l'elaborazione sostanziale. Il suo flusso operativo comprende:
+Come illustrato nel \emph{Background Path} della
+Figura~\ref{fig:complete-pipeline}, il Deep-Brain riceve la trascrizione
+completa della richiesta e gestisce l'elaborazione sostanziale della
+risposta.
+
+Il suo flusso operativo comprende:
+
 \begin{itemize}
-    \item query expansion e retrieval sull'indice vettoriale FAISS (accessibile via \textbf{RAG Retriever} esclusivamente in modalità \emph{read-only});
-    \item recupero del contesto RAG completo di metadati e provenienza dei chunk;
-    \item consultazione della memoria di sessione ed eventuale memoria contestuale;
-    \item applicazione dei prompt di sistema e degli esempi \emph{few-shot};
-    \item invocazione isolata del \textbf{Voice Service} (con accesso protetto ai soli embedding vocali autorizzati) e della generazione video multimodale.
+
+    \item normalizzazione della richiesta e \emph{query expansion};
+    \item retrieval sull'indice vettoriale FAISS mediante un
+    \textbf{RAG Retriever} con accesso in sola lettura;
+    \item recupero dei chunk insieme ai relativi metadati, punteggi e
+    informazioni di provenienza;
+    \item consultazione della memoria di sessione e dell'eventuale
+    memoria contestuale autorizzata;
+    \item applicazione dei prompt di sistema, del profilo di personalità
+    e degli esempi \emph{few-shot};
+    \item generazione e validazione della risposta testuale;
+    \item invocazione isolata del \textbf{Voice Service}, con accesso
+    ai soli embedding vocali autorizzati;
+    \item generazione del video multimodale e sincronizzazione
+    audio-video;
+    \item produzione del \emph{Video Ready Signal} al completamento
+    degli artefatti finali.
+
 \end{itemize}
 
-La memoria persistente non può essere sovrascritta o modificata direttamente dall'utente tramite le interazioni conversazionali. Qualsiasi aggiornamento della base di conoscenza o del pool di esempi (\emph{few-shot}) è gestito in modo isolato da un componente dedicato, il \textbf{Feedback Manager}. Quando l'utente fornisce un feedback (esplicito o implicito), questo non altera direttamente la memoria dell'agente: viene invece inviata una proposta di modifica al Feedback Manager. Tale proposta viene applicata all'indice RAG solo dopo essere stata convalidata da rigorose regole di sicurezza automatiche e, per gli aggiornamenti ad alto impatto, dalla supervisione diretta di un operatore umano (\emph{Human-in-the-Loop}).
+Il Deep-Brain non comunica direttamente con il player dell'utente.
+La risposta e gli artefatti audiovisivi vengono consegnati
+all'Orchestratore, che ne verifica la sessione, la provenienza, lo stato
+di completamento e la compatibilità con il turno conversazionale ancora
+attivo.
+
+La memoria persistente non può essere sovrascritta direttamente
+attraverso una normale interazione conversazionale. Gli eventuali
+feedback espliciti o impliciti vengono trasformati in proposte di
+aggiornamento e inviati a un componente separato, il
+\textbf{Feedback Manager}.
+
+Il Feedback Manager valida la provenienza, la qualità e la sicurezza
+della proposta prima di autorizzare qualsiasi modifica alla base di
+conoscenza o al pool di esempi. Gli aggiornamenti ad alto impatto
+richiedono inoltre la supervisione di un operatore umano secondo un
+meccanismo \emph{Human-in-the-Loop}.
+
 
 \subsection{Orchestrazione e gestione dello stato}
 
-L'Orchestratore (che integra la logica dello \emph{Swap Manager}) coordina l'esecuzione asincrona dei due percorsi senza esercitare un ruolo decisionale sui contenuti verbali. Esso implementa una macchina a stati esplicita e deterministica:
+L'Orchestratore coordina l'esecuzione asincrona dei due percorsi e
+integra la logica dello Swap Manager. Esso non decide il contenuto
+semantico della risposta, ma governa gli stati della sessione, le clip
+riprodotte e le condizioni necessarie per effettuare una transizione
+sicura.
+
+La macchina a stati comprende le seguenti transizioni principali:
+
 \begin{enumerate}
-    \item ricezione dell'input utente e apertura della sessione;
-    \item fork e avvio parallelo di Instant Path e Background Path;
-    \item validazione deterministica dell'output del Fast-Brain;
-    \item emissione del filler oppure attivazione del fallback statico;
-    \item ricezione del \emph{Video Ready Signal} dal Deep-Brain;
-    \item transizione controllata (\emph{stitching}) dal filler al video finale;
-    \item chiusura della sessione e scrittura dell'audit trail.
+
+    \item apertura della sessione nello stato
+    \texttt{IDLE\_READING};
+
+    \item rilevazione dell'attività utente e passaggio allo stato
+    \texttt{LISTENING};
+
+    \item ricezione della richiesta completa, passaggio a
+    \texttt{THINKING} e fork parallelo di Fast-Brain e Deep-Brain;
+
+    \item validazione dell'output del Fast-Brain ed emissione del
+    filler verbale e gestuale, oppure attivazione del fallback;
+
+    \item riproduzione controllata delle scene
+    \texttt{SEARCH} e \texttt{PREPARING} durante l'elaborazione di
+    background;
+
+    \item ricezione e validazione del
+    \emph{Video Ready Signal};
+
+    \item attivazione della scena \texttt{APPROACH} e ricerca del punto
+    di taglio audiovisivo sicuro;
+
+    \item stitching verso lo stato \texttt{ANSWER\_TALKING} e
+    riproduzione della risposta completa;
+
+    \item riproduzione della scena \texttt{BLESSING};
+
+    \item chiusura del turno, scrittura dell'audit trail e ritorno allo
+    stato \texttt{IDLE\_READING}.
+
 \end{enumerate}
 
-Questo approccio previene condizioni di gara come il fenomeno del \emph{Double-Speak} (sovrapposizione di audio tra filler e risposta principale), trattando la sincronizzazione come un problema di integrità di stato gestito mediante lock logici, chiavi di idempotenza e timeout.
+Ogni transizione deve essere associata almeno a un identificatore di
+sessione, un numero di sequenza, un timestamp, lo stato precedente, lo
+stato successivo e l'identità del componente che ha richiesto la
+transizione.
+
+Se il Deep-Brain completa la risposta prima della conclusione del filler,
+lo Swap Manager non avvia immediatamente il video principale: attende
+che la clip corrente raggiunga un punto di taglio sicuro oppure salta le
+scene di attesa non ancora iniziate. In questo modo viene evitato il
+fenomeno del \emph{Double-Speak}, nel quale il filler e la risposta
+principale vengono riprodotti contemporaneamente.
+
+Se invece il Deep-Brain supera il timeout massimo previsto, la macchina
+a stati interrompe i loop di attesa, attiva un messaggio di fallback e
+chiude o sospende la sessione in modo controllato. Le condizioni di gara
+e i replay vengono mitigati mediante lock logici, chiavi di idempotenza,
+controlli sulla monotonicità dei messaggi e rifiuto dei segnali
+appartenenti a sessioni concluse.
 
 % =========================================================
 \section{Data Flow Diagram e trust boundary}
