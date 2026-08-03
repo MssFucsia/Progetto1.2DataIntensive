@@ -199,7 +199,7 @@ per Digital Human in tempo reale}\par
 Questo progetto presenta il threat modeling di una pipeline agentica progettata per ridurre la latenza percepita durante l'interazione con un digital human. L'architettura adotta un modello 
 \emph{dual-brain}: un \textbf{Fast-Brain Agent} produce rapidamente un filler verbale e un trigger gestuale, mentre un \textbf{Deep-Brain Agent} elabora la risposta principale tramite LLM, RAG e memoria contestuale. I due percorsi sono eseguiti in parallelo e coordinati da un orchestratore che gestisce priorità, transizione audio-video, fallback e sincronizzazione.
 
-L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Come indicato per questa traccia, non viene applicata una FMEA: le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, costruisce un attacker model, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
+L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Anziché adottare una FMEA tradizionale (più orientata all'analisi dei guasti di componente che alle minacce avversariali e ai comportamenti emergenti), le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, costruisce un attacker model, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
 
 Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
 
@@ -251,9 +251,6 @@ Gli obiettivi sono:
   \item definire un piano sperimentale riproducibile senza inventare risultati non misurati.
 \end{enumerate}
 
-\begin{keybox}
-\textbf{Scelta metodologica.} La FMEA non viene applicata. Il threat model parte direttamente da asset, agenti, trust boundary, identità, memorie, tool e azioni. La FMEA rimane appropriata per analizzare guasti e failure mode di pipeline AI tradizionali, ma non è richiesta per questa traccia agentica.
-\end{keybox}
 
 % =========================================================
 \section{Scope e metodologia}
@@ -280,7 +277,6 @@ Sono fuori scope, salvo che vengano introdotti in implementazioni future:
   \item code interpreter, shell e valutazione dinamica di codice generato;
   \item accesso dell'agente a sistemi amministrativi esterni;
   \item modifica autonoma di risorse cloud o database operativi;
-  \item strumenti non descritti nella traccia.
 \end{itemize}
 
 \subsection{Processo di threat modeling}
@@ -1424,8 +1420,7 @@ prevalente svolto dal singolo elemento all'interno dell'architettura agentica.
 In particolare, i \textbf{Personality Source Artifacts} (D7) sono classificati come dati
 poiché costituiscono i contenuti sorgente, persistenti e versionabili, utilizzati per
 definire la conoscenza e l'identità del personaggio. Diversamente, i 
-\textbf{Personality/System Prompts} (M3) rientrano nei \textit{Model Assets} in accordo
-con le specifiche della traccia, poiché rappresentano le istruzioni operative runtime
+\textbf{Personality/System Prompts} (M3) rientrano nei \textit{Model Assets}, poiché rappresentano le istruzioni operative runtime
 iniettate nel contesto dei modelli per condizionarne direttamente il comportamento.
 
 Tale distinzione previene sovrapposizioni analitiche:
