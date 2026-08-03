@@ -461,8 +461,7 @@ tradotti in una sequenza continua di scene audiovisive.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{img/Intera_pipeline.png}
-    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza
-    delle scene percepite dall'utente.}
+    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza delle scene percepite dall'utente.}
     \label{fig:storyboard-pipeline}
 \end{figure}
 
@@ -472,52 +471,19 @@ loro ordine cronologico. L'ordine temporale effettivo è rappresentato
 dalle frecce della storyboard ed è articolato nelle seguenti fasi:
 
 % =========================================================
-% SEQUENZA DELLE SCENE
+% SEQUENZA DELLE SCENE (Layout ad Armonia di Blocco)
 % =========================================================
 
-\begin{enumerate}[
-    leftmargin=*,
-    itemsep=0.5em,
-    topsep=0pt,
-    parsep=0.3em
-]
+\begin{enumerate}[leftmargin=*, itemsep=0.8em, topsep=0.5em, parsep=0.3em]
 
-    \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).}  
+    % --- MACRO FASE 1: INGRESSO ED ASCOLTO ---
+    \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).} 
     In assenza di interazione, il digital human si trova nello stato
     iniziale \texttt{IDLE\_READING}. La donna è raffigurata mentre legge
     un libro antico. La clip è riproducibile in loop e costituisce lo
     stato di riposo del sistema.
 
-\end{enumerate}
-
-% Idle Reading e Listening affiancate
-\begin{center}
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/1_Idle_reading.png}
-    \captionof{figure}{Stato iniziale: \emph{Idle Reading}.}
-    \label{fig:idle-reading}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/2_listening.png}
-    \captionof{figure}{Stato del digital human: \emph{Listening}.}
-    \label{fig:listening}
-\end{minipage}
-\end{center}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=2,
-    itemsep=0.5em,
-    topsep=0.4em,
-    parsep=0.3em
-]
-
-    \item \textbf{Listening(Figura~\ref{fig:listening}).}
+    \item \textbf{Listening (Figura~\ref{fig:listening}).}
     Quando l'utente inizia a parlare o a digitare, l'Orchestratore
     interrompe il loop di lettura e attiva la scena
     \texttt{LISTENING}. La donna alza lo sguardo e assume una postura
@@ -528,98 +494,52 @@ dalle frecce della storyboard ed è articolato nelle seguenti fasi:
     i token parziali utilizzati per la classificazione preliminare
     dell'intento.
 
-\end{enumerate}
+    % FIGURA CORRISPONDENTE A FASE 1 e 2
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.42\textwidth}
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/1_Idle_reading.png}
+            \caption{\emph{Idle Reading}}
+            \label{fig:idle-reading}
+        \end{subfigure}
+        \hspace{0.8cm}
+        \begin{subfigure}[b]{0.42\textwidth}
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/2_listening.png}
+            \caption{\emph{Listening}}
+            \label{fig:listening}
+        \end{subfigure}
+        \caption{Fase iniziale di attesa ed ascolto dell'input utente.}
+    \end{figure}
 
-% Thinking a destra delle fasi 3 e 4
-\noindent
-\begin{minipage}[t]{0.62\textwidth}
-    \vspace{0pt}
+    % --- MACRO FASE 2: RAGIONAMENTO ED ATTESA ---
+    \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
+    Quando l'utente completa e invia la richiesta, la pipeline passa
+    alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
+    leggermente e assume una postura riflessiva.
 
-    \begin{enumerate}[
-        leftmargin=*,
-        start=3,
-        itemsep=0.7em,
-        topsep=0pt,
-        parsep=0.3em
-    ]
+    Nello stesso istante, il Request Router esegue il fork della
+    richiesta: il Fast-Brain genera il riconoscimento immediato,
+    mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
 
-        \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
-        Quando l'utente completa e invia la richiesta, la pipeline passa
-        alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
-        leggermente e assume una postura riflessiva.
+    \item \textbf{Filler verbale e gestuale.}
+    Il Fast-Brain produce una breve frase rassicurante, coerente con
+    l'intento e con il tono dell'utente. Il filler può essere
+    riprodotto durante la conclusione della scena
+    \texttt{THINKING} o durante l'ingresso nella prima clip di
+    attesa.
 
-        Nello stesso istante, il Request Router esegue il fork della
-        richiesta: il Fast-Brain genera il riconoscimento immediato,
-        mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
-
-        \item \textbf{Filler verbale e gestuale.}
-        Il Fast-Brain produce una breve frase rassicurante, coerente con
-        l'intento e con il tono dell'utente. Il filler può essere
-        riprodotto durante la conclusione della scena
-        \texttt{THINKING} o durante l'ingresso nella prima clip di
-        attesa.
-
-        Il filler non deve anticipare la risposta sostanziale,
-        introdurre nuove informazioni o porre ulteriori domande. La sua
-        funzione è esclusivamente quella di confermare che la richiesta
-        è stata ricevuta e che il sistema la sta elaborando.
-
-    \end{enumerate}
-
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.34\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.78\linewidth]{img/3_thinking.png}
-    \captionof{figure}{Stato del digital human: \emph{Thinking}.}
-    \label{fig:thinking}
-\end{minipage}
-
-\vspace{0.7em}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=5,
-    itemsep=0.5em,
-    topsep=0pt,
-    parsep=0.3em
-]
+    Il filler non deve anticipare la risposta sostanziale,
+    introdurre nuove informazioni o porre ulteriori domande. La sua
+    funzione è esclusivamente quella di confermare che la richiesta
+    è stata ricevuta e che il sistema la sta elaborando.
 
     \item \textbf{Search (Figura~\ref{fig:search}).}
     Dopo il riconoscimento iniziale viene attivata la clip
     \texttt{SEARCH}, nella quale la donna consulta una libreria e cerca
     tra i libri. La scena rappresenta visivamente la fase di recupero
     delle informazioni eseguita in background dal Deep-Brain.
-
-\end{enumerate}
-
-% Search e Preparing affiancate
-\begin{center}
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/4_search.png}
-    \captionof{figure}{Stato del digital human: \emph{Search}.}
-    \label{fig:search}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/5_preparing.png}
-    \captionof{figure}{Stato del digital human: \emph{Preparing}.}
-    \label{fig:preparing}
-\end{minipage}
-\end{center}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=6,
-    itemsep=0.5em,
-    topsep=0.4em,
-    parsep=0.3em
-]
 
     \item \textbf{Preparing (Figura~\ref{fig:preparing}).}
     Se l'elaborazione non è ancora terminata, l'Orchestratore prosegue
@@ -629,121 +549,91 @@ dalle frecce della storyboard ed è articolato nelle seguenti fasi:
     estese o riprodotte in loop fino alla ricezione del
     \emph{Video Ready Signal}.
 
-\end{enumerate}
+    % FIGURA CORRISPONDENTE A FASE 3, 5 e 6
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/3_thinking.png}
+            \caption{\emph{Thinking}}
+            \label{fig:thinking}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/4_search.png}
+            \caption{\emph{Search}}
+            \label{fig:search}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/5_preparing.png}
+            \caption{\emph{Preparing}}
+            \label{fig:preparing}
+        \end{subfigure}
+        \caption{Fase di elaborazione dual-brain e gestione visuale dell'attesa.}
+    \end{figure}
 
-% Approach con immagine a destra
-\noindent
-\begin{minipage}[t]{0.62\textwidth}
-    \vspace{0pt}
+    % --- MACRO FASE 3: SWAP, RISPOSTA E CHIUSURA ---
+    \item \textbf{Approach (Figura~\ref{fig:approach}).}
+    Quando il video finale è pronto e ha superato i controlli
+    previsti, lo Swap Manager attiva la scena
+    \texttt{APPROACH}. La donna si avvicina alla posizione dalla
+    quale inizierà a parlare.
 
-    \begin{enumerate}[
-        leftmargin=*,
-        start=7,
-        itemsep=0.5em,
-        topsep=0pt,
-        parsep=0.3em
-    ]
+    Questa clip svolge la funzione di ponte audiovisivo: consente
+    di riportare il personaggio in una posa, un'inquadratura e una
+    condizione audio compatibili con il primo frame della risposta
+    generata.
 
-        \item \textbf{Approach (Figura~\ref{fig:approach}).}
-        Quando il video finale è pronto e ha superato i controlli
-        previsti, lo Swap Manager attiva la scena
-        \texttt{APPROACH}. La donna si avvicina alla posizione dalla
-        quale inizierà a parlare.
+    \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
+    In corrispondenza di un punto di taglio sicuro, lo Swap Manager
+    sostituisce il flusso di filler con il video prodotto dal
+    Deep-Brain. Inizia quindi la scena
+    \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
+    la risposta completa con voce sintetizzata, gestualità coerente
+    e sincronizzazione labiale.
 
-        Questa clip svolge la funzione di ponte audiovisivo: consente
-        di riportare il personaggio in una posa, un'inquadratura e una
-        condizione audio compatibili con il primo frame della risposta
-        generata.
-
-    \end{enumerate}
-
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.34\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.6\linewidth]{img/6_approach.png}
-    \captionof{figure}{Stato del digital human: \emph{Approach}.}
-    \label{fig:approach}
-\end{minipage}
-
-\vspace{0.7em}
-
-% Answer con immagine a destra
-\noindent
-\begin{minipage}[t]{0.62\textwidth}
-    \vspace{0pt}
-
-    \begin{enumerate}[
-        leftmargin=*,
-        start=8,
-        itemsep=0.5em,
-        topsep=0pt,
-        parsep=0.3em
-    ]
-
-        \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
-        In corrispondenza di un punto di taglio sicuro, lo Swap Manager
-        sostituisce il flusso di filler con il video prodotto dal
-        Deep-Brain. Inizia quindi la scena
-        \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
-        la risposta completa con voce sintetizzata, gestualità coerente
-        e sincronizzazione labiale.
-
-        La risposta può essere composta da più clip generate, purché
-        risultino associate alla stessa sessione e vengano riprodotte
-        nell'ordine previsto.
-
-    \end{enumerate}
-
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.34\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.90\linewidth]{img/7_answer.png}
-    \captionof{figure}{Stato del digital human: \emph{Answer}.}
-    \label{fig:answer}
-\end{minipage}
-
-\vspace{0.7em}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=9,
-    itemsep=0.5em,
-    topsep=0pt,
-    parsep=0.3em
-]
+    La risposta può essere composta da più clip generate, purché
+    risultino associate alla stessa sessione e vengano riprodotte
+    nell'ordine previsto.
 
     \item \textbf{Blessing e ritorno allo stato iniziale (Figura~\ref{fig:blessing}).}
     Al termine della risposta viene riprodotta la scena
     \texttt{BLESSING}, che fornisce una breve chiusura gestuale e
     affettiva coerente con la personalità del personaggio.
 
-    % Blessing e ritorno a Idle Reading affiancate
-    \begin{center}
-    \begin{minipage}[t]{0.46\textwidth}
-        \vspace{0pt}
-        \centering
-        \includegraphics[width=0.58\linewidth]{img/8_blessing.png}
-        \captionof{figure}{Stato del digital human: \emph{Blessing}.}
-        \label{fig:blessing}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[t]{0.46\textwidth}
-        \vspace{0pt}
-        \centering
-        \includegraphics[width=0.58\linewidth]{img/9_return_reading.png}
-        \captionof{figure}{Ritorno allo stato \emph{Idle Reading}.}
-        \label{fig:back-reading}
-    \end{minipage}
-    \end{center}
-
     Conclusa la scena, l'Orchestratore chiude il turno conversazionale,
     registra gli eventi nell'audit trail e riporta il digital human
     nello stato \texttt{IDLE\_READING}, rendendolo disponibile per una
     nuova richiesta.
+
+    % FIGURA CORRISPONDENTE A FASE 7, 8 e 9
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/6_approach.png}
+            \caption{\emph{Approach}}
+            \label{fig:approach}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/7_answer.png}
+            \caption{\emph{Answer}}
+            \label{fig:answer}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/8_blessing.png}
+            \caption{\emph{Blessing}}
+            \label{fig:blessing}
+        \end{subfigure}
+        \caption{Transizione audio-visiva, erogazione della risposta e chiusura del turno.}
+    \end{figure}
 
 \end{enumerate}
 
@@ -1989,7 +1879,7 @@ Feedback poisoning & ASI06 / Tampering & Auth, anti-replay, update gate, rollbac
 \hline
 Privilege abuse & ASI03 / EoP & Workload identity, scoped token, AuthZ & Test negativo: Fast-Brain chiama endpoint RAG \\
 \hline
-Inter-agent replay & ASI07 / Spoofing, Tampering & Nonce, sequence, expiry, session binding & Esperimento C \\
+Inter-agent replay & ASI07 / Spoofing, Tampering & Nonce, sequence, expiry, session binding & Esperimento C\\
 \hline
 Voice clone abuse & ASI09 / Spoofing, Disclosure & Voice vault, provenance, audit, revoca & Test accessi e generazioni senza audit ID \\
 \hline
