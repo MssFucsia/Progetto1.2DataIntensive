@@ -5,8 +5,7 @@
 % =========================================================
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{helvet}
-\renewcommand{\familydefault}{\sfdefault}
+\usepackage{lmodern}
 \usepackage[italian]{babel}
 \usepackage{amsmath,amssymb}
 
@@ -200,9 +199,9 @@ per Digital Human in tempo reale}\par
 Questo progetto presenta il threat modeling di una pipeline agentica progettata per ridurre la latenza percepita durante l'interazione con un digital human. L'architettura adotta un modello 
 \emph{dual-brain}: un \textbf{Fast-Brain Agent} produce rapidamente un filler verbale e un trigger gestuale, mentre un \textbf{Deep-Brain Agent} elabora la risposta principale tramite LLM, RAG e memoria contestuale. I due percorsi sono eseguiti in parallelo e coordinati da un orchestratore che gestisce priorità, transizione audio-video, fallback e sincronizzazione.
 
-L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Come indicato per questa traccia, non viene applicata una FMEA: le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, costruisce un attacker model, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
+L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Anziché adottare una FMEA tradizionale (più orientata all'analisi dei guasti di componente che alle minacce avversariali e ai comportamenti emergenti), le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026} \cite{owaspagentic}. La relazione definisce lo scope, esplicita le assunzioni architetturali, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
 
-Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
+Le mitigazioni sono organizzate secondo le sette precauzioni fondamentali per la sicurezza dei sistemi agentici \cite{damianiagentic}: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
 
 % =========================================================
 \section{Introduzione e obiettivi}
@@ -210,19 +209,19 @@ Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso:
 \subsection{Contesto}
 \label{subsec:contesto}
 
-Nelle architetture tradizionali per digital human embodied, il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
+Nelle architetture tradizionali per digital human embodied (ovvero dotati di un avatar antropomorfo visivo e capace di comunicazione non verbale), il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
 
-Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o DA CAMBIARE brevi locuzioni interiettive) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
+Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o brevi espressioni vocali di attesa) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
 
 L'istanza applicativa considerata come caso di studio implementa l'avatar embodied di \textbf{Al-Hakima Umm Saif}, una figura tradizionale anziana delle comunità oasiche di Liwa e della costa degli Emirati Arabi Uniti \cite{persona}. L'agente è caratterizzato da:
 \begin{itemize}
-    \item una spiccata personalità materna, empatica e rassicurante (\emph{Motherly \& Warm Affection}) \cite{persona};
+    \item una spiccata personalità materna, empatica e rassicurante \cite{persona};
     \item l'uso del dialetto emiratino locale (regione di Liwa/Al Ain) intervallato da formule religiose e proverbi tradizionali \cite{verbalhabits};
-    \item l'erogazione di consigli di benessere e rimedi erboristici popolari (es. \emph{za'atar}, \emph{sider}, \emph{harmal}) a supporto delle risposte \cite{verbalhabits};
-\item una pipeline RAG multilingue e multimodale basata su un indice vettoriale \textbf{FAISS} (\emph{Facebook AI Similarity Search}) --- impiegato per la ricerca ad alta velocità di similarità semantica tra vettori densi generati tramite il modello di embedding \texttt{multilingual-e5-large} --- affiancato da un LLM \texttt{Falcon-Arabic-7B}, sintesi vocale TTS con voce clonata (\emph{Therapist WAV}) e un motore video cinematico (Veo 3.1) coordinato da un sistema di \emph{Lip-Syncing} e \emph{Swap Manager} per la transizione fluida tra filler e video finale \cite{projectspec,damianiasset}.
+    \item l'erogazione di consigli di benessere e rimedi erboristici popolari a supporto delle risposte \cite{verbalhabits};
+\item una pipeline RAG multilingue e multimodale basata su un indice vettoriale \textbf{FAISS} (\emph{Facebook AI Similarity Search}), impiegato per la ricerca ad alta velocità di similarità semantica tra vettori densi generati tramite il modello di embedding \texttt{multilingual-e5-large}, affiancato da un LLM \texttt{Falcon-Arabic-7B}, sintesi vocale TTS con voce clonata (\emph{Therapist WAV}) e un motore video cinematico (Veo 3.1) coordinato da un sistema di \emph{Lip-Syncing} e \emph{Swap Manager} per la transizione fluida tra filler e video finale \cite{projectspec,damianiasset}.
 \end{itemize}
 
-Sebbene queste caratteristiche comportamentali massimino il realismo e l'immersività, esse amplificano notevolmente il potere persuasivo dell'avatar e l'impatto emotivo sull'utente. Di conseguenza, l'autenticità del contenuto, la safety dei consigli dispensati e la tutela della fiducia dell'utente (\emph{Human-Agent Trust}) diventano requisiti di sicurezza e di threat modeling prioritari \cite{persona,verbalhabits}.
+Sebbene queste caratteristiche comportamentali massimizzino il realismo e l'immersività, esse amplificano notevolmente il potere persuasivo dell'avatar e l'impatto emotivo sull'utente. Di conseguenza, l'autenticità del contenuto, la safety dei consigli dispensati e la tutela della fiducia dell'utente (\emph{Human-Agent Trust}) diventano requisiti di sicurezza e di threat modeling prioritari \cite{persona,verbalhabits}.
 
 \subsection{Caratterizzazione Agentica del Sistema}
 \label{subsec:caratterizzazione-agentica}
@@ -246,15 +245,12 @@ Gli obiettivi sono:
   \item identificare gli asset Data, Model e gli asset agentici di supporto;
   \item individuare minacce concrete senza passare da una FMEA;
   \item classificare le minacce tramite STRIDE-AI e OWASP Agentic;
-  \item prioritizzare i rischi in base a likelihood, impact e amplificatori agentici;
-  \item proporre controlli coerenti con le sette precauzioni del corso;
+  \item prioritizzare i rischi in base a likelihood, severity e amplificatori agentici;
+  \item proporre controlli coerenti con le sette precauzioni \cite{damianiagentic};
   \item progettare una secure architecture compatibile con il vincolo real-time;
   \item definire un piano sperimentale riproducibile senza inventare risultati non misurati.
 \end{enumerate}
 
-\begin{keybox}
-\textbf{Scelta metodologica.} La FMEA non viene applicata. Il threat model parte direttamente da asset, agenti, trust boundary, identità, memorie, tool e azioni. La FMEA rimane appropriata per analizzare guasti e failure mode di pipeline AI tradizionali, ma non è richiesta per questa traccia agentica.
-\end{keybox}
 
 % =========================================================
 \section{Scope e metodologia}
@@ -281,7 +277,6 @@ Sono fuori scope, salvo che vengano introdotti in implementazioni future:
   \item code interpreter, shell e valutazione dinamica di codice generato;
   \item accesso dell'agente a sistemi amministrativi esterni;
   \item modifica autonoma di risorse cloud o database operativi;
-  \item strumenti non descritti nella traccia.
 \end{itemize}
 
 \subsection{Processo di threat modeling}
@@ -295,7 +290,7 @@ Il processo adottato è:
   arr/.style={-Stealth,thick,Primary}
 ]
 \node[procstep] (a) {Architettura e scope};
-\node[procstep,right=0.45cm of a] (b) {Attacker model e trust boundary};
+\node[procstep,right=0.45cm of a] (b) {Trust boundary};
 \node[procstep,right=0.45cm of b] (c) {Asset e proprietà};
 \node[procstep,right=0.45cm of c] (d) {Threat concrete e STRIDE-AI};
 \node[procstep,below=0.7cm of d] (e) {OWASP Agentic e priorità};
@@ -309,7 +304,7 @@ Il processo adottato è:
 \label{fig:method}
 \end{figure}
 
-La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni del corso sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
+La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
 
 % =========================================================
 \subsection{Metodologia STRIDE-AI e quadro delle proprietà CIA$^3$-R}
@@ -466,8 +461,7 @@ tradotti in una sequenza continua di scene audiovisive.
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{img/Intera_pipeline.png}
-    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza
-    delle scene percepite dall'utente.}
+    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza delle scene percepite dall'utente.}
     \label{fig:storyboard-pipeline}
 \end{figure}
 
@@ -477,52 +471,19 @@ loro ordine cronologico. L'ordine temporale effettivo è rappresentato
 dalle frecce della storyboard ed è articolato nelle seguenti fasi:
 
 % =========================================================
-% SEQUENZA DELLE SCENE
+% SEQUENZA DELLE SCENE (Layout ad Armonia di Blocco)
 % =========================================================
 
-\begin{enumerate}[
-    leftmargin=*,
-    itemsep=0.5em,
-    topsep=0pt,
-    parsep=0.3em
-]
+\begin{enumerate}[leftmargin=*, itemsep=0.8em, topsep=0.5em, parsep=0.3em]
 
-    \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).}  
+    % --- MACRO FASE 1: INGRESSO ED ASCOLTO ---
+    \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).} 
     In assenza di interazione, il digital human si trova nello stato
     iniziale \texttt{IDLE\_READING}. La donna è raffigurata mentre legge
     un libro antico. La clip è riproducibile in loop e costituisce lo
     stato di riposo del sistema.
 
-\end{enumerate}
-
-% Idle Reading e Listening affiancate
-\begin{center}
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/1_Idle_reading.png}
-    \captionof{figure}{Stato iniziale: \emph{Idle Reading}.}
-    \label{fig:idle-reading}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/2_listening.png}
-    \captionof{figure}{Stato del digital human: \emph{Listening}.}
-    \label{fig:listening}
-\end{minipage}
-\end{center}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=2,
-    itemsep=0.5em,
-    topsep=0.4em,
-    parsep=0.3em
-]
-
-    \item \textbf{Listening(Figura~\ref{fig:listening}).}
+    \item \textbf{Listening (Figura~\ref{fig:listening}).}
     Quando l'utente inizia a parlare o a digitare, l'Orchestratore
     interrompe il loop di lettura e attiva la scena
     \texttt{LISTENING}. La donna alza lo sguardo e assume una postura
@@ -533,98 +494,52 @@ dalle frecce della storyboard ed è articolato nelle seguenti fasi:
     i token parziali utilizzati per la classificazione preliminare
     dell'intento.
 
-\end{enumerate}
+    % FIGURA CORRISPONDENTE A FASE 1 e 2
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.42\textwidth}
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/1_Idle_reading.png}
+            \caption{\emph{Idle Reading}}
+            \label{fig:idle-reading}
+        \end{subfigure}
+        \hspace{0.8cm}
+        \begin{subfigure}[b]{0.42\textwidth}
+            \centering
+            \includegraphics[width=0.75\linewidth]{img/2_listening.png}
+            \caption{\emph{Listening}}
+            \label{fig:listening}
+        \end{subfigure}
+        \caption{Fase iniziale di attesa ed ascolto dell'input utente.}
+    \end{figure}
 
-% Thinking a destra delle fasi 3 e 4
-\noindent
-\begin{minipage}[t]{0.62\textwidth}
-    \vspace{0pt}
+    % --- MACRO FASE 2: RAGIONAMENTO ED ATTESA ---
+    \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
+    Quando l'utente completa e invia la richiesta, la pipeline passa
+    alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
+    leggermente e assume una postura riflessiva.
 
-    \begin{enumerate}[
-        leftmargin=*,
-        start=3,
-        itemsep=0.7em,
-        topsep=0pt,
-        parsep=0.3em
-    ]
+    Nello stesso istante, il Request Router esegue il fork della
+    richiesta: il Fast-Brain genera il riconoscimento immediato,
+    mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
 
-        \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
-        Quando l'utente completa e invia la richiesta, la pipeline passa
-        alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
-        leggermente e assume una postura riflessiva.
+    \item \textbf{Filler verbale e gestuale.}
+    Il Fast-Brain produce una breve frase rassicurante, coerente con
+    l'intento e con il tono dell'utente. Il filler può essere
+    riprodotto durante la conclusione della scena
+    \texttt{THINKING} o durante l'ingresso nella prima clip di
+    attesa.
 
-        Nello stesso istante, il Request Router esegue il fork della
-        richiesta: il Fast-Brain genera il riconoscimento immediato,
-        mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
-
-        \item \textbf{Filler verbale e gestuale.}
-        Il Fast-Brain produce una breve frase rassicurante, coerente con
-        l'intento e con il tono dell'utente. Il filler può essere
-        riprodotto durante la conclusione della scena
-        \texttt{THINKING} o durante l'ingresso nella prima clip di
-        attesa.
-
-        Il filler non deve anticipare la risposta sostanziale,
-        introdurre nuove informazioni o porre ulteriori domande. La sua
-        funzione è esclusivamente quella di confermare che la richiesta
-        è stata ricevuta e che il sistema la sta elaborando.
-
-    \end{enumerate}
-
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.34\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.78\linewidth]{img/3_thinking.png}
-    \captionof{figure}{Stato del digital human: \emph{Thinking}.}
-    \label{fig:thinking}
-\end{minipage}
-
-\vspace{0.7em}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=5,
-    itemsep=0.5em,
-    topsep=0pt,
-    parsep=0.3em
-]
+    Il filler non deve anticipare la risposta sostanziale,
+    introdurre nuove informazioni o porre ulteriori domande. La sua
+    funzione è esclusivamente quella di confermare che la richiesta
+    è stata ricevuta e che il sistema la sta elaborando.
 
     \item \textbf{Search (Figura~\ref{fig:search}).}
     Dopo il riconoscimento iniziale viene attivata la clip
     \texttt{SEARCH}, nella quale la donna consulta una libreria e cerca
     tra i libri. La scena rappresenta visivamente la fase di recupero
     delle informazioni eseguita in background dal Deep-Brain.
-
-\end{enumerate}
-
-% Search e Preparing affiancate
-\begin{center}
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/4_search.png}
-    \captionof{figure}{Stato del digital human: \emph{Search}.}
-    \label{fig:search}
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.48\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.56\linewidth]{img/5_preparing.png}
-    \captionof{figure}{Stato del digital human: \emph{Preparing}.}
-    \label{fig:preparing}
-\end{minipage}
-\end{center}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=6,
-    itemsep=0.5em,
-    topsep=0.4em,
-    parsep=0.3em
-]
 
     \item \textbf{Preparing (Figura~\ref{fig:preparing}).}
     Se l'elaborazione non è ancora terminata, l'Orchestratore prosegue
@@ -634,121 +549,91 @@ dalle frecce della storyboard ed è articolato nelle seguenti fasi:
     estese o riprodotte in loop fino alla ricezione del
     \emph{Video Ready Signal}.
 
-\end{enumerate}
+    % FIGURA CORRISPONDENTE A FASE 3, 5 e 6
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/3_thinking.png}
+            \caption{\emph{Thinking}}
+            \label{fig:thinking}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/4_search.png}
+            \caption{\emph{Search}}
+            \label{fig:search}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/5_preparing.png}
+            \caption{\emph{Preparing}}
+            \label{fig:preparing}
+        \end{subfigure}
+        \caption{Fase di elaborazione dual-brain e gestione visuale dell'attesa.}
+    \end{figure}
 
-% Approach con immagine a destra
-\noindent
-\begin{minipage}[t]{0.62\textwidth}
-    \vspace{0pt}
+    % --- MACRO FASE 3: SWAP, RISPOSTA E CHIUSURA ---
+    \item \textbf{Approach (Figura~\ref{fig:approach}).}
+    Quando il video finale è pronto e ha superato i controlli
+    previsti, lo Swap Manager attiva la scena
+    \texttt{APPROACH}. La donna si avvicina alla posizione dalla
+    quale inizierà a parlare.
 
-    \begin{enumerate}[
-        leftmargin=*,
-        start=7,
-        itemsep=0.5em,
-        topsep=0pt,
-        parsep=0.3em
-    ]
+    Questa clip svolge la funzione di ponte audiovisivo: consente
+    di riportare il personaggio in una posa, un'inquadratura e una
+    condizione audio compatibili con il primo frame della risposta
+    generata.
 
-        \item \textbf{Approach (Figura~\ref{fig:approach}).}
-        Quando il video finale è pronto e ha superato i controlli
-        previsti, lo Swap Manager attiva la scena
-        \texttt{APPROACH}. La donna si avvicina alla posizione dalla
-        quale inizierà a parlare.
+    \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
+    In corrispondenza di un punto di taglio sicuro, lo Swap Manager
+    sostituisce il flusso di filler con il video prodotto dal
+    Deep-Brain. Inizia quindi la scena
+    \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
+    la risposta completa con voce sintetizzata, gestualità coerente
+    e sincronizzazione labiale.
 
-        Questa clip svolge la funzione di ponte audiovisivo: consente
-        di riportare il personaggio in una posa, un'inquadratura e una
-        condizione audio compatibili con il primo frame della risposta
-        generata.
-
-    \end{enumerate}
-
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.34\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.6\linewidth]{img/6_approach.png}
-    \captionof{figure}{Stato del digital human: \emph{Approach}.}
-    \label{fig:approach}
-\end{minipage}
-
-\vspace{0.7em}
-
-% Answer con immagine a destra
-\noindent
-\begin{minipage}[t]{0.62\textwidth}
-    \vspace{0pt}
-
-    \begin{enumerate}[
-        leftmargin=*,
-        start=8,
-        itemsep=0.5em,
-        topsep=0pt,
-        parsep=0.3em
-    ]
-
-        \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
-        In corrispondenza di un punto di taglio sicuro, lo Swap Manager
-        sostituisce il flusso di filler con il video prodotto dal
-        Deep-Brain. Inizia quindi la scena
-        \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
-        la risposta completa con voce sintetizzata, gestualità coerente
-        e sincronizzazione labiale.
-
-        La risposta può essere composta da più clip generate, purché
-        risultino associate alla stessa sessione e vengano riprodotte
-        nell'ordine previsto.
-
-    \end{enumerate}
-
-\end{minipage}
-\hfill
-\begin{minipage}[t]{0.34\textwidth}
-    \vspace{0pt}
-    \centering
-    \includegraphics[width=0.90\linewidth]{img/7_answer.png}
-    \captionof{figure}{Stato del digital human: \emph{Answer}.}
-    \label{fig:answer}
-\end{minipage}
-
-\vspace{0.7em}
-
-\begin{enumerate}[
-    leftmargin=*,
-    start=9,
-    itemsep=0.5em,
-    topsep=0pt,
-    parsep=0.3em
-]
+    La risposta può essere composta da più clip generate, purché
+    risultino associate alla stessa sessione e vengano riprodotte
+    nell'ordine previsto.
 
     \item \textbf{Blessing e ritorno allo stato iniziale (Figura~\ref{fig:blessing}).}
     Al termine della risposta viene riprodotta la scena
     \texttt{BLESSING}, che fornisce una breve chiusura gestuale e
     affettiva coerente con la personalità del personaggio.
 
-    % Blessing e ritorno a Idle Reading affiancate
-    \begin{center}
-    \begin{minipage}[t]{0.46\textwidth}
-        \vspace{0pt}
-        \centering
-        \includegraphics[width=0.58\linewidth]{img/8_blessing.png}
-        \captionof{figure}{Stato del digital human: \emph{Blessing}.}
-        \label{fig:blessing}
-    \end{minipage}
-    \hfill
-    \begin{minipage}[t]{0.46\textwidth}
-        \vspace{0pt}
-        \centering
-        \includegraphics[width=0.58\linewidth]{img/9_return_reading.png}
-        \captionof{figure}{Ritorno allo stato \emph{Idle Reading}.}
-        \label{fig:back-reading}
-    \end{minipage}
-    \end{center}
-
     Conclusa la scena, l'Orchestratore chiude il turno conversazionale,
     registra gli eventi nell'audit trail e riporta il digital human
     nello stato \texttt{IDLE\_READING}, rendendolo disponibile per una
     nuova richiesta.
+
+    % FIGURA CORRISPONDENTE A FASE 7, 8 e 9
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/6_approach.png}
+            \caption{\emph{Approach}}
+            \label{fig:approach}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/7_answer.png}
+            \caption{\emph{Answer}}
+            \label{fig:answer}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.31\textwidth}
+            \centering
+            \includegraphics[width=0.88\linewidth]{img/8_blessing.png}
+            \caption{\emph{Blessing}}
+            \label{fig:blessing}
+        \end{subfigure}
+        \caption{Transizione audio-visiva, erogazione della risposta e chiusura del turno.}
+    \end{figure}
 
 \end{enumerate}
 
@@ -1035,7 +920,7 @@ TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Imperso
 \section{Asset Model}
 \label{sec:asset-model}
 
-L'asset model identifica gli elementi della pipeline agentica che devono essere protetti e che saranno successivamente analizzati rispetto alle minacce della OWASP Top 10 for Agentic Applications 2026.
+L'asset model identifica gli elementi della pipeline agentica che devono essere protetti e che saranno successivamente analizzati rispetto alle minacce OWASP \cite{owaspagentic}.
 
 In accordo con la metodologia STRIDE-AI introdotta nella Sezione~\ref{subsec:stride-ai-framework}, gli asset sono suddivisi in due categorie principali:
 \begin{itemize}
@@ -1057,153 +942,94 @@ I \textit{Data Assets} comprendono le informazioni e gli artefatti digitali che 
 Rientrano in questa categoria anche i materiali sorgente che definiscono l'identità del digital human (\textbf{Personality Source Artifacts}), intesi come asset informativi persistenti distinti dalle istruzioni operative inviate ai modelli a runtime.
 
 La Tabella~\ref{tab:data-assets} illustra i Data Assets individuati, le relative minacce STRIDE-AI e le proprietà $CIA^3$-R maggiormente esposte a rischio.
-\footnotesize
-
-\begin{longtable}{
-    @{}
-    L{2.35cm}
-    L{3.75cm}
-    L{5.85cm}
-    C{2.15cm}
-    @{}
-}
-\caption{Data Assets della pipeline agentica}
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\small
+\begin{longtable}{|C{2.6cm}|L{4.2cm}|L{\dimexpr\textwidth-2.6cm-4.2cm-2.0cm-8\tabcolsep-5\arrayrulewidth\relax}|C{2.0cm}|}
+\caption{Data Assets della pipeline agentica.}
 \label{tab:data-assets}\\
-
-\toprule
-\textbf{Asset} &
-\textbf{Descrizione} &
-\textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà $CIA^3$-R Violate} \\
-\midrule
+\hline
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\hline
 \endfirsthead
-
-\multicolumn{4}{c}{
-    \tablename\ \thetable{} -- continuazione
-}\\
-\toprule
-\textbf{Asset} &
-\textbf{Descrizione} &
-\textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà $CIA^3$-R Violate} \\
-\midrule
+\hline
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\hline
 \endhead
 
-\midrule
-\multicolumn{4}{r}{Continua nella pagina successiva}\\
-\endfoot
-
-\bottomrule
-\endlastfoot
-
-
-\textbf{D1 -- User Audio / Input Streams} & 
+\textbf{D1} \newline User Audio / Input Streams & 
 Flussi vocali o testuali prodotti dall'utente e ricevuti dalla pipeline, inclusi il segnale originale e i metadati di sessione. & 
-\textbf{S}: iniezione di flussi vocali o messaggi contraffatti mediante session hijacking.
-
-\textbf{T}: manipolazione del segnale audio o del testo in transito prima dell'elaborazione.
-
-\textbf{I}: intercettazione non autorizzata (eavesdropping) del flusso audio dell'utente. & 
+\textbf{S}: iniezione di flussi vocali o messaggi contraffatti mediante session hijacking. \newline \textbf{T}: manipolazione del segnale audio o del testo in transito prima dell'elaborazione. \newline \textbf{I}: intercettazione non autorizzata (eavesdropping) del flusso audio dell'utente. & 
 C, I, Au \\
 \hline
 
-\textbf{D2 -- Short Prompt Tokens \& Partial Transcript} & 
+\textbf{D2} \newline Short Prompt Tokens \& Partial Transcript & 
 Primi token o frammenti della trascrizione inviati all'Instant Path per classificare l'intento e selezionare il filler. & 
-\textbf{T}: alterazione dei primi token per forzare la classificazione di un intento errato.
-
-\textbf{E}: iniezione di istruzioni malevole nel partial transcript per deviare il comportamento del Fast-Brain. & 
+\textbf{T}: alterazione dei primi token per forzare la classificazione di un intento errato. \newline \textbf{E}: iniezione di istruzioni malevole nel partial transcript per deviare il comportamento del Fast-Brain. & 
 I, Az \\
 \hline
 
-\textbf{D3 -- Full Transcript \& Request} & 
+\textbf{D3} \newline Full Transcript \& Request & 
 Trascrizione completa e normalizzata usata dal Background Path per produrre la risposta principale del Deep-Brain. & 
-\textbf{T}: indirect prompt injection nel testo trascritto per manipolare le istruzioni inviate all'LLM.
-
-\textbf{I}: lettura non autorizzata dei prompt utente contenenti dati personali o sensibili. & 
+\textbf{T}: indirect prompt injection nel testo trascritto per manipolare le istruzioni inviate all'LLM. \newline \textbf{I}: lettura non autorizzata dei prompt utente contenenti dati personali o sensibili. & 
 C, I \\
 \hline
 
-\textbf{D4 -- RAG KB \& Context Memory} & 
+\textbf{D4} \newline RAG KB \& Context Memory & 
 Documenti, chunk, embedding, indici vettoriali FAISS, metadati e memoria di sessione/persistente. & 
-\textbf{T}: avvelenamento della conoscenza (\textit{data poisoning}) o manipolazione dei vettori nell'indice.
-
-\textbf{I}: accesso non autorizzato e fuga di dati riservati memorizzati nella Knowledge Base.
-
-\textbf{E}: escalation di privilegi per accedere a documenti o chunk riservati ad altri utenti. & 
+\textbf{T}: avvelenamento della conoscenza (\emph{data poisoning}) o manipolazione dei vettori nell'indice. \newline \textbf{I}: accesso non autorizzato e fuga di dati riservati memorizzati nella Knowledge Base. \newline \textbf{E}: escalation di privilegi per accedere a documenti o chunk riservati ad altri utenti. & 
 C, I, Az \\
 \hline
 
-\textbf{D5 -- Behavioral Animation Triggers} & 
+\textbf{D5} \newline Behavioral Animation Triggers & 
 Output strutturati che specificano il comportamento non verbale (ID clip, movimento occhi, gesti, stato emotivo). & 
-\textbf{T}: manomissione dei trigger per forzare posture o espressioni dell'avatar inappropriate o offensive.
-
-\textbf{D}: iniezione di trigger invalidi o corrotti che mandano in crash il motore di animazione. & 
+\textbf{T}: manomissione dei trigger per forzare posture o espressioni dell'avatar inappropriate o offensive. \newline \textbf{D}: iniezione di trigger invalidi o corrotti che mandano in crash il motore di animazione. & 
 I, A \\
 \hline
 
-\textbf{D6 -- Response Transcripts} & 
+\textbf{D6} \newline Response Transcripts & 
 Testo del filler (Instant Path) e testo della risposta principale (Deep-Brain) inviati ai componenti TTS e video. & 
-\textbf{T}: modifica in transito del testo generato prima che venga inviato al sintetizzatore vocale.
-
-\textbf{I}: estrazione non autorizzata dei testi di risposta contenenti dati o logica riservata. & 
+\textbf{T}: modifica in transito del testo generato prima che venga inviato al sintetizzatore vocale. \newline \textbf{I}: estrazione non autorizzata dei testi di risposta contenenti dati o logica riservata. & 
 C, I \\
 \hline
 
-\textbf{D7 -- Personality Source Artifacts} & 
+\textbf{D7} \newline Personality Source Artifacts & 
 File sorgente contenenti leggenda del personaggio, tratti della personalità, tono, dialetto e regole stilistiche. & 
-\textbf{T}: manomissione dei file sorgente della personalità per corrompere il comportamento globale del sistema.
-
-\textbf{I}: esfiltrazione degli artefatti della personalità e del sistema di regole protetto da IP. & 
+\textbf{T}: manomissione dei file sorgente della personalità per corrompere il comportamento globale del sistema. \newline \textbf{I}: esfiltrazione degli artefatti della personalità e del sistema di regole protetto da IP. & 
 C, I \\
 \hline
 
-\textbf{D8 -- Voice \& Visual Identity Assets} & 
+\textbf{D8} \newline Voice \& Visual Identity Assets & 
 Campioni vocali, voice embedding, immagini e video di riferimento per riprodurre l'identità dell'avatar. & 
-\textbf{S}: espropriazione o riutilizzo non autorizzato dei dataset di identità per creare clone non autorizzati.
-
-\textbf{I}: accesso e sottrazione dei file di riferimento e degli embedding dell'identità visiva e vocale. & 
+\textbf{S}: espropriazione o riutilizzo non autorizzato dei dataset di identità per creare clone non autorizzati. \newline \textbf{I}: accesso e sottrazione dei file di riferimento e degli embedding dell'identità visiva e vocale. & 
 C, Au \\
 \hline
 
-\textbf{D9 -- Intermediate Audio/Video} & 
+\textbf{D9} \newline Intermediate Audio/Video & 
 File e stream temporanei prodotti durante TTS, voice cloning, generazione video, lip-sync e composizione. & 
-\textbf{T}: sostituzione o alterazione dei segmenti audio/video temporanei prima dello stitching.
-
-\textbf{I}: accesso ai file temporanei salvati nel buffer di sistema o nei dati di cache. & 
+\textbf{T}: sostituzione o alterazione dei segmenti audio/video temporanei prima dello stitching. \newline \textbf{I}: accesso ai file temporanei salvati nel buffer di sistema o nei dati di cache. & 
 C, I \\
 \hline
 
-\textbf{D10 -- Coordination \& Swap State} & 
+\textbf{D10} \newline Coordination \& Swap State & 
 Messaggi e dati di coordinamento (session ID, job ID, timestamp, stato playback, Video Ready Signal). & 
-\textbf{S}: invio di falsi segnali di sincronizzazione (\textit{Video Ready Signal}) impersonando l'orchestratore.
-
-\textbf{T}: alterazione di session ID o timestamp per causare sovrapposizioni tra utenti o deserializzazione errata.
-
-\textbf{E}: manomissione dello stato di sessione per dirottare o scambiare i flussi multimediali. & 
+\textbf{S}: invio di falsi segnali di sincronizzazione (\emph{Video Ready Signal}) impersonando l'orchestratore. \newline \textbf{T}: alterazione di session ID o timestamp per causare sovrapposizioni tra utenti o deserializzazione errata. \newline \textbf{E}: manomissione dello stato di sessione per dirottare o scambiare i flussi multimediali. & 
 I, A, Az \\
 \hline
 
-\textbf{D11 -- WebRTC Media Streams} & 
+\textbf{D11} \newline WebRTC Media Streams & 
 Flusso audio-video finale trasmesso all'utente, inclusi pacchetti multimediali e dati di negoziazione sessione. & 
-\textbf{S}: man-in-the-middle per impersonare l'agente o intercettare il canale di streaming finale.
-
-\textbf{T}: alterazione o iniezione di frame dannosi nei pacchetti multimediali WebRTC.
-
-\textbf{I}: intercettazione (eavesdropping) dei flussi multimediali in uscita rivolti all'utente. & 
+\textbf{S}: man-in-the-middle per impersonare l'agente o intercettare il canale di streaming finale. \newline \textbf{T}: alterazione o iniezione di frame dannosi nei pacchetti multimediali WebRTC. \newline \textbf{I}: intercettazione (eavesdropping) dei flussi multimediali in uscita rivolti all'utente. & 
 C, I \\
 \hline
 
-\textbf{D12 -- Audit \& Feedback Data} & 
+\textbf{D12} \newline Audit \& Feedback Data & 
 Log di richieste, decisioni, invocazioni, transizioni, provenance degli artefatti e feedback forniti dagli utenti. & 
-\textbf{T}: cancellazione o alterazione delle righe di log per nascondere attività avversariali o malevole.
-
-\textbf{R}: manomissione della tracciabilità rendendo impossibile l'imputabilità e la forensic analysis. & 
+\textbf{T}: cancellazione o alterazione delle righe di log per nascondere attività avversariali o malevole. \newline \textbf{R}: manomissione della tracciabilità rendendo impossibile l'imputabilità e la forensic analysis. & 
 I, Ac, R \\
 \hline
-
 \end{longtable}
-
-\normalsize
+\endgroup
 % ---------------------------------------------------------
 %  MODEL ASSETS
 % ---------------------------------------------------------
@@ -1219,199 +1045,82 @@ La categoria è utilizzata in senso architetturale esteso. Comprende quindi
 non soltanto i pesi dei modelli di machine learning, ma anche prompt e
 componenti software che determinano obiettivi, vincoli, routing e
 sequenze operative del sistema agentico.
-
-\footnotesize
-
-\begin{longtable}{
-    @{}
-    L{2.35cm}
-    L{3.75cm}
-    L{5.85cm}
-    C{2.15cm}
-    @{}
-}
-\caption{Model Assets della pipeline agentica}
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\small
+\begin{longtable}{|C{2.6cm}|L{4.2cm}|L{\dimexpr\textwidth-2.6cm-4.2cm-2.0cm-8\tabcolsep-5\arrayrulewidth\relax}|C{2.0cm}|}
+\caption{Model Assets della pipeline agentica.}
 \label{tab:model-assets}\\
-
-\toprule
-\textbf{Asset} &
-\textbf{Descrizione} &
-\textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà $CIA^3$-R Violate} \\
-\midrule
+\hline
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\hline
 \endfirsthead
-
-\multicolumn{4}{c}{
-    \tablename\ \thetable{} -- continuazione
-}\\
-\toprule
-\textbf{Asset} &
-\textbf{Descrizione} &
-\textbf{STRIDE-AI Relevance} &
-\textbf{Proprietà violata} \\
-\midrule
+\hline
+\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\hline
 \endhead
 
-\midrule
-\multicolumn{4}{r}{Continua nella pagina successiva}\\
-\endfoot
+\textbf{M1} \newline Fast-Brain Agent e Intent Classifier & 
+Modello a bassa latenza che analizza la trascrizione parziale, classifica l'intento e seleziona il filler verbale o gestuale da riprodurre nei primi secondi. & 
+\textbf{T}: alterazione di soglie o prompt di classificazione per forzare la selezione di filler errati. \newline \textbf{E}: esecuzione di risposte non autorizzate o estensione del ruolo oltre la generazione del filler. & 
+I, Az \\
+\hline
 
-\bottomrule
-\endlastfoot
+\textbf{M2} \newline Deep-Brain Agent & 
+LLM principale responsabile dell'interpretazione completa della richiesta, dell'utilizzo del contesto RAG e della generazione della risposta sostanziale. & 
+\textbf{T}: indirect prompt injection o manipolazione della risposta generata. \newline \textbf{I}: esposizione incontrollata di istruzioni interne o contesti RAG riservati. \newline \textbf{E}: abusi nell'uso di tool per estendere la propria autonomia oltre lo scope assegnato. & 
+C, I, Az \\
+\hline
 
+\textbf{M3} \newline Personality / System Prompts & 
+Istruzioni operative condivise o coordinate tra Fast-Brain e Deep-Brain per mantenere coerenza di identità, ruolo, tono, comportamento, limiti e obiettivi. & 
+\textbf{T}: manomissione delle istruzioni per causare goal misalignment o rimuovere i guardrail. \newline \textbf{I}: estrazione indiretta del sistema di prompt tramite attacchi di prompt leakage. & 
+C, I \\
+\hline
 
-\textbf{M1 -- Fast-Brain Agent e Intent Classifier}
-&
-Modello a bassa latenza che analizza la trascrizione parziale,
-classifica l'intento e seleziona il filler verbale o gestuale da
-riprodurre nei primi secondi.
-&
-\textbf{T}: alterazione di soglie o prompt di classificazione per forzare la selezione di filler errati.
+\textbf{M4} \newline Embedding e Retrieval Models & 
+Modelli e funzioni utilizzati per generare embedding, confrontare query e documenti, ordinare i risultati e selezionare il contesto inviato al Deep-Brain. & 
+\textbf{T}: alterazione dei parametri di embedding per alterare i punteggi di similarità o favorire documenti malevoli. \newline \textbf{I}: inversione degli embedding per ricostruire il testo di documenti riservati. & 
+C, I \\
+\hline
 
-\textbf{E}: esecuzione di risposte non autorizzate o estensione del ruolo oltre la generazione del filler.
-&
-I, Az
-\\
-\midrule
+\textbf{M5} \newline VAD e Streaming STT Models & 
+Modelli che rilevano l'attività vocale e trasformano progressivamente l'audio in partial transcript e trascrizione completa. & 
+\textbf{S}: audio sintetico o attacchi di replay interpretati dal VAD/STT come voce reale dell'utente. \newline \textbf{T}: rumore avversariale impercettibile inserito nell'audio per alterare la trascrizione. & 
+Au, I \\
+\hline
 
+\textbf{M6} \newline TTS e Voice-Cloning Models & 
+Modelli che trasformano filler e risposta principale in audio e riproducono la voce associata al personaggio. & 
+\textbf{S}: generazione non autorizzata di tracce audio per impersonare il digital human (voice spoofing). \newline \textbf{T}: alterazione dei parametri di sintesi vocale per distorcere tono, prosodia o contenuto. & 
+Au, I \\
+\hline
 
-\textbf{M2 -- Deep-Brain Agent}
-&
-LLM principale responsabile dell'interpretazione completa della richiesta,
-dell'utilizzo del contesto RAG e della generazione della risposta
-sostanziale.
-&
-\textbf{T}: indirect prompt injection o manipolazione della risposta generata.
+\textbf{M7} \newline Video Generation Model & 
+Modello utilizzato dal Background Path per generare il video principale a partire dalla richiesta, dal personaggio e dagli artefatti di riferimento. & 
+\textbf{S}: sintesi di frame o video malevoli presentati come output ufficiali del personaggio. \newline \textbf{D}: sovraccarico di richieste computazionalmente onerose per saturare la risorsa e bloccare il Background Path. & 
+Au, A \\
+\hline
 
-\textbf{I}: esposizione incontrollata di istruzioni interne o contesti RAG riservati.
+\textbf{M8} \newline Lip-Sync e Animation Models & 
+Modelli multimodali che sincronizzano voce, movimento delle labbra, espressioni, gesti e frame del personaggio. & 
+\textbf{T}: alterazione dei parametri di sincronizzazione o iniezione di artefatti visivi impropri. \newline \textbf{D}: errore di rendering o eccezione nel modello che interrompe la riproduzione dello streaming video. & 
+I, A \\
+\hline
 
-\textbf{E}: abusi nell'uso di tool per estendere la propria autonomia oltre lo scope assegnato.
-&
-C, I, Az
-\\
-\midrule
+\textbf{M9} \newline Request Router e Orchestration Logic & 
+Codice e regole che ricevono l'input, avviano in parallelo Instant Path e Background Path, associano risultati e sessioni e gestiscono timeout, retry, code e priorità. & 
+\textbf{T}: manomissione delle regole di routing per bypassare i controlli o inviare dati alla sessione errata. \newline \textbf{D}: loop di invocazione, race condition o esaurimento code per bloccare l'orchestratore. \newline \textbf{E}: violazione dei confini di isolamento tra Instant e Background Path. & 
+I, A, Az \\
+\hline
 
-
-\textbf{M3 -- Personality/System Prompts}
-&
-Istruzioni operative condivise o coordinate tra Fast-Brain e Deep-Brain
-per mantenere coerenza di identità, ruolo, tono, comportamento, limiti e
-obiettivi.
-&
-\textbf{T}: manomissione delle istruzioni per causare goal misalignment o rimuovere i guardrail.
-
-\textbf{I}: estrazione indiretta del sistema di prompt tramite attacchi di prompt leakage.
-&
-C, I
-\\
-\midrule
-
-
-\textbf{M4 -- Embedding e Retrieval Models}
-&
-Modelli e funzioni utilizzati per generare embedding, confrontare query e
-documenti, ordinare i risultati e selezionare il contesto inviato al
-Deep-Brain.
-&
-\textbf{T}: alterazione dei parametri di embedding per alterare i punteggi di similarità o favorire documenti malevoli.
-
-\textbf{I}: inversione degli embedding per ricostruire il testo di documenti riservati.
-&
-C, I
-\\
-\midrule
-
-
-\textbf{M5 -- VAD e Streaming STT Models}
-&
-Modelli che rilevano l'attività vocale e trasformano progressivamente
-l'audio in partial transcript e trascrizione completa.
-&
-\textbf{S}: audio sintetico o attacchi di replay interpretati dal VAD/STT come voce reale dell'utente.
-
-\textbf{T}: rumore avversariale impercettibile inserito nell'audio per alterare la trascrizione.
-&
-Au, I
-\\
-\midrule
-
-
-\textbf{M6 -- TTS e Voice-Cloning Models}
-&
-Modelli che trasformano filler e risposta principale in audio e
-riproducono la voce associata al personaggio.
-&
-\textbf{S}: generazione non autorizzata di tracce audio per impersonare il digital human (voice spoofing).
-
-\textbf{T}: alterazione dei parametri di sintesi vocale per distorcere tono, prosodia o contenuto.
-&
-Au, I
-\\
-\midrule
-
-
-\textbf{M7 -- Video Generation Model}
-&
-Modello utilizzato dal Background Path per generare il video principale a
-partire dalla richiesta, dal personaggio e dagli artefatti di riferimento.
-&
-\textbf{S}: sintesi di frame o video malevoli presentati come output ufficiali del personaggio.
-
-\textbf{D}: sovraccarico di richieste computazionalmente onerose per saturare la risorsa e bloccare il Background Path.
-&
-Au, A
-\\
-\midrule
-
-
-\textbf{M8 -- Lip-Sync e Animation Models}
-&
-Modelli multimodali che sincronizzano voce, movimento delle labbra,
-espressioni, gesti e frame del personaggio.
-&
-\textbf{T}: alterazione dei parametri di sincronizzazione o iniezione di artefatti visivi impropri.
-
-\textbf{D}: errore di rendering o eccezione nel modello che interrompe la riproduzione dello streaming video.
-&
-I, A
-\\
-\midrule
-
-
-\textbf{M9 -- Request Router e Orchestration Logic}
-&
-Codice e regole che ricevono l'input, avviano in parallelo Instant Path e
-Background Path, associano risultati e sessioni e gestiscono timeout,
-retry, code e priorità.
-&
-\textbf{T}: manomissione delle regole di routing per bypassare i controlli o inviare dati alla sessione errata.
-
-\textbf{D}: loop di invocazione, race condition o esaurimento code per bloccare l'orchestratore.
-
-\textbf{E}: violazione dei confini di isolamento tra Instant e Background Path.
-&
-I, A, Az
-\\
-\midrule
-
-
-\textbf{M10 -- Swap Manager e Stitching Logic}
-&
-Logica che decide quando terminare il filler, quando avviare il contenuto
-principale e come unire audio e video senza sovrapposizioni o
-discontinuità.
-&
-\textbf{S}: iniettare un falso segnale di completamento (\textit{Video Ready Signal}) per forzare uno swap prematuro.
-
-\textbf{T}: alterazione dello stato di transizione causando sovrapposizione audio/video o miscelazione di sessioni.
-&
-Au, I
-\\
-
+\textbf{M10} \newline Swap Manager e Stitching Logic & 
+Logica che decide quando terminare il filler, quando avviare il contenuto principale e come unire audio e video senza sovrapposizioni o discontinuità. & 
+\textbf{S}: iniettare un falso segnale di completamento (\emph{Video Ready Signal}) per forzare uno swap prematuro. \newline \textbf{T}: alterazione dello stato di transizione causando sovrapposizione audio/video o miscelazione di sessioni. & 
+Au, I \\
+\hline
 \end{longtable}
-
-\normalsize
-
+\endgroup
 
 % ---------------------------------------------------------
 %  NOTE SULLA CLASSIFICAZIONE
@@ -1425,8 +1134,7 @@ prevalente svolto dal singolo elemento all'interno dell'architettura agentica.
 In particolare, i \textbf{Personality Source Artifacts} (D7) sono classificati come dati
 poiché costituiscono i contenuti sorgente, persistenti e versionabili, utilizzati per
 definire la conoscenza e l'identità del personaggio. Diversamente, i 
-\textbf{Personality/System Prompts} (M3) rientrano nei \textit{Model Assets} in accordo
-con le specifiche della traccia, poiché rappresentano le istruzioni operative runtime
+\textbf{Personality/System Prompts} (M3) rientrano nei \textit{Model Assets}, poiché rappresentano le istruzioni operative runtime
 iniettate nel contesto dei modelli per condizionarne direttamente il comportamento.
 
 Tale distinzione previene sovrapposizioni analitiche:
@@ -1441,10 +1149,11 @@ Infine, la mappatura delle proprietà di sicurezza $CIA^3$-R associate a ciascun
 % =========================================================
 \section{Analisi delle Minacce basata su OWASP Agentic Top 10}
 
-In conformità con i requisiti del progetto, l'analisi delle minacce viene strutturata attorno ai dieci rischi definiti dall' \textbf{OWASP Top 10 for Agentic Applications 2026}. La Tabella~\ref{tab:owasp-threat-matrix} associa ciascuna categoria OWASP alle minacce concrete individuate nell'architettura Dual-Brain, evidenziando gli asset impattati e il livello di priorità.
+In conformità con i requisiti del progetto, l'analisi delle minacce viene strutturata attorno ai dieci rischi definiti dall' \textbf{OWASP} \cite{owaspagentic}. La Tabella~\ref{tab:owasp-threat-matrix} associa ciascuna categoria OWASP alle minacce concrete individuate nell'architettura Dual-Brain, evidenziando gli asset impattati e il livello di priorità.
 \begingroup
-\setlength{\tabcolsep}{4pt} % Riduce il margine interno delle celle per evitare che il testo tocchi i bordi
-\begin{longtable}{|L{2.8cm}|L{4.7cm}|C{2.3cm}|C{2.1cm}|C{1.7cm}|}
+\setlength{\tabcolsep}{4pt}
+\small
+\begin{longtable}{|C{2.0cm}|L{\dimexpr\textwidth-2.0cm-2.0cm-2.0cm-1.8cm-10\tabcolsep-6\arrayrulewidth\relax}|C{2.0cm}|C{2.0cm}|C{1.8cm}|}
 \caption{Matrice unificata delle minacce OWASP Agentic e asset impattati.}
 \label{tab:owasp-threat-matrix}\\
 \hline
@@ -1534,7 +1243,7 @@ I, Ac &
 
 \subsection{Criteri di Valutazione e Metodologia}
 
-La prioritizzazione dei rischi adotta un approccio qualitativo basato sulla combinazione di probabilità di accadimento (\emph{Likelihood}) e gravità delle conseguenze (\emph{Severity}), in conformità con la metodologia STRIDE-AI \cite{cyrille2026strideai} e con il framework OWASP AIVSS presentato a lezione \cite{damianiagentic}. Per mantenere l'analisi snella ed efficace, si evita l'impiego del calcolo quantitativo dell'RPN (\emph{Risk Priority Number}), prediligendo una classificazione categoriale.
+La prioritizzazione dei rischi adotta un approccio qualitativo basato sulla combinazione di probabilità di accadimento (\emph{Likelihood}) e gravità delle conseguenze (\emph{Severity}), in conformità con la metodologia STRIDE-AI \cite{cyrille2026strideai} e con il framework OWASP AIVSS \cite{damianiagentic}. Per mantenere l'analisi snella ed efficace, si evita l'impiego del calcolo quantitativo dell'RPN (\emph{Risk Priority Number}), prediligendo una classificazione categoriale.
 
 La \textbf{Likelihood} misura la fattibilità dell'attacco considerando l'accessibilità del vettore, i privilegi richiesti, la complessità tecnica, la ripetibilità e i controlli o \emph{guardrails} esistenti.
 
@@ -1576,29 +1285,28 @@ La combinazione di \emph{Likelihood} e \emph{Severity} determina la classe di ri
 \caption{Valutazione dei rischi prioritari.}
 \label{tab:riskpriority}
 \small
-\begin{tabularx}{\textwidth}{|C{0.8cm}|Y|C{1.5cm}|C{1.5cm}|C{1.5cm}|Y|}
+\begin{tabularx}{\textwidth}{|C{3.4cm}|C{1.8cm}|C{1.4cm}|C{1.2cm}|X|}
 \hline
-\textbf{ID} & \textbf{Rischio} & \textbf{Lik.} & \textbf{Impact} & \textbf{Risk} & \textbf{Amplificatori agentici} \\
+\textbf{Rischio} & \textbf{Likelihood} & \textbf{Severity} & \textbf{Risk} & \textbf{Amplificatori agentici} \\
 \hline
-R1 & Goal hijack del Fast-Brain & Alta & Alto & \critico & Output immediato, contesto parziale, human trust \\
+\textbf{R1} \newline Goal hijack del Fast-Brain & Alta & Alto & \critico & Output immediato, contesto parziale, human trust \\
 \hline
-R2 & Feedback poisoning persistente & Alta & Alto & \critico & Persistenza, effetto cross-session, modifica del few-shot pool \\
+\textbf{R2} \newline Feedback poisoning persistente & Alta & Alto & \critico & Persistenza, effetto cross-session, modifica del few-shot pool \\
 \hline
-R3 & Identity/privilege abuse tra agenti & Media & Alto & \alto & Multi-agent, credenziali, accesso a memoria e tool \\
+\textbf{R3} \newline Identity/privilege abuse tra agenti & Media & Alto & \alto & Multi-agent, credenziali, accesso a memoria e tool \\
 \hline
-R4 & Tampering/replay inter-agent & Media & Alto & \alto & Esecuzione asincrona, state machine e correlazione sessione \\
+\textbf{R4} \newline Tampering/replay inter-agent & Media & Alto & \alto & Esecuzione asincrona, state machine e correlazione sessione \\
 \hline
-R5 & Voice clone abuse e trust exploitation & Media & Alto & \alto & Identità biometrica, output persuasivo, difficile attribution \\
+\textbf{R5} \newline Voice clone abuse e trust exploitation & Media & Alto & \alto & Identità biometrica, output persuasivo, difficile attribution \\
 \hline
-R6 & Supply-chain compromise & Media & Alto & \alto & Molti servizi esterni, persistenza e difficile rilevazione \\
+\textbf{R6} \newline Supply-chain compromise & Media & Alto & \alto & Molti servizi esterni, persistenza e difficile rilevazione \\
 \hline
-R7 & Cascading failure/DoS & Media & Medio & \medio & Percorsi paralleli e risorse condivise \\
+\textbf{R7} \newline Cascading failure/DoS & Media & Medio & \medio & Percorsi paralleli e risorse condivise \\
 \hline
 \end{tabularx}
 \end{table}
 
-Per evitare falsa precisione, non viene assegnato un AARS numerico in assenza del calcolatore e della formula completa utilizzati dal corso. Per i rischi R1--R5 si conserva comunque un vettore descrittivo di exploitability e impatto nella sezione successiva.
-
+Per evitare falsa precisione, non viene assegnato un punteggio AARS numerico in assenza del calcolatore e della formulazione completa definiti nel framework AIVSS \cite{damianiagentic}. Per i rischi R1--R5 si conserva comunque un vettore descrittivo di exploitability e impatto nella sezione successiva.
 % =========================================================
 \section{Scenari di minaccia prioritari}
 
@@ -2071,7 +1779,7 @@ Il rischio residuo deve essere rivalutato dopo la validazione sperimentale. I va
 \begin{itemize}
   \item L'architettura è descritta a livello progettuale; deployment, provider e protocolli effettivi possono modificare likelihood e controlli necessari.
   \item Non sono stati eseguiti test empirici; la sezione di validazione contiene un piano e template di risultati.
-  \item La valutazione del rischio è qualitativa. Non viene calcolato un AARS numerico senza lo strumento e la formula usati nel corso.
+  \item La valutazione del rischio è qualitativa. Non viene calcolato un punteggio AARS numerico in assenza dello strumento di calcolo e della formulazione stabiliti dal framework AIVSS \cite{damianiagentic}.
   \item La robustezza multilingue e dialettale dei guardrail deve essere verificata sperimentalmente.
   \item Il threat model non dimostra l'assenza di backdoor nei modelli; riduce il rischio tramite provenance, firme, testing e rollback.
   \item Privacy, compliance e consenso per voice cloning richiedono un'analisi dedicata oltre al threat model tecnico.
@@ -2085,7 +1793,7 @@ La pipeline dual-brain riduce la latenza percepita, ma introduce superfici d'att
 
 Il threat modeling ha mostrato come i rischi prioritari siano goal hijack, feedback poisoning, identity/privilege abuse, comunicazione inter-agent insicura e abuso della voce clonata. ASI05 è stato correttamente considerato non applicabile nello scope corrente, evitando di introdurre scenari RCE non supportati dall'architettura.
 
-La strategia proposta applica le sette precauzioni del corso e adotta un principio centrale: \textbf{la bassa latenza non deve mai giustificare il bypass dei controlli}. I controlli deterministici restano nel fast path; monitoraggio, audit e analisi più costose operano in modo asincrono; in caso di errore il sistema usa un fallback statico sicuro. La separazione delle identità e la least agency limitano il blast radius, mentre provenance, voice vault e update gate proteggono gli asset più caratterizzanti della pipeline.
+La strategia proposta applica le sette precauzioni \cite{damianiagentic} e adotta un principio centrale: \textbf{la bassa latenza non deve mai giustificare il bypass dei controlli}. I controlli deterministici restano nel fast path; monitoraggio, audit e analisi più costose operano in modo asincrono; in caso di errore il sistema usa un fallback statico sicuro. La separazione delle identità e la least agency limitano il blast radius, mentre provenance, voice vault e update gate proteggono gli asset più caratterizzanti della pipeline.
 
 Il passo successivo è implementare il security harness e la simulazione di feedback poisoning, completando le tabelle sperimentali con valori misurati. Questo permetterà di trasformare il threat model progettuale in una valutazione verificata e riproducibile.
 
@@ -2171,7 +1879,7 @@ Feedback poisoning & ASI06 / Tampering & Auth, anti-replay, update gate, rollbac
 \hline
 Privilege abuse & ASI03 / EoP & Workload identity, scoped token, AuthZ & Test negativo: Fast-Brain chiama endpoint RAG \\
 \hline
-Inter-agent replay & ASI07 / Spoofing, Tampering & Nonce, sequence, expiry, session binding & Esperimento C \\
+Inter-agent replay & ASI07 / Spoofing, Tampering & Nonce, sequence, expiry, session binding & Esperimento C\\
 \hline
 Voice clone abuse & ASI09 / Spoofing, Disclosure & Voice vault, provenance, audit, revoca & Test accessi e generazioni senza audit ID \\
 \hline
