@@ -199,7 +199,7 @@ per Digital Human in tempo reale}\par
 Questo progetto presenta il threat modeling di una pipeline agentica progettata per ridurre la latenza percepita durante l'interazione con un digital human. L'architettura adotta un modello 
 \emph{dual-brain}: un \textbf{Fast-Brain Agent} produce rapidamente un filler verbale e un trigger gestuale, mentre un \textbf{Deep-Brain Agent} elabora la risposta principale tramite LLM, RAG e memoria contestuale. I due percorsi sono eseguiti in parallelo e coordinati da un orchestratore che gestisce priorità, transizione audio-video, fallback e sincronizzazione.
 
-L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Anziché adottare una FMEA tradizionale (più orientata all'analisi dei guasti di componente che alle minacce avversariali e ai comportamenti emergenti), le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, costruisce un attacker model, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
+L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Anziché adottare una FMEA tradizionale (più orientata all'analisi dei guasti di componente che alle minacce avversariali e ai comportamenti emergenti), le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
 
 Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
 
@@ -290,7 +290,7 @@ Il processo adottato è:
   arr/.style={-Stealth,thick,Primary}
 ]
 \node[procstep] (a) {Architettura e scope};
-\node[procstep,right=0.45cm of a] (b) {Attacker model e trust boundary};
+\node[procstep,right=0.45cm of a] (b) {Trust boundary};
 \node[procstep,right=0.45cm of b] (c) {Asset e proprietà};
 \node[procstep,right=0.45cm of c] (d) {Threat concrete e STRIDE-AI};
 \node[procstep,below=0.7cm of d] (e) {OWASP Agentic e priorità};
