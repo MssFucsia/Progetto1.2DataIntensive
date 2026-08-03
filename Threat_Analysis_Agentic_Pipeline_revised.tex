@@ -201,7 +201,7 @@ Questo progetto presenta il threat modeling di una pipeline agentica progettata 
 
 L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del sistema. Anziché adottare una FMEA tradizionale (più orientata all'analisi dei guasti di componente che alle minacce avversariali e ai comportamenti emergenti), le minacce sono identificate direttamente a partire da asset, agenti, azioni, tool, memorie, identità e trust boundary. Il processo combina \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e l'\textbf{OWASP Top 10 for Agentic Applications 2026}. La relazione definisce lo scope, esplicita le assunzioni architetturali, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
 
-Le mitigazioni sono organizzate secondo le sette precauzioni discusse nel corso: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
+Le mitigazioni sono organizzate secondo le sette precauzioni fondamentali per la sicurezza dei sistemi agentici \cite{damianiagentic}: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
 
 % =========================================================
 \section{Introduzione e obiettivi}
@@ -246,7 +246,7 @@ Gli obiettivi sono:
   \item individuare minacce concrete senza passare da una FMEA;
   \item classificare le minacce tramite STRIDE-AI e OWASP Agentic;
   \item prioritizzare i rischi in base a likelihood, impact e amplificatori agentici;
-  \item proporre controlli coerenti con le sette precauzioni del corso;
+  \item proporre controlli coerenti con le sette precauzioni \cite{damianiagentic};
   \item progettare una secure architecture compatibile con il vincolo real-time;
   \item definire un piano sperimentale riproducibile senza inventare risultati non misurati.
 \end{enumerate}
@@ -304,7 +304,7 @@ Il processo adottato è:
 \label{fig:method}
 \end{figure}
 
-La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni del corso sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
+La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni \cite{damianiagentic} sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
 
 % =========================================================
 \subsection{Metodologia STRIDE-AI e quadro delle proprietà CIA$^3$-R}
@@ -1591,8 +1591,7 @@ R7 & Cascading failure/DoS & Media & Medio & \medio & Percorsi paralleli e risor
 \end{tabularx}
 \end{table}
 
-Per evitare falsa precisione, non viene assegnato un AARS numerico in assenza del calcolatore e della formula completa utilizzati dal corso. Per i rischi R1--R5 si conserva comunque un vettore descrittivo di exploitability e impatto nella sezione successiva.
-
+Per evitare falsa precisione, non viene assegnato un punteggio AARS numerico in assenza del calcolatore e della formulazione completa definiti nel framework AIVSS \cite{damianiagentic}. Per i rischi R1--R5 si conserva comunque un vettore descrittivo di exploitability e impatto nella sezione successiva.
 % =========================================================
 \section{Scenari di minaccia prioritari}
 
@@ -2065,7 +2064,7 @@ Il rischio residuo deve essere rivalutato dopo la validazione sperimentale. I va
 \begin{itemize}
   \item L'architettura è descritta a livello progettuale; deployment, provider e protocolli effettivi possono modificare likelihood e controlli necessari.
   \item Non sono stati eseguiti test empirici; la sezione di validazione contiene un piano e template di risultati.
-  \item La valutazione del rischio è qualitativa. Non viene calcolato un AARS numerico senza lo strumento e la formula usati nel corso.
+  \item La valutazione del rischio è qualitativa. Non viene calcolato un punteggio AARS numerico in assenza dello strumento di calcolo e della formulazione stabiliti dal framework AIVSS \cite{damianiagentic}.
   \item La robustezza multilingue e dialettale dei guardrail deve essere verificata sperimentalmente.
   \item Il threat model non dimostra l'assenza di backdoor nei modelli; riduce il rischio tramite provenance, firme, testing e rollback.
   \item Privacy, compliance e consenso per voice cloning richiedono un'analisi dedicata oltre al threat model tecnico.
@@ -2079,7 +2078,7 @@ La pipeline dual-brain riduce la latenza percepita, ma introduce superfici d'att
 
 Il threat modeling ha mostrato come i rischi prioritari siano goal hijack, feedback poisoning, identity/privilege abuse, comunicazione inter-agent insicura e abuso della voce clonata. ASI05 è stato correttamente considerato non applicabile nello scope corrente, evitando di introdurre scenari RCE non supportati dall'architettura.
 
-La strategia proposta applica le sette precauzioni del corso e adotta un principio centrale: \textbf{la bassa latenza non deve mai giustificare il bypass dei controlli}. I controlli deterministici restano nel fast path; monitoraggio, audit e analisi più costose operano in modo asincrono; in caso di errore il sistema usa un fallback statico sicuro. La separazione delle identità e la least agency limitano il blast radius, mentre provenance, voice vault e update gate proteggono gli asset più caratterizzanti della pipeline.
+La strategia proposta applica le sette precauzioni \cite{damianiagentic} e adotta un principio centrale: \textbf{la bassa latenza non deve mai giustificare il bypass dei controlli}. I controlli deterministici restano nel fast path; monitoraggio, audit e analisi più costose operano in modo asincrono; in caso di errore il sistema usa un fallback statico sicuro. La separazione delle identità e la least agency limitano il blast radius, mentre provenance, voice vault e update gate proteggono gli asset più caratterizzanti della pipeline.
 
 Il passo successivo è implementare il security harness e la simulazione di feedback poisoning, completando le tabelle sperimentali con valori misurati. Questo permetterà di trasformare il threat model progettuale in una valutazione verificata e riproducibile.
 
