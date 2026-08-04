@@ -335,7 +335,7 @@ Nel corso dell'analisi e nelle relative tabelle degli asset e del catalogo minac
 \label{tab:stride-ai-overview}
 \begin{tabularx}{\textwidth}{|L{2.5cm}|Y|Y|C{2.0cm}|}
 \hline
-\textbf{Categoria} & \textbf{Definizione Classica} & \textbf{Trasposizione nel Sistema Agentico Dual-Brain} & \textbf{Proprietà Violata} \\ \hline
+\textbf{Categoria} & \textbf{Definizione Classica} & \textbf{Trasposizione nel Sistema Agentico Dual-Brain} & \textbf{Proprietà $CIA^3$-R Violate} \\ \hline
 
 \textbf{Spoofing} & 
 Impersonamento non autorizzato di un'identità legittima. & 
@@ -831,87 +831,87 @@ controlli sulla monotonicità dei messaggi e rifiuto dei segnali
 appartenenti a sessioni concluse.
 
 % =========================================================
-\section{Data Flow Diagram e trust boundary}
+% \section{Data Flow Diagram e trust boundary}
 
-\subsection{DFD di livello 0}
+% \subsection{DFD di livello 0}
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-  box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=1.6cm,align=center},
-  arr/.style={Stealth-Stealth,thick}
-]
-\node[box] (u) {Utente / Attaccante\\\scriptsize dominio esterno};
-\node[box,right=3.8cm of u,fill=AgentFill] (s) {Agentic Digital Human Pipeline\\\scriptsize dominio del sistema};
-\draw[arr] (u)--node[above,font=\scriptsize]{voce, testo, feedback / audio-video}(s);
-\end{tikzpicture}
-\caption{DFD livello 0.}
-\end{figure}
+% \begin{figure}[H]
+% \centering
+% \begin{tikzpicture}[
+%   box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=1.6cm,align=center},
+%   arr/.style={Stealth-Stealth,thick}
+% ]
+% \node[box] (u) {Utente / Attaccante\\\scriptsize dominio esterno};
+% \node[box,right=3.8cm of u,fill=AgentFill] (s) {Agentic Digital Human Pipeline\\\scriptsize dominio del sistema};
+% \draw[arr] (u)--node[above,font=\scriptsize]{voce, testo, feedback / audio-video}(s);
+% \end{tikzpicture}
+% \caption{DFD livello 0.}
+% \end{figure}
 
-\subsection{DFD di livello 1}
+% \subsection{DFD di livello 1}
 
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  comp/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize},
-  agent/.style={draw,rounded corners,minimum height=1cm,text width=2.2cm,align=center,font=\scriptsize,fill=AgentFill},
-  tool/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize,fill=ToolFill},
-  data/.style={draw,rounded corners,minimum height=0.85cm,text width=2.1cm,align=center,font=\scriptsize,fill=DataFill},
-  arr/.style={-Stealth,thick},
-  tb/.style={draw,dashed,very thick,Boundary,rounded corners,inner sep=11pt},
-  lab/.style={font=\scriptsize,fill=white,inner sep=1.5pt}
-]
-\node[comp] (user) at (0,0) {User};
-\node[tool] (edge) at (2.8,0) {API / VAD / STT};
-\node[agent] (fast) at (6,1.7) {Fast-Brain};
-\node[agent] (deep) at (6,-1.7) {Deep-Brain};
-\node[data] (memory) at (9.4,-3.5) {RAG / memoria / feedback};
-\node[comp] (validator) at (9.4,1.7) {Output Validator};
-\node[comp] (orch) at (12.5,0) {Orchestrator};
-\node[tool] (tools) at (15.7,0) {TTS / voice / video / lip-sync};
-\node[comp] (out) at (18.8,0) {Output};
-\draw[arr] (user)--(edge);
-\draw[arr] (edge)--(fast); \draw[arr] (edge)--(deep);
-\draw[arr] (fast)--(validator); \draw[arr] (validator)--(orch);
-\draw[arr] (deep)--(orch); \draw[arr] (deep)--(memory); \draw[arr] (memory)--(deep);
-\draw[arr,dashed] (edge) to[bend left=18] node[lab,above]{feedback}(memory);
-\draw[arr] (orch)--(tools); \draw[arr] (tools)--(out);
-\node[tb,fit=(user),label={[lab]above:TB1}] {};
-\node[tb,fit=(edge),label={[lab]above:TB2}] {};
-\node[tb,fit=(fast)(deep)(validator)(orch),label={[lab]above:TB3}] {};
-\node[tb,fit=(memory),label={[lab]below:TB4}] {};
-\node[tb,fit=(tools),label={[lab]above:TB5}] {};
-\node[tb,fit=(out),label={[lab]above:TB6}] {};
-\end{tikzpicture}%
-}
-\caption{DFD livello 1 e principali trust boundary.}
-\label{fig:dfd1}
-\end{figure}
+% \begin{figure}[H]
+% \centering
+% \resizebox{\textwidth}{!}{%
+% \begin{tikzpicture}[
+%   comp/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize},
+%   agent/.style={draw,rounded corners,minimum height=1cm,text width=2.2cm,align=center,font=\scriptsize,fill=AgentFill},
+%   tool/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize,fill=ToolFill},
+%   data/.style={draw,rounded corners,minimum height=0.85cm,text width=2.1cm,align=center,font=\scriptsize,fill=DataFill},
+%   arr/.style={-Stealth,thick},
+%   tb/.style={draw,dashed,very thick,Boundary,rounded corners,inner sep=11pt},
+%   lab/.style={font=\scriptsize,fill=white,inner sep=1.5pt}
+% ]
+% \node[comp] (user) at (0,0) {User};
+% \node[tool] (edge) at (2.8,0) {API / VAD / STT};
+% \node[agent] (fast) at (6,1.7) {Fast-Brain};
+% \node[agent] (deep) at (6,-1.7) {Deep-Brain};
+% \node[data] (memory) at (9.4,-3.5) {RAG / memoria / feedback};
+% \node[comp] (validator) at (9.4,1.7) {Output Validator};
+% \node[comp] (orch) at (12.5,0) {Orchestrator};
+% \node[tool] (tools) at (15.7,0) {TTS / voice / video / lip-sync};
+% \node[comp] (out) at (18.8,0) {Output};
+% \draw[arr] (user)--(edge);
+% \draw[arr] (edge)--(fast); \draw[arr] (edge)--(deep);
+% \draw[arr] (fast)--(validator); \draw[arr] (validator)--(orch);
+% \draw[arr] (deep)--(orch); \draw[arr] (deep)--(memory); \draw[arr] (memory)--(deep);
+% \draw[arr,dashed] (edge) to[bend left=18] node[lab,above]{feedback}(memory);
+% \draw[arr] (orch)--(tools); \draw[arr] (tools)--(out);
+% \node[tb,fit=(user),label={[lab]above:TB1}] {};
+% \node[tb,fit=(edge),label={[lab]above:TB2}] {};
+% \node[tb,fit=(fast)(deep)(validator)(orch),label={[lab]above:TB3}] {};
+% \node[tb,fit=(memory),label={[lab]below:TB4}] {};
+% \node[tb,fit=(tools),label={[lab]above:TB5}] {};
+% \node[tb,fit=(out),label={[lab]above:TB6}] {};
+% \end{tikzpicture}%
+% }
+% \caption{DFD livello 1 e principali trust boundary.}
+% \label{fig:dfd1}
+% \end{figure}
 
-\begin{table}[H]
-\centering
-\caption{Trust boundary e requisiti di sicurezza.}
-\label{tab:trustboundaries}
-\small
-\begin{tabularx}{\textwidth}{|C{0.9cm}|L{3.2cm}|Y|Y|}
-\hline
-\textbf{TB} & \textbf{Confine} & \textbf{Dati/azioni} & \textbf{Rischi dominanti} \\
-\hline
-TB1 & Utente esterno $\leftrightarrow$ edge & Voce, testo, feedback, session ID & Spoofing, prompt injection, flooding, feedback manipulation \\
-\hline
-TB2 & Edge $\rightarrow$ agenti & Partial transcript, full transcript, intent preliminare & Truncation, goal hijack, PII leakage, session mix-up \\
-\hline
-TB3 & Agenti $\leftrightarrow$ orchestratore & Filler, trigger, risposta, completion signal & Identity spoofing, tampering, replay, state desynchronization \\
-\hline
-TB4 & Deep-Brain $\leftrightarrow$ RAG/memoria & Query, chunk, embedding, score, feedback update & Poisoning, cross-user leakage, unauthorized write \\
-\hline
-TB5 & Orchestratore $\leftrightarrow$ media services & Testo, voice reference, prompt visuale, audio e video intermedi & Tool misuse, supply chain, provider disclosure, artifact tampering \\
-\hline
-TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Impersonazione, output tampering, assenza di disclosure AI \\
-\hline
-\end{tabularx}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Trust boundary e requisiti di sicurezza.}
+% \label{tab:trustboundaries}
+% \small
+% \begin{tabularx}{\textwidth}{|C{0.9cm}|L{3.2cm}|Y|Y|}
+% \hline
+% \textbf{TB} & \textbf{Confine} & \textbf{Dati/azioni} & \textbf{Rischi dominanti} \\
+% \hline
+% TB1 & Utente esterno $\leftrightarrow$ edge & Voce, testo, feedback, session ID & Spoofing, prompt injection, flooding, feedback manipulation \\
+% \hline
+% TB2 & Edge $\rightarrow$ agenti & Partial transcript, full transcript, intent preliminare & Truncation, goal hijack, PII leakage, session mix-up \\
+% \hline
+% TB3 & Agenti $\leftrightarrow$ orchestratore & Filler, trigger, risposta, completion signal & Identity spoofing, tampering, replay, state desynchronization \\
+% \hline
+% TB4 & Deep-Brain $\leftrightarrow$ RAG/memoria & Query, chunk, embedding, score, feedback update & Poisoning, cross-user leakage, unauthorized write \\
+% \hline
+% TB5 & Orchestratore $\leftrightarrow$ media services & Testo, voice reference, prompt visuale, audio e video intermedi & Tool misuse, supply chain, provider disclosure, artifact tampering \\
+% \hline
+% TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Impersonazione, output tampering, assenza di disclosure AI \\
+% \hline
+% \end{tabularx}
+% \end{table}
 
 % =========================================================
 % ASSET MODEL
@@ -928,7 +928,7 @@ In accordo con la metodologia STRIDE-AI introdotta nella Sezione~\ref{subsec:str
     \item \textbf{Model Assets}: modelli di machine learning, prompt operativi e componenti logiche che determinano o controllano il comportamento agentico del sistema.
 \end{itemize}
 
-Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, la rilevanza STRIDE-AI e le proprietà della matrice $\text{CIA}^3\text{-R}$ potenziale oggetto di violazione.
+Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, le principali minacce STRIDE-AI e le proprietà della matrice $\text{CIA}^3\text{-R}$ potenzialmente oggetto di violazione.
 
 % ---------------------------------------------------------
 % DATA ASSETS
@@ -938,6 +938,7 @@ Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, la ril
 \label{subsec:data-assets}
 
 I \textit{Data Assets} comprendono le informazioni e gli artefatti digitali che fluiscono attraverso la pipeline agentica o che ne alimentano il funzionamento. Essi includono gli input vocali e testuali dell'utente, le trascrizioni generate dallo STT, i documenti e la memoria di contesto per il RAG, gli artefatti audiovisivi intermedi e finali, i dati di sincronizzazione della sessione e i log di sistema.
+Sono inoltre inclusi gli artefatti utilizzati per rappresentare l'identità audiovisiva del digital human, la libreria di filler e animazioni pre-costruite e le identità tecniche, le credenziali e i segreti impiegati dagli agenti e dai servizi della pipeline.
 
 Rientrano in questa categoria anche i materiali sorgente che definiscono l'identità del digital human (\textbf{Personality Source Artifacts}), intesi come asset informativi persistenti distinti dalle istruzioni operative inviate ai modelli a runtime.
 
@@ -949,11 +950,11 @@ La Tabella~\ref{tab:data-assets} illustra i Data Assets individuati, le relative
 \caption{Data Assets della pipeline agentica.}
 \label{tab:data-assets}\\
 \hline
-\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\textbf{Asset} & \textbf{Descrizione} & \textbf{Principali minacce STRIDE-AI} & \textbf{Proprietà $CIA^3$-R Violate} \\
 \hline
 \endfirsthead
 \hline
-\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\textbf{Asset} & \textbf{Descrizione} & \textbf{Principali minacce STRIDE-AI} & \textbf{Proprietà $CIA^3$-R Violate} \\
 \hline
 \endhead
 
@@ -965,13 +966,13 @@ C, I, Au \\
 
 \textbf{D2} \newline Short Prompt Tokens \& Partial Transcript & 
 Primi token o frammenti della trascrizione inviati all'Instant Path per classificare l'intento e selezionare il filler. & 
-\textbf{T}: alterazione dei primi token per forzare la classificazione di un intento errato. \newline \textbf{E}: iniezione di istruzioni malevole nel partial transcript per deviare il comportamento del Fast-Brain. & 
-I, Az \\
+\textbf{T}: alterazione dei primi token per forzare la classificazione di un intento errato. \newline \textbf{D}: invio di frammenti avversariali che causano ripetute classificazioni o ritardano la generazione del filler oltre il vincolo di latenza. \newline \textbf{E}: iniezione di istruzioni malevole nel partial transcript per deviare il Fast-Brain e indurlo a ottenere una capacità o un privilegio che non dovrebbe possedere. & 
+I, A, Az \\
 \hline
 
 \textbf{D3} \newline Full Transcript \& Request & 
 Trascrizione completa e normalizzata usata dal Background Path per produrre la risposta principale del Deep-Brain. & 
-\textbf{T}: indirect prompt injection nel testo trascritto per manipolare le istruzioni inviate all'LLM. \newline \textbf{I}: lettura non autorizzata dei prompt utente contenenti dati personali o sensibili. & 
+\textbf{T}: direct prompt injection nel testo trascritto per manipolare le istruzioni inviate al Deep-Brain e deviarne la risposta. \newline \textbf{I}: lettura non autorizzata dei prompt utente contenenti dati personali o sensibili. & 
 C, I \\
 \hline
 
@@ -984,7 +985,7 @@ C, I, Az \\
 \textbf{D5} \newline Behavioral Animation Triggers & 
 Output strutturati che specificano il comportamento non verbale (ID clip, movimento occhi, gesti, stato emotivo). & 
 \textbf{T}: manomissione dei trigger per forzare posture o espressioni dell'avatar inappropriate o offensive. \newline \textbf{D}: iniezione di trigger invalidi o corrotti che mandano in crash il motore di animazione. & 
-I, A \\
+I, A, Au \\
 \hline
 
 \textbf{D6} \newline Response Transcripts & 
@@ -996,13 +997,13 @@ C, I \\
 \textbf{D7} \newline Personality Source Artifacts & 
 File sorgente contenenti leggenda del personaggio, tratti della personalità, tono, dialetto e regole stilistiche. & 
 \textbf{T}: manomissione dei file sorgente della personalità per corrompere il comportamento globale del sistema. \newline \textbf{I}: esfiltrazione degli artefatti della personalità e del sistema di regole protetto da IP. & 
-C, I \\
+C, I, Au \\
 \hline
 
 \textbf{D8} \newline Voice \& Visual Identity Assets & 
-Campioni vocali, voice embedding, immagini e video di riferimento per riprodurre l'identità dell'avatar. & 
-\textbf{S}: espropriazione o riutilizzo non autorizzato dei dataset di identità per creare clone non autorizzati. \newline \textbf{I}: accesso e sottrazione dei file di riferimento e degli embedding dell'identità visiva e vocale. & 
-C, Au \\
+Campioni vocali, voice embedding, immagini e video di riferimento utilizzati per riprodurre l'identità dell'avatar, inclusa la libreria di filler e animazioni pre-costruite impiegata dall'Instant Path. & 
+\textbf{S}: sottrazione o riutilizzo non autorizzato degli asset di identità per creare cloni o contenuti audiovisivi contraffatti. \newline \textbf{T}: sostituzione o alterazione delle clip filler e delle animazioni pre-costruite per mostrare comportamenti non autorizzati. \newline \textbf{I}: accesso non autorizzato ai file di riferimento, agli embedding e alla libreria audiovisiva del personaggio. & 
+C, I, Au \\
 \hline
 
 \textbf{D9} \newline Intermediate Audio/Video & 
@@ -1013,14 +1014,14 @@ C, I \\
 
 \textbf{D10} \newline Coordination \& Swap State & 
 Messaggi e dati di coordinamento (session ID, job ID, timestamp, stato playback, Video Ready Signal). & 
-\textbf{S}: invio di falsi segnali di sincronizzazione (\emph{Video Ready Signal}) impersonando l'orchestratore. \newline \textbf{T}: alterazione di session ID o timestamp per causare sovrapposizioni tra utenti o deserializzazione errata. \newline \textbf{E}: manomissione dello stato di sessione per dirottare o scambiare i flussi multimediali. & 
+\textbf{S}: invio di falsi segnali di sincronizzazione (\textit{Video Ready Signal}) impersonando l'orchestratore. \newline \textbf{T}: alterazione di session ID o timestamp per associare un flusso multimediale alla sessione errata. \newline \textbf{E}: manomissione dello stato di sessione per dirottare o scambiare i flussi multimediali. & 
 I, A, Az \\
 \hline
 
 \textbf{D11} \newline WebRTC Media Streams & 
-Flusso audio-video finale trasmesso all'utente, inclusi pacchetti multimediali e dati di negoziazione sessione. & 
-\textbf{S}: man-in-the-middle per impersonare l'agente o intercettare il canale di streaming finale. \newline \textbf{T}: alterazione o iniezione di frame dannosi nei pacchetti multimediali WebRTC. \newline \textbf{I}: intercettazione (eavesdropping) dei flussi multimediali in uscita rivolti all'utente. & 
-C, I \\
+Flusso audio-video finale trasmesso all'utente, inclusi pacchetti multimediali e dati di negoziazione della sessione. & 
+\textbf{S}: attacco man-in-the-middle volto a impersonare il digital human o a dirottare il canale di streaming finale. \newline \textbf{T}: alterazione o iniezione di frame e pacchetti multimediali non autorizzati nel flusso WebRTC. \newline \textbf{D}: flooding, interruzione della negoziazione o saturazione del canale per rendere indisponibile lo streaming finale. & 
+I, A, Au \\
 \hline
 
 \textbf{D12} \newline Audit \& Feedback Data & 
@@ -1028,6 +1029,13 @@ Log di richieste, decisioni, invocazioni, transizioni, provenance degli artefatt
 \textbf{T}: cancellazione o alterazione delle righe di log per nascondere attività avversariali o malevole. \newline \textbf{R}: manomissione della tracciabilità rendendo impossibile l'imputabilità e la forensic analysis. & 
 I, Ac, R \\
 \hline
+
+\textbf{D13} \newline Agent and Service Identities, Credentials \& Secrets & 
+Identità non umane, service account, API key, token temporanei, certificati mTLS e credenziali utilizzate dagli agenti e dai servizi interni o esterni della pipeline. & 
+\textbf{S}: furto o impersonificazione dell'identità tecnica di un agente o di un servizio autorizzato. \newline \textbf{I}: esposizione di API key, token, certificati o altri segreti utilizzabili per accedere ai componenti della pipeline. \newline \textbf{E}: riuso di credenziali privilegiate o privilege inheritance tra agenti e servizi per ottenere autorizzazioni superiori a quelle previste. & 
+C, Au, Az \\
+\hline
+
 \end{longtable}
 \endgroup
 % ---------------------------------------------------------
@@ -1045,6 +1053,23 @@ La categoria è utilizzata in senso architetturale esteso. Comprende quindi
 non soltanto i pesi dei modelli di machine learning, ma anche prompt e
 componenti software che determinano obiettivi, vincoli, routing e
 sequenze operative del sistema agentico.
+
+Sebbene il diagramma architetturale non rappresenti esplicitamente un
+componente di guardrail, il Fast-Brain è vincolato a produrre un output
+strutturato in formato JSON rigoroso, contenente esclusivamente un filler
+breve e un behavioral trigger autorizzato. Ai fini del threat model si
+considera pertanto come requisito architetturale necessario la presenza
+di un livello di guardrail e validazione tra gli agenti e i componenti
+esecutivi della pipeline.
+
+Tale livello deve validare gli input e gli output dei modelli, verificare
+la conformità allo schema JSON, limitare i trigger a un insieme
+predefinito e applicare le policy prima che il contenuto prodotto venga
+inoltrato ai servizi TTS, video e animazione. L'inclusione del relativo
+asset non implica che il controllo sia già implementato, ma identifica
+un componente di sicurezza che dovrà essere progettato, configurato e
+protetto nell'architettura definitiva.
+
 \begingroup
 \setlength{\tabcolsep}{4pt}
 \small
@@ -1052,18 +1077,18 @@ sequenze operative del sistema agentico.
 \caption{Model Assets della pipeline agentica.}
 \label{tab:model-assets}\\
 \hline
-\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\textbf{Asset} & \textbf{Descrizione} & \textbf{Principali minacce STRIDE-AI} & \textbf{Proprietà $CIA^3$-R Violate} \\
 \hline
 \endfirsthead
 \hline
-\textbf{Asset} & \textbf{Descrizione} & \textbf{STRIDE-AI Relevance} & \textbf{Proprietà $CIA^3$-R Violate} \\
+\textbf{Asset} & \textbf{Descrizione} & \textbf{Principali minacce STRIDE-AI} & \textbf{Proprietà $CIA^3$-R Violate} \\
 \hline
 \endhead
 
 \textbf{M1} \newline Fast-Brain Agent e Intent Classifier & 
 Modello a bassa latenza che analizza la trascrizione parziale, classifica l'intento e seleziona il filler verbale o gestuale da riprodurre nei primi secondi. & 
-\textbf{T}: alterazione di soglie o prompt di classificazione per forzare la selezione di filler errati. \newline \textbf{E}: esecuzione di risposte non autorizzate o estensione del ruolo oltre la generazione del filler. & 
-I, Az \\
+\textbf{T}: alterazione delle soglie o dei prompt di classificazione per forzare la selezione di filler errati. \newline \textbf{D}: input avversariali o sovraccarico del modello che ritardano la generazione del filler oltre il vincolo di latenza. \newline \textbf{E}: estensione del ruolo del Fast-Brain oltre la classificazione dell'intento e la generazione del filler. & 
+I, A, Az \\
 \hline
 
 \textbf{M2} \newline Deep-Brain Agent & 
@@ -1092,8 +1117,8 @@ Au, I \\
 
 \textbf{M6} \newline TTS e Voice-Cloning Models & 
 Modelli che trasformano filler e risposta principale in audio e riproducono la voce associata al personaggio. & 
-\textbf{S}: generazione non autorizzata di tracce audio per impersonare il digital human (voice spoofing). \newline \textbf{T}: alterazione dei parametri di sintesi vocale per distorcere tono, prosodia o contenuto. & 
-Au, I \\
+\textbf{S}: generazione non autorizzata di tracce audio per impersonare il digital human (\textit{voice spoofing}). \newline \textbf{T}: alterazione dei parametri di sintesi vocale per distorcere tono, prosodia o contenuto. \newline \textbf{D}: indisponibilità o saturazione del servizio di sintesi che impedisce la produzione dell'audio e interrompe la pipeline multimediale. &
+Au, I, A \\
 \hline
 
 \textbf{M7} \newline Video Generation Model & 
@@ -1116,8 +1141,14 @@ I, A, Az \\
 
 \textbf{M10} \newline Swap Manager e Stitching Logic & 
 Logica che decide quando terminare il filler, quando avviare il contenuto principale e come unire audio e video senza sovrapposizioni o discontinuità. & 
-\textbf{S}: iniettare un falso segnale di completamento (\emph{Video Ready Signal}) per forzare uno swap prematuro. \newline \textbf{T}: alterazione dello stato di transizione causando sovrapposizione audio/video o miscelazione di sessioni. & 
-Au, I \\
+\textbf{T}: modifica delle condizioni di readiness o delle regole di transizione per eseguire uno swap anticipato o associare contenuti errati. \newline \textbf{D}: race condition, deadlock o errore persistente nello stato di playback che impediscono la transizione dal filler alla risposta principale. \newline \textbf{E}: bypass dell'isolamento delle sessioni che consente alla logica di stitching di utilizzare flussi appartenenti a un altro utente. &
+I, A, Az \\
+\hline
+
+\textbf{M11} \newline Guardrails, Policy Rules \& Output Schemas &
+Componente di sicurezza che valida gli input e gli output degli agenti, verifica la conformità del JSON prodotto dal Fast-Brain, limita i behavioral trigger a una allowlist e applica le policy prima dell'inoltro ai componenti esecutivi della pipeline. &
+\textbf{T}: manomissione delle policy, delle soglie o dello schema di validazione per autorizzare output e trigger non consentiti. \newline \textbf{D}: indisponibilità o configurazione eccessivamente restrittiva del guardrail che blocca richieste legittime e interrompe il percorso agentico. \newline \textbf{E}: bypass dei controlli di validazione o autorizzazione per eseguire comportamenti oltre lo scope assegnato agli agenti. &
+I, A, Az \\
 \hline
 \end{longtable}
 \endgroup
