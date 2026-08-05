@@ -1218,19 +1218,19 @@ selettiva e leggibile.
 \small
 
 \begin{longtable}{
-    |C{2.15cm}|
-    L{\dimexpr\textwidth-2.15cm-2.35cm-1.70cm-8\tabcolsep-5\arrayrulewidth\relax}|
-    C{2.35cm}|
-    C{1.70cm}|
+    |C{2.05cm}|
+    L{\dimexpr\textwidth-2.05cm-2.20cm-2.25cm-8\tabcolsep-5\arrayrulewidth\relax}|
+    C{2.20cm}|
+    C{2.25cm}|
 }
-\caption{Matrice di applicabilità dei rischi OWASP Agentic e asset impattati.}
+\caption{Matrice di applicabilità dei rischi OWASP Agentic e asset coinvolti.}
 \label{tab:owasp-threat-matrix}\\
 
 \hline
 \textbf{Categoria OWASP} &
-\textbf{Scenario di minaccia e rilevanza nella pipeline} &
-\textbf{Asset impattati} &
-\textbf{Applicabilità} \\
+\textbf{Vulnerabilità nell'architettura} &
+\textbf{Asset coinvolti} &
+\textbf{Grado di applicabilità} \\
 \hline
 \endfirsthead
 
@@ -1239,9 +1239,9 @@ selettiva e leggibile.
 }\\
 \hline
 \textbf{Categoria OWASP} &
-\textbf{Scenario di minaccia e rilevanza nella pipeline} &
-\textbf{Asset impattati} &
-\textbf{Applicabilità} \\
+\textbf{Vulnerabilità nell'architettura} &
+\textbf{Asset coinvolti} &
+\textbf{Grado di applicabilità} \\
 \hline
 \endhead
 
@@ -1255,14 +1255,12 @@ selettiva e leggibile.
 
 \textbf{ASI01} \newline Agent Goal Hijack
 &
-\textbf{SC1 -- Goal hijack tramite input utente o contesto RAG.}
-Una direct prompt injection nei token parziali induce il Fast-Brain a
-reinterpretare il proprio obiettivo e a produrre un filler o un
-behavioral trigger fuori ruolo prima che sia disponibile la richiesta
-completa. Un'indirect prompt injection contenuta nei documenti RAG può
-invece deviare il Deep-Brain. Il vincolo real-time riduce il tempo
-disponibile per rilevare la manipolazione prima della produzione
-dell'output.
+\textbf{SC1 -- Goal hijack tramite input o contesto.}
+Input utente, trascrizioni parziali o contenuti recuperati dal RAG
+possono essere interpretati come istruzioni prevalenti rispetto agli
+obiettivi definiti nei prompt di sistema, deviando il Fast-Brain o il
+Deep-Brain e alterando filler, trigger comportamentali o risposta
+principale.
 &
 D1--D6, M1--M3, M11
 &
@@ -1274,14 +1272,12 @@ D1--D6, M1--M3, M11
 \textbf{ASI02} \newline Tool Misuse \& Exploitation
 &
 \textbf{SC2 -- Uso improprio dei servizi multimediali.}
-Output o parametri agentici non adeguatamente validati vengono
-inoltrati dall'Orchestratore ai servizi TTS, voice cloning, video
-generation o lip-sync, generando contenuti non autorizzati,
-invocazioni ripetute o consumo anomalo di risorse. Il rischio è
-limitato dal fatto che l'insieme dei servizi e la sequenza operativa
-sono definiti a livello architetturale.
+Testo, trigger o parametri prodotti dagli agenti possono essere
+inoltrati senza sufficiente validazione ai servizi TTS, voice cloning,
+video generation e lip-sync, consentendone l'utilizzo non previsto,
+l'invocazione ripetuta o la produzione di artefatti non autorizzati.
 &
-D6, D9, D13, M2, M6--M9, M11
+D5, D6, D9, D13, M2, M6--M9, M11
 &
 \appMedia
 \\
@@ -1290,15 +1286,13 @@ D6, D9, D13, M2, M6--M9, M11
 
 \textbf{ASI03} \newline Identity \& Privilege Abuse
 &
-\textbf{SC3 -- Abuso di credenziali e privilegi tra componenti.}
-Service identity condivise, token con scope eccessivo o un binding
-insufficiente tra identità, sessione e finalità consentono a un agente
-o servizio compromesso di accedere a memoria, RAG, voice cloning o
-componenti multimediali con privilegi superiori a quelli necessari.
-Il Fast-Brain può così agire come \emph{confused deputy} utilizzando
-credenziali ereditate oltre il proprio scope.
+\textbf{SC3 -- Abuso di identità e privilegi tra componenti.}
+Identità di servizio condivise, token con scope eccessivo o un legame
+insufficiente tra identità, sessione e finalità possono consentire a un
+agente o servizio di accedere a memoria, RAG, voice cloning e servizi
+multimediali oltre i privilegi necessari per il proprio compito.
 &
-D4, D8, D10, D13, M1, M2, M6, M9
+D4, D8, D10, D13, M1, M2, M6, M7, M9
 &
 \appAlta
 \\
@@ -1308,11 +1302,11 @@ D4, D8, D10, D13, M1, M2, M6, M9
 \textbf{ASI04} \newline Agentic Supply Chain Vulnerabilities
 &
 \textbf{SC4 -- Compromissione di dipendenze e provider.}
-Un checkpoint, una libreria, un runtime, un SDK o un servizio esterno
-compromesso introduce modelli alterati, codice vulnerabile o
-comportamenti malevoli nella catena composta da STT, LLM, retrieval,
-TTS, voice cloning, video generation e lip-sync. La compromissione può
-alterare gli output o causare l'esfiltrazione degli asset di identità.
+Checkpoint, librerie, runtime, SDK o servizi esterni compromessi
+possono introdurre modelli alterati, codice vulnerabile o comportamenti
+malevoli nei componenti STT, LLM, retrieval, TTS, voice cloning, video
+generation e lip-sync, modificando l'elaborazione o gli output della
+pipeline.
 &
 D8, D13, M1, M2, M4--M9, M11
 &
@@ -1323,15 +1317,14 @@ D8, D13, M1, M2, M4--M9, M11
 
 \textbf{ASI05} \newline Unexpected Code Execution (RCE)
 &
-\textbf{SC5 -- Interpretazione di output agentici come codice.}
-Nell'architettura corrente gli agenti non dispongono di shell, code
-interpreter, funzioni \texttt{eval} o strumenti equivalenti. La
-minaccia diventerebbe applicabile qualora gli output del Deep-Brain
-venissero inoltrati a interpreti, deserializzatori insicuri, template
-eseguibili o ambienti di installazione dinamica senza un controllo
+\textbf{SC5 -- Esecuzione inattesa di output agentici.}
+L'introduzione di interpreti, deserializzatori insicuri, template
+eseguibili, funzioni \texttt{eval}, shell o ambienti di installazione
+dinamica potrebbe trasformare un output controllato dal Deep-Brain in
+codice o comandi eseguiti dall'Orchestratore senza un controllo
 intermedio.
 &
-M2, M9, M11
+D6, M2, M9, M11
 &
 \condizionata
 \\
@@ -1340,13 +1333,12 @@ M2, M9, M11
 
 \textbf{ASI06} \newline Memory \& Context Poisoning
 &
-\textbf{SC6 -- Avvelenamento persistente di memoria, RAG e feedback.}
-Documenti, chunk, embedding o feedback malevoli alterano la memoria
-di sessione, la Knowledge Base, il ranking dell'indice FAISS o gli
-esempi riutilizzati dal sistema. La contaminazione influenza il
-retrieval e le risposte prodotte nei turni o nelle sessioni
-successive e può veicolare indirect prompt injection verso il
-Deep-Brain.
+\textbf{SC6 -- Avvelenamento di memoria, RAG e feedback.}
+Documenti, chunk, embedding, esempi few-shot o feedback malevoli
+possono contaminare la memoria, la Knowledge Base o il ranking
+dell'indice FAISS, modificando il contesto recuperato e influenzando le
+risposte generate dal Deep-Brain nei turni o nelle sessioni
+successive.
 &
 D4, D12, M2, M4, M11
 &
@@ -1358,12 +1350,11 @@ D4, D12, M2, M4, M11
 \textbf{ASI07} \newline Insecure Inter-Agent Communication
 &
 \textbf{SC7 -- Tampering o replay dei messaggi di coordinamento.}
-Un attaccante o un componente compromesso modifica, falsifica o
-riproduce un partial transcript, un behavioral trigger, un
-identificativo di sessione o il \emph{Video Ready Signal}. In assenza
-di autenticazione, integrità e correlazione con il job corrente,
-l'Orchestratore o lo Swap Manager possono accettare il messaggio come
-legittimo e utilizzare un contenuto o un flusso errato.
+Trascrizioni parziali, trigger comportamentali, identificativi di
+sessione, job ID o segnali di sincronizzazione possono essere
+modificati, falsificati o riprodotti, inducendo l'Orchestratore o lo
+Swap Manager ad associare contenuti e flussi al job o alla sessione
+errati.
 &
 D2, D5, D10, D13, M9--M11
 &
@@ -1374,12 +1365,12 @@ D2, D5, D10, D13, M9--M11
 
 \textbf{ASI08} \newline Cascading Failures
 &
-\textbf{SC8 -- Propagazione di un guasto nei percorsi paralleli.}
-Un timeout, un crash o un sovraccarico del Deep-Brain o dei servizi
-multimediali genera retry, accumulo nelle code e mancata produzione del
-\emph{Video Ready Signal}. Lo Swap Manager mantiene il filler in loop,
-esegue una transizione errata o interrompe il canale WebRTC,
-propagando il guasto iniziale attraverso entrambi i percorsi.
+\textbf{SC8 -- Propagazione dei guasti nei percorsi paralleli.}
+Timeout, crash, sovraccarichi, retry non controllati o stati di
+sincronizzazione incoerenti possono propagare il guasto di un agente o
+servizio agli altri componenti della pipeline, impedendo lo swap
+corretto tra filler e risposta principale o interrompendo il flusso
+WebRTC.
 &
 D9--D11, M1, M2, M6--M10
 &
@@ -1392,13 +1383,12 @@ D9--D11, M1, M2, M6--M10
 &
 \textbf{SC9 -- Sfruttamento della fiducia nel digital human.}
 La voce clonata, l'aspetto antropomorfo e la personalità materna e
-rassicurante di Al-Hakima aumentano la credibilità percepita
-dell'agente. Un output manipolato o non verificato può quindi indurre
-l'utente a comunicare dati personali o ad accettare consigli relativi
-alla salute e al benessere senza un livello sufficiente di verifica
-critica.
+rassicurante del digital human possono aumentare l'affidabilità
+percepita degli output, inducendo l'utente a comunicare informazioni
+sensibili o ad accettare consigli e affermazioni senza un'adeguata
+verifica critica.
 &
-D6--D8, D11, M3, M6, M7, M11
+D1, D3, D6--D8, D11, M3, M6, M7, M11
 &
 \appAlta
 \\
@@ -1407,13 +1397,12 @@ D6--D8, D11, M3, M6, M7, M11
 
 \textbf{ASI10} \newline Rogue Agents
 &
-\textbf{SC10 -- Deviazione comportamentale persistente.}
-A seguito di memoria avvelenata, configurazioni compromesse, goal
-hijack o supply-chain compromise, il Fast-Brain o il Deep-Brain
-continuano a produrre output fuori ruolo, eludere policy o propagare
-istruzioni non autorizzate anche dopo la rimozione dell'input
-originario. L'impatto è limitato dall'assenza di auto-modifica e dalla
-ridotta autonomia operativa assegnata agli agenti.
+\textbf{SC10 -- Deviazione comportamentale persistente degli agenti.}
+Un drift comportamentale, un disallineamento interno o una
+configurazione non conforme possono indurre il Fast-Brain o il
+Deep-Brain a mantenere obiettivi e comportamenti diversi da quelli
+previsti, producendo ripetutamente output fuori ruolo o contrari alle
+policy del sistema.
 &
 D4, D7, D12, M1--M3, M9, M11
 &
@@ -1437,155 +1426,127 @@ Nella fase successiva ciascuno scenario sarà valutato mediante
 livello di rischio maggiore saranno successivamente approfonditi
 attraverso precondizioni, percorso di attacco, impatto, mitigazioni e
 rischio residuo.
-
 % =========================================================
-\subsection{Spiegazione della selezione degli asset impattati}
+\subsection{Criteri di selezione degli asset coinvolti}
 \label{subsec:owasp-assets-explanation}
 
-La selezione degli asset impattati nella
-Tabella~\ref{tab:owasp-threat-matrix} non comprende automaticamente
-tutti i componenti attraversati dal normale flusso di elaborazione.
-Un asset viene riportato quando svolge almeno uno dei seguenti ruoli
-nello scenario di minaccia:
+Gli asset riportati nella
+Tabella~\ref{tab:owasp-threat-matrix} sono selezionati in base al ruolo
+direttamente assunto nello scenario di minaccia. In particolare, sono
+inclusi gli elementi che:
 
 \begin{itemize}
-    \item \textbf{vettore o carrier della minaccia}: contiene o
-    trasporta l'input, il messaggio o il contenuto controllato
+    \item trasportano l'input, il messaggio o il contenuto controllato
     dall'attaccante;
-
-    \item \textbf{bersaglio principale}: viene direttamente
-    manipolato, sottratto, abusato o reso indisponibile;
-
-    \item \textbf{componente decisionale}: interpreta il contenuto
-    malevolo e modifica il comportamento della pipeline;
-
-    \item \textbf{output o stato direttamente alterato}: rappresenta
-    la manifestazione concreta della compromissione;
-
-    \item \textbf{controllo di sicurezza coinvolto}: dovrebbe
-    prevenire o contenere la minaccia, ma può essere aggirato,
-    manomesso o reso indisponibile.
+    \item interpretano tale contenuto e assumono una decisione;
+    \item costituiscono il bersaglio diretto della manipolazione,
+    dell'accesso non autorizzato o dell'indisponibilità;
+    \item rappresentano l'output o lo stato nel quale la compromissione
+    diventa osservabile;
+    \item svolgono una funzione di controllo necessaria a rilevare o
+    contenere lo scenario.
 \end{itemize}
 
-Non vengono invece elencati tutti gli asset downstream che ricevono
-passivamente un risultato già compromesso. Tale criterio mantiene la
-mappatura selettiva, leggibile e focalizzata sugli elementi che
-caratterizzano effettivamente ciascuna categoria OWASP
+Non vengono invece inclusi tutti i componenti downstream che ricevono
+passivamente un risultato già compromesso. Un componente successivo
+viene riportato solamente quando introduce una nuova decisione,
+propaga il danno, modifica lo stato della pipeline oppure costituisce
+un ulteriore bersaglio della minaccia. Tale criterio mantiene la
+mappatura selettiva e coerente con le categorie OWASP Agentic
 \cite{owaspagentic,owaspagenticthreats}.
 
+
 \paragraph{ASI01 -- Agent Goal Hijack}
-\begin{itemize}
-    \item[\textbf{D1:}] contiene l'audio o il testo malevolo introdotto originariamente dall'utente.
-    \item[\textbf{D2:}] trasporta i primi token della richiesta al Fast-Brain.
-    \item[\textbf{D3:}] trasporta la richiesta completa al Deep-Brain.
-    \item[\textbf{D4:}] può veicolare indirect prompt injection tramite documenti RAG o memoria contaminata.
-    \item[\textbf{D5:}] contiene il behavioral trigger eventualmente deviato dal goal hijack.
-    \item[\textbf{D6:}] contiene il filler o la risposta principale prodotti fuori ruolo.
-    \item[\textbf{M1:}] è il bersaglio del goal hijack sul percorso rapido.
-    \item[\textbf{M2:}] è il bersaglio del goal hijack sul percorso principale.
-    \item[\textbf{M3:}] contiene gli obiettivi e i vincoli che l'attaccante tenta di sovrascrivere.
-    \item[\textbf{M11:}] deve rilevare input, output o trigger non conformi alle policy.
-\end{itemize}
+
+Gli asset D1--D4 costituiscono i possibili carrier delle istruzioni
+malevole provenienti dall'utente o dal contesto RAG. M1 e M2
+interpretano tali contenuti, mentre M3 definisce gli obiettivi che
+l'attaccante tenta di sovrascrivere. D5 e D6 rappresentano i trigger e
+gli output direttamente alterati, mentre M11 è il controllo incaricato
+di rilevare la deviazione.
+
 
 \paragraph{ASI02 -- Tool Misuse \& Exploitation}
-\begin{itemize}
-    \item[\textbf{D5:}] contiene i trigger utilizzati dai servizi di animazione.
-    \item[\textbf{D6:}] contiene il testo inoltrato ai servizi TTS e multimediali.
-    \item[\textbf{D9:}] comprende gli artefatti audio-video prodotti dall'utilizzo improprio dei servizi.
-    \item[\textbf{M2:}] può generare contenuti o parametri che inducono l'abuso dei servizi.
-    \item[\textbf{M6--M8:}] rappresentano TTS, voice cloning, video generation, lip-sync e animazione, cioè i servizi potenzialmente utilizzati in modo improprio.
-    \item[\textbf{M9:}] effettua materialmente il routing e l'invocazione dei servizi.
-    \item[\textbf{M11:}] valida gli output e i parametri prima della loro esecuzione.
-\end{itemize}
+
+D5 e D6 contengono i trigger, il testo e i parametri utilizzati per
+invocare i servizi multimediali. M2 può produrre tali contenuti, M9 ne
+effettua il routing e M6--M8 eseguono l'elaborazione. D9 rappresenta
+gli artefatti risultanti, D13 le credenziali utilizzate nelle
+invocazioni e M11 il controllo di validazione.
+
 
 \paragraph{ASI03 -- Identity \& Privilege Abuse}
-\begin{itemize}
-    \item[\textbf{D13:}] contiene service identity, token, API key, certificati e credenziali oggetto dell'abuso.
-    \item[\textbf{M1--M2:}] sono i due agenti che devono operare con identità e privilegi separati.
-    \item[\textbf{M9:}] gestisce delegazione, routing e accesso ai servizi.
-    \item[\textbf{D4:}] rappresenta memoria e RAG raggiungibili mediante privilegi eccessivi.
-    \item[\textbf{D8:}] contiene voice embedding e asset audiovisivi sensibili.
-    \item[\textbf{M6--M7:}] sono servizi sensibili che non devono essere accessibili oltre lo scope assegnato.
-    \item[\textbf{D10:}] lega job, sessione e stato di coordinamento all'identità autorizzata.
-\end{itemize}
+
+D13 comprende le identità di servizio e le credenziali oggetto
+dell'abuso, mentre D10 associa autorizzazione, job e sessione. M1, M2
+e M9 utilizzano o delegano tali privilegi; D4, D8 e i servizi M6--M7
+rappresentano le risorse sensibili raggiungibili mediante autorizzazioni
+eccessive.
+
 
 \paragraph{ASI04 -- Agentic Supply Chain Vulnerabilities}
-\begin{itemize}
-    \item[\textbf{M1--M2:}] checkpoint, tokenizer e runtime degli agenti possono essere alterati
-    \item[\textbf{M4--M5:}] modelli e librerie di retrieval, embedding, VAD e STT possono provenire da dipendenze compromesse.
-    \item[\textbf{M6--M8:}] TTS, voice cloning, video generation e lip-sync possono dipendere da modelli o provider esterni.
-    \item[\textbf{M9:}] utilizza framework, SDK, librerie e container della pipeline.
-    \item[\textbf{M11:}] anche guardrail, parser e validator possono essere alterati nella supply chain.
-    \item[\textbf{D8:}] una dipendenza malevola può sottrarre i dati vocali e visivi del personaggio.
-    \item[\textbf{D13:}] package o servizi compromessi possono esfiltrare token e credenziali.
-\end{itemize}
+
+M1, M2 e M4--M9 dipendono da modelli, librerie, runtime, SDK o provider
+che possono essere compromessi nella supply chain. Anche M11 può essere
+alterato qualora parser, validator o guardrail provengano da dipendenze
+non affidabili. D8 e D13 rappresentano gli asset sensibili che una
+dipendenza malevola potrebbe sottrarre o esfiltrare.
+
 
 \paragraph{ASI05 -- Unexpected Code Execution}
-\begin{itemize}
-    \item[\textbf{D6:}] rappresenterebbe l'output testuale interpretato erroneamente come codice o comando.
-    \item[\textbf{M2:}] sarebbe il componente che genera il contenuto potenzialmente eseguibile. 
-    \item[\textbf{M9:}] potrebbe inoltrare l'output a un interprete, deserializzatore o ambiente runtime.
-    \item[\textbf{M11:}] dovrebbe impedire che un output testuale non attendibile venga trattato come codice.
-\end{itemize}
-La categoria è condizionata, poiché questi percorsi esecutivi non sono
-presenti nell'architettura corrente.
+
+D6 rappresenta l'output non attendibile potenzialmente interpretato
+come codice o comando. M2 genera tale output, M9 potrebbe inoltrarlo a
+un ambiente eseguibile e M11 dovrebbe impedirne l'esecuzione. La
+categoria rimane condizionata, poiché tali ambienti non sono presenti
+nello scope corrente.
+
 
 \paragraph{ASI06 -- Memory \& Context Poisoning}
-\begin{itemize}
-    \item[\textbf{D4:}] contiene Knowledge Base, memoria, documenti, chunk, embedding e indice FAISS direttamente avvelenabili.
-    \item[\textbf{D12:}] feedback espliciti o impliciti possono modificare ranking e contenuti riutilizzati.
-    \item[\textbf{M4:}] determina come i contenuti vengono rappresentati, ordinati e recuperati.
-    \item[\textbf{M2:}] utilizza il contesto contaminato per generare la risposta.
-    \item[\textbf{M11:}] deve validare gli aggiornamenti della memoria e il contesto recuperato.
-\end{itemize}
+
+D4 e D12 rappresentano rispettivamente la memoria, il Knowledge Base e
+i feedback che possono essere contaminati. M4 determina come i
+contenuti vengono indicizzati e recuperati, M2 utilizza il contesto
+ottenuto per generare la risposta e M11 deve validare sia gli
+aggiornamenti sia i contenuti recuperati.
+
 
 \paragraph{ASI07 -- Insecure Inter-Agent Communication}
-\begin{itemize}
-    \item[\textbf{D2--D3:}] sono le trascrizioni parziali e complete scambiate tra i percorsi agentici. 
-    \item[\textbf{D5:}] contiene i behavioral trigger trasmessi ai servizi di animazione.
-    \item[\textbf{D6:}] comprende filler e risposta principale trasferiti ai componenti downstream.
-    \item[\textbf{D10:}] contiene session ID, job ID, timestamp e \emph{Video Ready Signal} esposti a tampering o replay.
-    \item[\textbf{D13:}] fornisce identità e credenziali necessarie per autenticare i componenti.
-    \item[\textbf{M9:}] coordina e instrada i messaggi.
-    \item[\textbf{M10:}] interpreta i messaggi e decide lo swap dei flussi.
-    \item[\textbf{M11:}] valida schema, provenienza, sessione e conformità dei messaggi.
-\end{itemize}
+
+D2, D5 e D10 rappresentano i messaggi e gli stati di coordinamento
+esposti a falsificazione, tampering o replay. D13 fornisce le identità
+necessarie ad autenticare i componenti, mentre M9, M10 e M11 svolgono
+rispettivamente le funzioni di routing, interpretazione e validazione
+dei messaggi.
+
 
 \paragraph{ASI08 -- Cascading Failures}
-\begin{itemize}
-    \item[\textbf{M1--M2:}] un errore o timeout di uno dei due agenti può propagarsi all'intera pipeline.
-    \item[\textbf{M6--M8:}] i servizi multimediali possono saturarsi, fallire o propagare errori downstream.
-    \item[\textbf{M9:}] gestisce code, retry, timeout e fallback. 
-    \item[\textbf{M10:}] può rimanere in uno stato incoerente o mantenere il filler in loop.
-    \item[\textbf{D9:}] comprende buffer e artefatti intermedi coinvolti nella propagazione.
-    \item[\textbf{D10:}] contiene lo stato di coordinamento che può diventare inconsistente.
-    \item[\textbf{D11:}] rappresenta il flusso WebRTC finale che viene degradato o interrotto.
-\end{itemize}
+
+M1, M2 e M6--M8 possono costituire l'origine di timeout, crash o
+sovraccarichi. M9 e M10 gestiscono code, retry, sincronizzazione e
+transizione tra i flussi e possono quindi propagare il guasto. D9,
+D10 e D11 rappresentano gli artefatti intermedi, lo stato di
+coordinamento e il flusso WebRTC nei quali il malfunzionamento diventa
+osservabile.
+
 
 \paragraph{ASI09 -- Human-Agent Trust Exploitation}
-\begin{itemize}
-    \item[\textbf{D1:}] contiene i dati personali o sensibili che l'utente può essere indotto a comunicare.
-    \item[\textbf{D3:}] contiene la trascrizione completa delle informazioni fornite dall'utente.
-    \item[\textbf{D6:}] contiene il consiglio o il messaggio attraverso cui viene sfruttata la fiducia.
-    \item[\textbf{D7:}] definisce la personalità materna, empatica e culturalmente autorevole di Al-Hakima.
-    \item[\textbf{D8:}] comprende voce, aspetto, filler e animazioni che rendono credibile il personaggio.
-    \item[\textbf{D11:}] è il canale audiovisivo attraverso cui si concretizza la persuasione.
-    \item[\textbf{M3:}] applica tono, ruolo e regole comportamentali.
-    \item[\textbf{M6--M7:}] producono la voce e l'immagine sintetiche.
-    \item[\textbf{M11:}] deve identificare output manipolativi, pericolosi o fuori ruolo.
-\end{itemize}
+
+D6--D8 e D11 costituiscono il messaggio e la rappresentazione
+audiovisiva attraverso cui viene esercitata la persuasione. M3, M6 e
+M7 definiscono e producono personalità, voce e aspetto del digital
+human. D1 e D3 contengono invece le informazioni sensibili che
+l'utente può essere indotto a comunicare, mentre M11 deve rilevare
+output manipolativi o pericolosi.
+
 
 \paragraph{ASI10 -- Rogue Agents}
-\begin{itemize}
-    \item[\textbf{M1--M2:}] sono gli agenti nei quali può manifestarsi una deviazione persistente. 
-    \item[\textbf{M3:}] contiene ruolo, obiettivi e policy rispetto ai quali viene rilevato il comportamento anomalo.
-    \item[\textbf{D4:}] memoria e contesto possono conservare o rinforzare la deviazione.
-    \item[\textbf{D7:}] rappresenta la personalità autentica rispetto alla quale viene misurato il drift. 
-    \item[\textbf{D12:}] log e feedback permettono di rilevare, ricostruire oppure alimentare il comportamento anomalo.
-    \item[\textbf{M9:}] può continuare a propagare gli output dell'agente deviato.
-    \item[\textbf{M11:}] deve bloccare gli output non conformi alle policy.
-\end{itemize}
 
+M1 e M2 sono i componenti nei quali può manifestarsi la deviazione,
+mentre M3 e D7 rappresentano gli obiettivi, le policy e la personalità
+rispetto ai quali viene rilevato il comportamento anomalo. D4 e D12
+possono conservare, rinforzare o documentare la deviazione; M9 può
+propagarne gli output e M11 deve impedirne la diffusione.
 % =========================================================
 \section{Risk Prioritization}
 \label{sec:risk-prioritization}
@@ -1774,41 +1735,38 @@ OWASP considerata in astratto.
 \footnotesize
 
 \begin{longtable}{
-    |C{1.35cm}|
-    L{3.20cm}|
-    C{1.55cm}|
-    C{1.55cm}|
+    |C{1.45cm}|
+    C{1.65cm}|
+    C{1.65cm}|
     C{1.45cm}|
-    L{\dimexpr\textwidth-1.35cm-3.20cm-1.55cm-1.55cm-1.45cm-12\tabcolsep-7\arrayrulewidth\relax}|
+    L{\dimexpr\textwidth-1.45cm-1.65cm-1.65cm-1.45cm-10\tabcolsep-6\arrayrulewidth\relax}|
 }
 \caption{Prioritizzazione qualitativa degli scenari di minaccia.}
 \label{tab:risk-priority}\\
 
 \hline
 \textbf{Scenario} &
-\textbf{Rischio OWASP} &
 \textbf{Likelihood} &
 \textbf{Severity} &
 \textbf{Risk} &
-\textbf{Motivazione} \\
+\textbf{Razionale della valutazione} \\
 \hline
 \endfirsthead
 
-\multicolumn{6}{c}{
+\multicolumn{5}{c}{
     \tablename\ \thetable{} -- continuazione
 }\\
 \hline
 \textbf{Scenario} &
-\textbf{Rischio OWASP} &
 \textbf{Likelihood} &
 \textbf{Severity} &
 \textbf{Risk} &
-\textbf{Motivazione} \\
+\textbf{Razionale della valutazione} \\
 \hline
 \endhead
 
 \hline
-\multicolumn{6}{r}{Continua nella pagina successiva}\\
+\multicolumn{5}{r}{Continua nella pagina successiva}\\
 \endfoot
 
 \hline
@@ -1817,26 +1775,23 @@ OWASP considerata in astratto.
 
 \textbf{SC1} \newline ASI01
 &
-Goal hijack tramite input utente o contesto RAG
-&
 \textbf{Alta}
 &
 \textbf{Alta}
 &
 \critico
 &
-La direct prompt injection è eseguibile attraverso il canale pubblico
-voce/testo senza privilegi. Il vincolo real-time riduce il tempo
-disponibile per rilevare input malevoli. L'indirect prompt injection
-via RAG può inoltre compromettere la risposta sostanziale del
-Deep-Brain e propagare gli effetti oltre il solo filler.
+\textbf{L: Alta.}
+L'attacco può essere eseguito tramite il canale pubblico voce/testo
+senza privilegi ed è facilmente ripetibile.
+\newline \textbf{S: Alta.}
+Può alterare sia il Fast-Brain sia il Deep-Brain, compromettendo
+filler, trigger comportamentali e risposta principale.
 \\
 \hline
 
 
 \textbf{SC2} \newline ASI02
-&
-Uso improprio dei servizi multimediali
 &
 \textbf{Bassa}
 &
@@ -1844,18 +1799,18 @@ Uso improprio dei servizi multimediali
 &
 \medio
 &
-La sequenza dei servizi è predefinita e non viene selezionata
-autonomamente dagli agenti; lo sfruttamento richiede quindi il bypass
-della validazione o la compromissione dell'Orchestratore. Se realizzato,
-può però produrre audio o video non autorizzati, abuso della voce
-clonata e consumo elevato di risorse.
+\textbf{L: Bassa.}
+Lo sfruttamento richiede il bypass dei controlli o la compromissione
+dell'Orchestratore, poiché i servizi sono invocati secondo una sequenza
+predefinita.
+\newline \textbf{S: Alta.}
+Può causare contenuti audiovisivi non autorizzati, abuso della voce
+clonata e consumo anomalo di risorse.
 \\
 \hline
 
 
 \textbf{SC3} \newline ASI03
-&
-Abuso di credenziali e privilegi tra componenti
 &
 \textbf{Media}
 &
@@ -1863,18 +1818,17 @@ Abuso di credenziali e privilegi tra componenti
 &
 \alto
 &
-Lo scenario richiede credenziali condivise, scope eccessivi o la
-compromissione preliminare di un agente o servizio. L'impatto è elevato
-perché consente di superare il principio di Least Agency e accedere a
-RAG, memoria, voice cloning e servizi multimediali oltre lo scope
-previsto.
+\textbf{L: Media.}
+Richiede credenziali condivise, privilegi eccessivi o la compromissione
+preliminare di un componente.
+\newline \textbf{S: Alta.}
+Può consentire accesso non autorizzato a memoria, RAG, credenziali e
+servizi multimediali sensibili.
 \\
 \hline
 
 
 \textbf{SC4} \newline ASI04
-&
-Compromissione di dipendenze e provider
 &
 \textbf{Bassa}
 &
@@ -1882,18 +1836,17 @@ Compromissione di dipendenze e provider
 &
 \medio
 &
-La compromissione di checkpoint, librerie o provider richiede accesso
-alla supply chain ed è meno facilmente realizzabile tramite
-l'interfaccia utente. Una dipendenza malevola può tuttavia produrre
-effetti persistenti, difficili da rilevare e distribuiti lungo l'intera
-pipeline.
+\textbf{L: Bassa.}
+Richiede la compromissione di modelli, librerie, aggiornamenti o
+provider esterni alla pipeline.
+\newline \textbf{S: Alta.}
+Una dipendenza compromessa può alterare più componenti, persistere tra
+le sessioni ed esfiltrare dati o credenziali.
 \\
 \hline
 
 
 \textbf{SC5} \newline ASI05
-&
-Interpretazione di output agentici come codice
 &
 ---
 &
@@ -1901,17 +1854,17 @@ Interpretazione di output agentici come codice
 &
 \textbf{N/A}
 &
-Lo scenario è condizionato all'introduzione di shell, code interpreter,
-funzioni \texttt{eval}, deserializzatori insicuri o altri ambienti
-eseguibili. Poiché tali percorsi sono esclusi dallo scope corrente, non
-viene attribuito un livello di rischio inerente.
+\textbf{L: N/A.}
+Nello scope corrente non sono presenti componenti che interpretano gli
+output agentici come codice.
+\newline \textbf{S: N/A.}
+L'impatto non è valutabile finché non vengono introdotti interpreti o
+ambienti di esecuzione dinamica.
 \\
 \hline
 
 
 \textbf{SC6} \newline ASI06
-&
-Avvelenamento persistente di memoria, RAG e feedback
 &
 \textbf{Alta}
 &
@@ -1919,18 +1872,17 @@ Avvelenamento persistente di memoria, RAG e feedback
 &
 \critico
 &
-Documenti, chunk o feedback rappresentano canali potenzialmente
-accessibili e ripetibili. La contaminazione può persistere nella
-Knowledge Base, nell'indice FAISS o negli esempi riutilizzati,
-influenzando turni e sessioni successive e veicolando ulteriori
-indirect prompt injection.
+\textbf{L: Alta.}
+Documenti, feedback o contenuti esterni possono costituire vettori
+ripetibili di contaminazione della memoria e del RAG.
+\newline \textbf{S: Alta.}
+Il poisoning può persistere tra turni e sessioni, alterando il retrieval
+e le risposte future.
 \\
 \hline
 
 
 \textbf{SC7} \newline ASI07
-&
-Tampering o replay dei messaggi di coordinamento
 &
 \textbf{Media}
 &
@@ -1938,18 +1890,17 @@ Tampering o replay dei messaggi di coordinamento
 &
 \alto
 &
-Lo scenario richiede accesso a un canale interno o la compromissione
-di un componente, ma il parallelismo Dual-Brain moltiplica i messaggi
-e i punti di sincronizzazione. La manipolazione di session ID, trigger
-o Video Ready Signal può causare associazioni cross-sessione,
-riproduzione di contenuti errati e propagazione verso lo Swap Manager.
+\textbf{L: Media.}
+Richiede accesso ai canali interni o la compromissione preliminare di
+un componente della pipeline.
+\newline \textbf{S: Alta.}
+Può causare associazioni errate tra sessioni, contenuti e segnali,
+propagando l'errore fino al flusso finale.
 \\
 \hline
 
 
 \textbf{SC8} \newline ASI08
-&
-Propagazione di un guasto nei percorsi paralleli
 &
 \textbf{Media}
 &
@@ -1957,18 +1908,17 @@ Propagazione di un guasto nei percorsi paralleli
 &
 \medio
 &
-Timeout, crash, query onerose e saturazione dei servizi sono scenari
-realistici, ma richiedono condizioni di carico o failure specifiche.
-L'effetto compromette soprattutto disponibilità, latenza e continuità
-della sessione ed è generalmente recuperabile tramite fallback,
-timeout o riavvio.
+\textbf{L: Media.}
+La propagazione richiede condizioni specifiche di carico, timeout o
+gestione insufficiente di retry e code.
+\newline \textbf{S: Media.}
+Compromette principalmente disponibilità e continuità della sessione,
+ma il servizio può essere ripristinato mediante fallback o riavvio.
 \\
 \hline
 
 
 \textbf{SC9} \newline ASI09
-&
-Sfruttamento della fiducia nel digital human
 &
 \textbf{Media}
 &
@@ -1976,19 +1926,18 @@ Sfruttamento della fiducia nel digital human
 &
 \alto
 &
-Lo sfruttamento richiede normalmente che l'output sia già stato
-deviato tramite goal hijack, poisoning o compromissione di un
-componente. La voce clonata, l'aspetto antropomorfo e la personalità
-materna aumentano però la credibilità dell'output, con possibile
-disclosure di dati sensibili, accettazione di consigli dannosi e grave
-danno reputazionale.
+\textbf{L: Media.}
+Richiede generalmente un output manipolato, la cui credibilità è
+amplificata dalla voce, dall'aspetto e dalla personalità del digital
+human.
+\newline \textbf{S: Alta.}
+Può indurre l'utente a divulgare dati sensibili o ad accettare
+informazioni e consigli dannosi.
 \\
 \hline
 
 
 \textbf{SC10} \newline ASI10
-&
-Deviazione comportamentale persistente
 &
 \textbf{Bassa}
 &
@@ -1996,11 +1945,12 @@ Deviazione comportamentale persistente
 &
 \basso
 &
-I modelli non dispongono di capacità di auto-modifica e l'autonomia
-operativa è limitata. Una deviazione persistente richiede pertanto
-poisoning, configurazioni compromesse o supply-chain compromise.
-L'impatto rimane significativo, ma è contenuto dalla natura statica dei
-modelli e dalla presenza di policy esterne.
+\textbf{L: Bassa.}
+La ridotta autonomia e l'assenza di auto-modifica rendono necessarie
+configurazioni errate o compromissioni aggiuntive.
+\newline \textbf{S: Media.}
+L'agente può produrre output anomali in più sessioni, ma non può agire
+autonomamente sull'infrastruttura ed è arrestabile o ripristinabile.
 \\
 \hline
 
