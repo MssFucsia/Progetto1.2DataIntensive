@@ -193,8 +193,15 @@ per Digital Human in tempo reale}\par
 % =========================================================
 \section{Abstract}
 
-Questo progetto presenta il threat modeling di una pipeline agentica progettata per ridurre la latenza percepita durante l'interazione con un digital human. L'architettura adotta un modello 
-\emph{dual-brain}: un \textbf{Fast-Brain Agent} produce rapidamente un filler verbale e un trigger gestuale, mentre un \textbf{Deep-Brain Agent} elabora la risposta principale tramite LLM, RAG e memoria contestuale. I due percorsi sono eseguiti in parallelo e coordinati da un orchestratore che gestisce priorità, transizione audio-video, fallback e sincronizzazione.
+Questo progetto presenta il threat modeling di una pipeline agentica
+progettata per ridurre la latenza percepita durante l'interazione con
+un digital human. L'architettura adotta un modello \emph{dual-brain}:
+un \textbf{Fast-Brain Agent} produce rapidamente un filler verbale
+contestuale e un trigger gestuale, mentre un \textbf{Deep-Brain Agent}
+elabora la risposta principale tramite LLM, RAG e memoria contestuale.
+I due percorsi sono eseguiti in parallelo e coordinati da un
+Orchestratore che gestisce routing, timeout, fallback, sincronizzazione
+e transizione tra filler e risposta principale.
 
 L'analisi è deliberatamente centrata sulla natura \textbf{agentica} del
 sistema. Anziché adottare una FMEA tradizionale, maggiormente orientata
@@ -204,11 +211,25 @@ dai flussi di coordinamento, dalle identità di servizio, dalle memorie e
 dai servizi raggiungibili dai componenti agentici. Il processo combina
 \textbf{STRIDE-AI}, le proprietà di sicurezza CIA$^3$-R e
 l'\textbf{OWASP Top 10 for Agentic Applications 2026}
-\cite{owaspagentic}.
-La relazione definisce lo scope, esplicita le assunzioni architetturali, valuta l'applicabilità dei rischi OWASP e approfondisce cinque scenari prioritari: goal hijack del Fast-Brain, poisoning persistente del feedback, abuso di identità e privilegi tra agenti, tampering/replay dei messaggi inter-agent e sfruttamento della fiducia tramite voice cloning.
+\cite{owaspagentic}. La relazione definisce lo scope, esplicita le
+assunzioni architetturali, valuta l'applicabilità dei rischi OWASP e
+approfondisce cinque scenari prioritari: \emph{Agent Goal Hijack} dei
+percorsi Fast-Brain e Deep-Brain, \emph{Memory \& Context Poisoning}
+persistente di RAG, memoria e feedback, abuso di identità e privilegi
+tra componenti, tampering e replay dei messaggi di coordinamento e
+sfruttamento della fiducia nel digital human.
 
-Le mitigazioni sono organizzate secondo le sette precauzioni fondamentali per la sicurezza dei sistemi agentici \cite{damianiagentic}: Least Agency, guardrail deterministici e Human-in-the-Loop, sandboxing e controllo granulare degli accessi, audit trail immutabile, controllo della supply chain, monitoraggio continuo e audit periodici ispirati ad AIVSS. Il risultato è una proposta di architettura sicura che preserva il requisito di bassa latenza mediante controlli sincroni deterministici, fallback fail-safe e controlli più costosi spostati fuori dal percorso critico.
-
+Le mitigazioni sono organizzate secondo le sette precauzioni
+fondamentali per la sicurezza dei sistemi agentici
+\cite{damianiagentic}: Least Agency, guardrail e
+Human-in-the-Loop, sandboxing e controllo granulare degli accessi,
+audit trail immutabile, controllo della supply chain, monitoraggio
+continuo e audit periodici ispirati ad AIVSS. Tali controlli
+costituiscono la baseline di requisiti della secure architecture,
+progettata secondo un principio fail-safe: i controlli indispensabili
+sul percorso real-time non vengono bypassati per rispettare il vincolo
+di latenza, mentre le verifiche più costose vengono collocate fuori dal
+percorso critico quando possibile.
 % =========================================================
 \section{Introduzione e obiettivi}
 
@@ -2050,10 +2071,14 @@ Sono classificati come \textbf{Alti}:
     \item \textbf{SC9 -- Human-Agent Trust Exploitation}.
 \end{itemize}
 
-Questi cinque scenari saranno approfonditi nelle sezioni successive
+Questi cinque scenari vengono approfonditi nelle sezioni successive
 attraverso la descrizione delle precondizioni, del vettore di attacco,
-degli effetti sugli asset, delle mitigazioni raccomandate e del rischio
-residuo.
+degli effetti sugli asset, della mappatura sulle proprietà di sicurezza
+e delle mitigazioni raccomandate. La valutazione qualitativa del
+\textbf{rischio residuo atteso} verrà invece svolta dopo la definizione
+della secure architecture e del relativo piano di validazione, così da
+distinguere chiaramente il rischio inerente dall'efficacia attesa dei
+controlli proposti.
 
 Gli scenari non sono completamente indipendenti. Il poisoning descritto
 in SC6 può veicolare il goal hijack di SC1; SC1 e SC6 possono produrre
@@ -2129,11 +2154,32 @@ Dual-Brain esso viene applicato come segue:
 % ---------------------------------------------------------
 \subsection{Precauzione 2 --- Guardrail deterministici e HITL}
 
-I guardrail devono essere progettati distinguendo i controlli che
-devono operare nel percorso real-time da quelli che possono essere
-eseguiti fuori dal percorso critico.
+I guardrail vengono applicati sia agli input sia agli output degli
+agenti, distinguendo i controlli che devono operare nel percorso
+real-time da quelli che possono essere eseguiti fuori dal percorso
+critico. Il modulo M11 costituisce il punto di validazione tra dati non
+fidati, componenti agentici e servizi downstream.
 
-\textbf{Controlli sincroni sul Fast-Brain:}
+\textbf{Input Guard e controlli sul contesto:}
+
+\begin{itemize}
+    \item le trascrizioni provenienti da VAD/STT vengono trattate come
+    input non fidati prima di influenzare gli obiettivi degli agenti;
+
+    \item i partial transcript consecutivi appartenenti alla stessa
+    sessione vengono correlati, evitando che la validazione isolata di
+    ciascun chunk renda invisibili tentativi di \emph{chunk splitting};
+
+    \item vengono applicati controlli leggeri per rilevare pattern di
+    prompt injection, override delle istruzioni, richieste incompatibili
+    con il ruolo e altri input fuori policy;
+
+    \item i contenuti recuperati tramite RAG vengono trattati come dati
+    non fidati e sottoposti a controlli di provenance e contenuto prima
+    di essere utilizzati come contesto dal Deep-Brain.
+\end{itemize}
+
+\textbf{Output Guard sincrono sul Fast-Brain:}
 
 \begin{itemize}
     \item validazione mediante JSON Schema strict;
@@ -2143,24 +2189,41 @@ eseguiti fuori dal percorso critico.
     \item divieto per il filler di formulare la risposta sostanziale,
     richiedere dati personali o introdurre nuove istruzioni;
     \item verifica del binding tra sessione, richiesta e output;
+    \item controllo leggero di \emph{goal integrity}, che verifica la
+    coerenza semantica tra l'intento classificato, il compito
+    autorizzato del Fast-Brain e il filler generato;
     \item fallback statico e sicuro in caso di violazione dello schema,
-    output non conforme o superamento del timeout.
+    deviazione semantica, output non conforme o superamento del timeout.
 \end{itemize}
 
-\textbf{Controlli sulla risposta del Deep-Brain:}
+Il controllo di goal integrity completa la sola validazione sintattica:
+un output può infatti rispettare perfettamente lo schema JSON pur
+essendo semanticamente incompatibile con l'obiettivo autorizzato del
+Fast-Brain. La verifica deve quindi rilevare deviazioni significative
+rispetto al compito previsto, senza attribuire alla similarità
+semantica il ruolo di garanzia assoluta contro il goal hijacking.
+
+\textbf{Output Guard sul Deep-Brain:}
 
 \begin{itemize}
     \item validazione dell'output prima dell'inoltro ai servizi TTS e
     video;
+    \item verifica di coerenza con ruolo, obiettivi e policy definite
+    dal System Prompt;
     \item filtraggio di richieste di dati personali non necessarie;
-    \item blocco di contenuti incompatibili con ruolo e policy del
-    personaggio;
+    \item blocco di contenuti manipolativi o incompatibili con il ruolo
+    del personaggio;
     \item per contenuti relativi a salute e benessere, blocco di
     prescrizioni, diagnosi o indicazioni potenzialmente pericolose e
     utilizzo di un fallback coerente con i limiti del personaggio.
 \end{itemize}
 
-L'\emph{Human-in-the-Loop} non viene invece inserito in ogni turno
+I controlli più costosi sul Deep-Brain e sul contesto RAG non sono
+soggetti allo stesso budget temporale dell'Instant Path, poiché vengono
+eseguiti sul Background Path prima della sintesi e della presentazione
+della risposta principale.
+
+L'\emph{Human-in-the-Loop} non viene inserito in ogni turno
 conversazionale, poiché ciò sarebbe incompatibile con il requisito
 real-time. La supervisione umana è richiesta per operazioni persistenti
 o ad alto impatto, tra cui:
@@ -2173,26 +2236,42 @@ o ad alto impatto, tra cui:
     \item aggiornamenti ad alto impatto della Knowledge Base;
     \item rilascio di nuovi modelli, dipendenze o provider.
 \end{itemize}
-
-
 % ---------------------------------------------------------
 \subsection{Precauzione 3 --- Sandboxing e controllo granulare degli accessi}
 
 La separazione funzionale dei componenti deve essere supportata da una
-corrispondente separazione tecnica:
+corrispondente separazione tecnica, applicando isolamento, autenticazione
+reciproca e autorizzazione secondo il principio di least privilege.
 
 \begin{itemize}
     \item Fast-Brain, Deep-Brain, Orchestratore e servizi multimediali
     vengono eseguiti in workload o runtime isolati;
 
     \item ogni servizio utilizza una workload identity distinta e
-    credenziali short-lived, evitando token condivisi tra i due agenti;
+    credenziali short-lived, evitando token condivisi o ereditati tra
+    Fast-Brain, Deep-Brain e Orchestratore;
 
-    \item le policy di rete e filesystem sono \emph{deny-by-default};
+    \item le comunicazioni service-to-service attraversanti trust
+    boundary sono autenticate mediante \emph{mutual TLS} (mTLS), oltre
+    ad essere soggette alle policy di autorizzazione previste per il
+    mittente e il destinatario;
+
+    \item le policy di rete e filesystem sono \emph{deny-by-default} e
+    consentono esclusivamente le comunicazioni e gli accessi necessari
+    al ruolo del workload;
+
+    \item la memoria di sessione è segregata mediante identificatori e
+    namespace associati alla sessione, impedendo il riuso implicito di
+    contesto appartenente ad altri utenti o job;
+
+    \item nessun contenuto della memoria conversazionale viene promosso
+    automaticamente a memoria persistente o condivisa: gli eventuali
+    aggiornamenti transitano attraverso la pipeline separata di
+    validazione e ingestione;
 
     \item la Knowledge Base e l'indice FAISS sono read-only nel serving
     path, mentre la scrittura è consentita esclusivamente a una
-    pipeline di aggiornamento separata;
+    pipeline di aggiornamento separata e autorizzata;
 
     \item gli asset di identità vocale e visiva (D8) sono conservati in
     uno storage dedicato, cifrato e accessibile esclusivamente ai
@@ -2203,8 +2282,6 @@ corrispondente separazione tecnica:
     \item quote, timeout, limiti di concorrenza e limiti di risorse
     impediscono a un singolo job di saturare i servizi condivisi.
 \end{itemize}
-
-
 % ---------------------------------------------------------
 \subsection{Precauzione 4 --- Audit trail completo e immutabile}
 
@@ -2270,35 +2347,49 @@ chain di sicurezza.
 
 Il monitoraggio runtime deve rilevare deviazioni sia semantiche sia
 operative, con particolare attenzione ai comportamenti che possono
-propagarsi tra i due percorsi.
+propagarsi tra i due percorsi e alla transizione dal filler alla
+risposta principale.
 
 Devono essere monitorati almeno:
 
 \begin{itemize}
     \item filler che rispondono alla domanda, richiedono informazioni
     sensibili o violano il ruolo assegnato;
+
     \item goal drift e behavioral trigger non coerenti con la
-    classificazione dell'intento;
-    \item accessi a risorse incompatibili con l'identità o il ruolo del
-    componente;
-    \item replay, session mismatch, job mismatch e sequence duplicate;
+    classificazione dell'intento o con il compito autorizzato
+    dell'agente;
+
+    \item accessi a risorse incompatibili con l'identità, l'audience o
+    il ruolo del componente;
+
+    \item replay, session mismatch, job mismatch, messaggi scaduti e
+    sequence duplicate;
+
     \item burst anomali di feedback o variazioni improvvise del top-$k$
     del retriever;
+
     \item accessi anomali agli asset di identità vocale e visiva;
+
     \item consumo eccessivo di CPU/GPU, timeout, retry e loop;
-    \item transizioni impossibili della state machine, playback
-    concorrenti o associazioni cross-sessione;
+
+    \item anomalie nella transizione \emph{filler-to-main}, quali
+    \emph{Video Ready Signal} anticipati o duplicati, swap incompatibili
+    con lo stato corrente, playback concorrenti, Double-Speak o
+    associazioni cross-sessione;
+
     \item generazioni audio/video prive di una sessione o di un job
     validamente autorizzati;
+
     \item deviazioni persistenti successive a modifiche di modello,
     prompt o Knowledge Base.
 \end{itemize}
 
 Circuit breaker, kill-switch, limiti di retry, timeout e meccanismi di
 graceful degradation devono consentire di arrestare una catena di
-esecuzione anomala prima che il guasto si propaghi.
-
-
+esecuzione anomala prima che il guasto si propaghi. In presenza di uno
+stato incoerente, il sistema deve mantenere o ripristinare uno stato
+fail-safe anziché completare una transizione audiovisiva non validata.
 % ---------------------------------------------------------
 \subsection{Precauzione 7 --- Audit periodici ispirati ad AIVSS}
 
@@ -2326,10 +2417,19 @@ La revisione deve essere ripetuta almeno dopo modifiche a modelli,
 prompt, memoria, policy, provider o livello di autonomia, nonché dopo
 incidenti o anomalie significative.
 
-Il red teaming deve comprendere casi multilingue e multimodali,
-incluse varianti in arabo e dialetto emiratino, prompt injection su
-partial transcript, manipolazione del feedback, replay dei messaggi di
-coordinamento e tentativi di abuso della fiducia dell'utente.
+Il red teaming deve utilizzare casi di test derivati
+dall'\textbf{OWASP Agentic Top 10}, con particolare attenzione agli
+scenari prioritari ASI01, ASI03, ASI06, ASI07 e ASI09. I test devono
+comprendere varianti multilingue e multimodali, incluse interazioni in
+arabo, dialetto emiratino e code-switching, prompt injection su partial
+transcript e contenuti RAG, manipolazione della memoria e del feedback,
+tentativi di privilege abuse, replay e tampering dei messaggi di
+coordinamento e abuso della fiducia dell'utente.
+
+Il programma di verifica deve inoltre comprendere test della supply
+chain, controllando SBOM/AIBOM, provenance, hash e firme degli
+artefatti e verificando che componenti modificati, non autorizzati o
+non correttamente attestati vengano rifiutati prima del deployment.
 
 % =========================================================
 \section{Scenari di minaccia prioritari}
@@ -2487,11 +2587,11 @@ formalmente conformi ma comportamentalmente deviati.
 Per neutralizzare il rischio inerente \textbf{CRITICO} dello Scenario~1 e spezzare la catena d'attacco a diversi livelli della pipeline, la secure architecture applica in modo integrato le precauzioni definite nella Sezione~\ref{sec:precauzioni}, mappate sui rispettivi asset coinvolti:
 
 \begin{itemize}
-    \item \textbf{P1 - Least Agency} [Asset $M1$, $D5$]:
-    Restringe drasticamente il perimetro d'azione dell'agente Fast-Brain ($M1$), imponendo che possa produrre esclusivamente filler verbali e trigger di animazione ($D5$) appartenenti a una \emph{whitelist} predefinita ed enumerata. Viene negato all'agente rapido qualsiasi accesso diretto a database vettoriali, memoria di sessione o strumenti esterni, limitando il raggio d'impatto di un eventuale \emph{goal hijacking} sull'Instant Path.
-
+    \item \textbf{P1 - Least Agency} [Asset $M1$, $D5$, $D6$]:
+    Restringe drasticamente il perimetro d'azione dell'agente Fast-Brain ($M1$). Il behavioral trigger ($D5$) può essere selezionato esclusivamente da un insieme predefinito ed enumerato, mentre il filler verbale ($D6$) rimane generato dinamicamente per preservare la natura contestuale dell'Instant Path, ma è vincolato per lunghezza, ruolo e contenuto e viene sottoposto ai controlli di M11 prima della sintesi. Viene inoltre negato all'agente rapido qualsiasi accesso diretto a Knowledge Base, memoria persistente, feedback store e servizi esterni, limitando il raggio d'impatto di un eventuale \emph{goal hijacking} sull'Instant Path.
+    
     \item \textbf{P2 - Guardrail deterministici e HITL} [Asset $M11$, $D2$, $D3$, $D6$]:
-    Introduce nel modulo di guardrail e validazione ($M11$) controlli sincroni e deterministici ad altissima velocità ($<800\,\text{ms}$) sia per il Fast-Brain ($M1$) sia per il Deep-Brain ($M2$). Tali controlli operano sulle trascrizioni parziali e complete ($D2, D3$) imponendo schemi di output rigidi (\emph{JSON Schema strict}), filtri euristico-semantici per rilevare tentativi di prompt injection/imperativi e il blocco immediato di qualsiasi richiesta di dati personali o consigli fuori policy sui testi generati ($D6$). Qualora il guardrail rilevi un'anomalia o un timeout, l'output deviato viene scartato e sostituito da una risposta di \emph{fallback} statica e sicura.
+    M11 applica una catena di Input e Output Guard differenziata per i due percorsi. Sul Fast-Brain, il cui output deve essere disponibile entro il budget dell'Instant Path, vengono eseguiti controlli sincroni a basso overhead: correlazione dei partial transcript consecutivi, rilevazione di pattern di prompt injection, JSON Schema strict, limiti di lunghezza, enum dei trigger e verifica leggera di coerenza semantica tra intento, ruolo autorizzato e filler generato. Tale controllo di \emph{goal integrity} permette di rifiutare anche output formalmente validi ma semanticamente deviati. Sul Background Path, invece, possono essere applicati controlli più approfonditi sul contesto RAG e sulla risposta del Deep-Brain prima dell'inoltro ai servizi TTS e video. Qualora un controllo richiesto fallisca o il Fast-Brain superi il proprio timeout, l'output non validato non viene utilizzato e viene attivato un fallback statico e sicuro.
 
     \item \textbf{P3 - Sandboxing e controllo accessi} [Asset $M1$, $M2$, $D4$]:
     Isola l'esecuzione dell'agente Fast-Brain ($M1$) e dell'agente Deep-Brain ($M2$) all'interno di container distinti con criteri di rete \emph{deny-by-default}. Garantisce inoltre che la Knowledge Base RAG e la memoria di contesto ($D4$) usate per il recupero delle informazioni rimangano accessibili esclusivamente in modalità \emph{read-only} durante la fase di inferenza, impedendo che un dirottamento dell'agente possa tradursi nella scrittura o alterazione permanente dei documenti.
@@ -2655,11 +2755,17 @@ coinvolti:
 
     \item \textbf{P3 - Sandboxing e controllo accessi} [Asset $D4$,
     $M4$]:
-    Mantiene l'indice vettoriale FAISS e la memoria di contesto ($D4$) accessibili in scrittura
-    esclusivamente tramite una pipeline di ingestione separata e controllata, isolata dal percorso
-    conversazionale in tempo reale; il componente di retrieval ($M4$) opera in lettura sola durante
-    l'inferenza, impedendo che l'interazione utente possa in alcun modo alterare direttamente
-    l'indice.
+    La memoria di sessione viene segregata per utente, sessione e job,
+    impedendo che contenuti temporanei siano implicitamente riutilizzati
+    in contesti differenti. La promozione di informazioni verso memoria
+    persistente o condivisa non avviene direttamente dal serving path, ma
+    solo attraverso la pipeline separata di validazione e aggiornamento.
+    L'indice vettoriale FAISS e la Knowledge Base ($D4$) rimangono
+    accessibili in scrittura esclusivamente tramite tale pipeline
+    autorizzata, mentre il componente di retrieval ($M4$) opera in
+    read-only durante l'inferenza. In questo modo una singola interazione
+    utente non può modificare direttamente né il contesto di altre
+    sessioni né il contenuto persistente utilizzato dal sistema.
 
     \item \textbf{P4 - Audit trail completo e immutabile} [Asset $D4$,
     $D12$, $M4$]:
@@ -3441,341 +3547,846 @@ sistema:
     livello di fiducia appropriato.
 
 \end{itemize}
-% =========================================== %
 
-% % =========================================================
-% \section{Secure architecture proposal}
+% =========================================================
+\section{Secure Architecture Proposta}
+\label{sec:secure-architecture}
 
-% \begin{figure}[H]
-% \centering
-% \resizebox{\textwidth}{!}{%
-% \begin{tikzpicture}[
-%   comp/.style={draw,rounded corners,minimum height=0.9cm,text width=2.05cm,align=center,font=\scriptsize},
-%   agent/.style={draw,rounded corners,minimum height=1cm,text width=2.2cm,align=center,font=\scriptsize,fill=AgentFill},
-%   sec/.style={draw,rounded corners,minimum height=0.75cm,text width=2.0cm,align=center,font=\scriptsize,fill=SoftGreen},
-%   data/.style={draw,rounded corners,minimum height=0.9cm,text width=2.15cm,align=center,font=\scriptsize,fill=DataFill},
-%   arr/.style={-Stealth,thick},
-%   lab/.style={font=\scriptsize,fill=white,inner sep=1pt}
-% ]
-% \node[comp] (user) at (0,0) {User};
-% \node[sec] (edge) at (2.7,0) {API gateway\\rate limit / session};
-% \node[sec] (input) at (5.4,0) {Input guard\\VAD/STT integrity};
-% \node[agent] (fast) at (8.2,1.8) {Fast-Brain\\isolato};
-% \node[agent] (deep) at (8.2,-1.8) {Deep-Brain\\isolato};
-% \node[sec] (val) at (11.1,1.8) {Deterministic\\output validator};
-% \node[data] (rag) at (11.1,-3.7) {RAG read-only\\memory isolation};
-% \node[sec] (auth) at (11.1,-0.2) {Workload identity\\AuthZ / replay guard};
-% \node[comp] (orch) at (14.1,0.4) {Stateful orchestrator\\circuit breaker};
-% \node[sec] (media) at (17.1,0.4) {Sandboxed media\\voice vault / egress};
-% \node[sec] (prov) at (20.0,0.4) {Provenance\\watermark / audit ID};
-% \node[comp] (out) at (22.8,0.4) {Output};
-% \node[sec] (monitor) at (14.1,-3.6) {Immutable audit +\\continuous monitoring};
-% \draw[arr] (user)--(edge)--(input);
-% \draw[arr] (input)--(fast); \draw[arr] (input)--(deep);
-% \draw[arr] (fast)--(val)--(auth);
-% \draw[arr] (deep)--(auth); \draw[arr] (deep)--(rag); \draw[arr] (rag)--(deep);
-% \draw[arr] (auth)--(orch)--(media)--(prov)--(out);
-% \draw[arr,dashed] (fast)--(monitor); \draw[arr,dashed] (deep)--(monitor);
-% \draw[arr,dashed] (rag)--(monitor); \draw[arr,dashed] (orch)--(monitor); \draw[arr,dashed] (media)--(monitor);
-% \end{tikzpicture}%
-% }
-% \caption{Secure architecture proposta.}
-% \label{fig:securearchitecture}
-% \end{figure}
+La secure architecture proposta mantiene invariata la struttura
+funzionale Dual-Brain descritta nella
+Sezione~\ref{sec:pipeline-description}, ma introduce punti di
+enforcement espliciti lungo i flussi nei quali dati non fidati,
+decisioni agentiche, memoria e servizi multimediali attraversano
+componenti con privilegi differenti.
 
-% \begin{table}[H]
-% \centering
-% \caption{Controlli per trust boundary.}
-% \label{tab:controlsbytb}
-% \small
-% \begin{tabularx}{\textwidth}{|C{1.0cm}|L{3.6cm}|Y|Y|}
-% \hline
-% \textbf{TB} & \textbf{Controllo} & \textbf{Funzione} & \textbf{Threat ridotte} \\
-% \hline
-% TB1 & API gateway, rate limit, session management & Limita abuso dell'input e associa ogni richiesta a un principal & T1, T2, T8, T9 \\
-% \hline
-% TB2 & Input guard e partial/full transcript correlation & Controlla formato, durata, lingua e coerenza dei transcript & T1, T2 \\
-% \hline
-% TB3 & Workload identity, AuthZ, schema, nonce e sequence & Autentica agenti e messaggi, impedisce accessi fuori ruolo e replay & T4, T5 \\
-% \hline
-% TB4 & RAG read-only, update gate, provenance e versioning & Separa serving e update, limita poisoning persistente & T3, T4, T12 \\
-% \hline
-% TB5 & Sandboxing, voice vault, egress control e signed artifacts & Limita tool misuse, furto della voce e supply-chain impact & T6, T7, T11 \\
-% \hline
-% TB6 & Provenance, watermark, audit ID e transparency disclosure & Rafforza autenticità e attribution dell'output & T6, T9, T11 \\
-% \hline
-% \end{tabularx}
-% \end{table}
+L'obiettivo non è aumentare l'autonomia del sistema aggiungendo nuovi
+agenti di sicurezza, bensì applicare una strategia di
+\emph{defense-in-depth} nella quale i modelli generativi rimangono
+confinati entro il proprio ruolo e le decisioni con effetto sui
+componenti downstream vengono validate da controlli deterministici,
+policy di autorizzazione e monitoraggio runtime
+\cite{damianiagentic,owaspagentic,owaspagenticthreats}.
 
-% \subsection{Fail-safe behavior}
+In tale architettura, M11 rappresenta un \textbf{livello logico di
+security enforcement} applicato in più punti della pipeline. Esso non
+deve necessariamente corrispondere a un singolo servizio centralizzato:
+i controlli a bassa latenza possono essere integrati localmente nel
+middleware del Fast Path, mentre le verifiche più onerose possono essere
+eseguite sul Background Path. Questa separazione evita di introdurre un
+unico punto sincrono di elaborazione che comprometterebbe il requisito
+real-time.
 
-% Il sistema non deve scegliere fra sicurezza e latenza. Se il Fast-Brain non produce un output valido entro il budget, l'orchestratore usa un filler statico pre-approvato oppure mantiene un'animazione idle sicura. Non deve mai inoltrare un output non validato soltanto per rispettare il tempo target.
+\subsection{Separazione dei percorsi e punti di enforcement}
 
-% % =========================================================
-% \section{Trade-off sicurezza--latenza}
+La Figura~\ref{fig:secure-architecture} rappresenta la collocazione
+logica dei principali controlli.
 
-% I controlli sono suddivisi in base al loro posizionamento nel percorso critico.
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=0.55cm and 0.75cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum height=0.78cm,
+    text width=2.45cm,
+    align=center,
+    font=\small
+  },
+  sec/.style={box, fill=SoftBlue},
+  agent/.style={box, fill=AgentFill},
+  data/.style={box, fill=DataFill},
+  svc/.style={box, fill=ToolFill},
+  orch/.style={box, fill=SoftOrange},
+  plane/.style={
+    draw,
+    dashed,
+    rounded corners,
+    inner sep=6pt
+  },
+  arr/.style={-Stealth, thick},
+  darr/.style={Stealth-Stealth, thick}
+]
 
-% \begin{table}[H]
-% \centering
-% \caption{Posizionamento dei controlli.}
-% \label{tab:latencycontrols}
-% \small
-% \begin{tabularx}{\textwidth}{|L{3.2cm}|Y|L{3.4cm}|L{2.6cm}|}
-% \hline
-% \textbf{Classe} & \textbf{Esempi} & \textbf{Posizionamento} & \textbf{Overhead atteso} \\
-% \hline
-% Sincroni deterministici & JSON Schema, enum, length check, session/sequence binding, allow/deny policy & Prima del TTS filler & Trascurabile o basso; da misurare \\
-% \hline
-% Sincroni leggeri & PII detection, request rate limit, classificatore di policy compatto & Edge e output validator & Basso; da misurare \\
-% \hline
-% Asincroni & Anomaly detection, analisi feedback, correlazione dei log, drift monitoring & Fuori dal critical path & Non blocca il filler \\
-% \hline
-% Offline & Red teaming, scansione supply chain, AIVSS audit, model evaluation & CI/CD e audit periodico & Nessun impatto runtime \\
-% \hline
-% \end{tabularx}
-% \end{table}
+% =========================================================
+% SERVING PATH
+% =========================================================
 
-% Non vengono indicati valori in millisecondi non misurati. La validazione sperimentale dovrà quantificare l'overhead reale e il tasso di attivazione del fallback.
+\node[orch] (router)
+{Request Router\\session binding M9};
 
-% % =========================================================
-% \section{Piano di validazione sperimentale}
+\node[sec, right=of router] (inputg)
+{Input Guard\\M11};
 
-% Questa sezione definisce esperimenti riproducibili. Non vengono presentati risultati empirici perché non sono ancora stati eseguiti. Le tabelle sono predisposte per essere completate dopo l'implementazione.
+\node[agent, above right=0.85cm and 1.0cm of inputg] (fast)
+{Fast-Brain\\M1};
 
-% \subsection{Esperimento A --- Fast-Brain security harness}
+\node[sec, right=of fast] (fastg)
+{Fast Output Guard\\M11};
 
-% \textbf{Obiettivo:} verificare che il validator impedisca filler e trigger fuori policy senza introdurre un overhead incompatibile con il fast path.
+\node[svc, right=of fastg] (filler)
+{Filler TTS /\\authorized clips};
 
-% \textbf{Dataset:}
+\node[agent, below right=0.85cm and 1.0cm of inputg] (deep)
+{Deep-Brain\\M2};
 
-% \begin{itemize}
-%   \item input benigni;
-%   \item direct prompt injection nei primi token;
-%   \item input troncati e ambigui;
-%   \item inglese, arabo standard, dialetto emiratino e code-switching;
-%   \item richieste di PII e consigli sostanziali;
-%   \item output JSON malformati o con trigger non autorizzato.
-% \end{itemize}
+\node[data, below=0.55cm of deep] (rag)
+{RAG / session memory\\D4 -- read-only};
 
-% \textbf{Metriche:} policy violation rate, invalid JSON rate, unsafe filler rate, fallback activation rate, false positive rate e tempo di validazione.
+\node[sec, right=of deep] (deepg)
+{Deep Output Guard\\M11};
 
-% \begin{table}[H]
-% \centering
-% \caption{Template risultati Esperimento A.}
-% \small
-% \begin{tabularx}{\textwidth}{|Y|C{2.2cm}|C{2.2cm}|C{2.2cm}|}
-% \hline
-% \textbf{Metrica} & \textbf{Baseline} & \textbf{Con controlli} & \textbf{Target/nota} \\
-% \hline
-% Unsafe filler rate & Da misurare & Da misurare & Riduzione significativa \\
-% \hline
-% Invalid trigger accepted & Da misurare & Da misurare & 0 \\
-% \hline
-% False positive rate & -- & Da misurare & Compatibile con UX \\
-% \hline
-% Validation latency & -- & Da misurare & Entro il budget definito \\
-% \hline
-% Fallback activation rate & -- & Da misurare & Monitorato, non nascosto \\
-% \hline
-% \end{tabularx}
-% \end{table}
+\node[svc, right=of deepg] (media)
+{Voice / Video /\\Lip-Sync M6--M8};
 
-% \subsection{Esperimento B --- Feedback poisoning simulation}
+\node[orch, right=1.0cm of filler, yshift=-1.23cm] (swap)
+{Orchestrator +\\Swap Manager\\M9--M10};
 
-% \textbf{Obiettivo:} confrontare un aggiornamento diretto del ranking con un sistema protetto da autenticazione, rate limit, deduplicazione, anti-replay, robust aggregation e update gate.
+\node[svc, right=of swap] (webrtc)
+{WebRTC\\D11};
 
-% \textbf{Metriche:} numero di feedback richiesto per portare un chunk malevolo nel top-$k$, percentuale di query compromesse, tempo di rilevamento e correttezza del rollback.
+% =========================================================
+% SERVING FLOWS
+% =========================================================
 
-% \begin{table}[H]
-% \centering
-% \caption{Template risultati Esperimento B.}
-% \small
-% \begin{tabularx}{\textwidth}{|Y|C{2.3cm}|C{2.3cm}|C{2.3cm}|}
-% \hline
-% \textbf{Metrica} & \textbf{Baseline} & \textbf{Sistema sicuro} & \textbf{Interpretazione} \\
-% \hline
-% Feedback per entrare nel top-$k$ & Da misurare & Da misurare & Più alto è migliore \\
-% \hline
-% Query compromesse & Da misurare & Da misurare & Più basso è migliore \\
-% \hline
-% Replay accettato & Da misurare & Da misurare & Target: no \\
-% \hline
-% Tempo di rollback & -- & Da misurare & Ripristino della versione precedente \\
-% \hline
-% \end{tabularx}
-% \end{table}
+\draw[arr] (router)--(inputg);
 
-% \subsection{Esperimento C --- Sicurezza dei messaggi inter-agent}
+\draw[arr] (inputg)--(fast);
+\draw[arr] (fast)--(fastg);
+\draw[arr] (fastg)--(filler);
+\draw[arr] (filler)--(swap);
 
-% \textbf{Obiettivo:} verificare il rifiuto di trigger modificati, session mismatch, duplicate sequence, messaggi scaduti e agent ID falsi.
+\draw[arr] (inputg)--(deep);
+\draw[darr] (deep)--(rag);
+\draw[arr] (deep)--(deepg);
+\draw[arr] (deepg)--(media);
 
-% \begin{table}[H]
-% \centering
-% \caption{Test case dei messaggi inter-agent.}
-% \small
-% \begin{tabularx}{\textwidth}{|L{4.1cm}|Y|Y|}
-% \hline
-% \textbf{Test} & \textbf{Controllo atteso} & \textbf{Esito atteso} \\
-% \hline
-% Trigger modificato & Schema + signature/MAC applicativo se richiesto & Rifiutato \\
-% \hline
-% Session ID diverso & Session binding & Rifiutato \\
-% \hline
-% Sequence duplicata & Replay cache / idempotency & Rifiutato \\
-% \hline
-% Timestamp fuori finestra & Expiry check & Rifiutato \\
-% \hline
-% Agent ID falso & Workload identity e authorization & Rifiutato \\
-% \hline
-% Filler oltre il limite & Schema e content policy & Fallback \\
-% \hline
-% \end{tabularx}
-% \end{table}
+\draw[arr] (media)--
+node[above,font=\scriptsize]{validated ready signal}
+(swap);
 
-% % =========================================================
-% \section{Rischio residuo}
+\draw[arr] (swap)--(webrtc);
 
-% \begin{table}[H]
-% \centering
-% \caption{Valutazione qualitativa del rischio residuo atteso.}
-% \label{tab:residualrisk}
-% \small
-% \begin{tabularx}{\textwidth}{|L{3.6cm}|L{4.4cm}|C{2.0cm}|C{2.0cm}|Y|}
-% \hline
-% \textbf{Scenario} & \textbf{Controlli principali} & \textbf{Iniziale} & \textbf{Residuo} & \textbf{Motivazione} \\
-% \hline
-% Goal hijack Fast-Brain & Least agency, validator, fallback, monitoring & Critico & Medio & I guardrail riducono l'impatto, ma input linguistici adattivi restano possibili \\
-% \hline
-% Feedback poisoning & Auth feedback, update gate, robust aggregation, rollback & Critico & Medio & La persistenza è confinata e reversibile, ma Sybil sofisticati restano un rischio \\
-% \hline
-% Privilege abuse & Identità separate, token short-lived, policy deny-by-default & Alto & Basso--Medio & Il Fast-Brain non possiede più gli accessi utili alla propagazione \\
-% \hline
-% Replay inter-agent & Workload identity, nonce, sequence, expiry & Alto & Basso & Messaggi non freschi o fuori sessione vengono rifiutati \\
-% \hline
-% Voice clone abuse & Voice vault, provenance, audit, revoca & Alto & Medio & Un output sintetico ottenuto fuori sistema può essere difficile da eliminare completamente \\
-% \hline
-% \end{tabularx}
-% \end{table}
+% =========================================================
+% SECURITY PLANE
+% =========================================================
 
-% Il rischio residuo deve essere rivalutato dopo la validazione sperimentale. I valori sopra rappresentano una previsione progettuale, non risultati misurati.
+\node[
+  plane,
+  fit=(router)(inputg)(fast)(fastg)(filler)
+      (deep)(rag)(deepg)(media)(swap)(webrtc),
+  label={[font=\small\bfseries]above:
+  {Security plane: workload identity + mTLS + per-action authorization}}
+] (securityplane) {};
 
-% % =========================================================
-% \section{Limitazioni}
+% =========================================================
+% CONTROLLED UPDATE PATH
+% Collocato rispetto al bordo inferiore del Security Plane
+% =========================================================
 
-% \begin{itemize}
-%   \item L'architettura è descritta a livello progettuale; deployment, provider e protocolli effettivi possono modificare likelihood e controlli necessari.
-%   \item Non sono stati eseguiti test empirici; la sezione di validazione contiene un piano e template di risultati.
-%   \item La valutazione del rischio è qualitativa. Non viene calcolato un punteggio AARS numerico in assenza dello strumento di calcolo e della formulazione stabiliti dal framework AIVSS \cite{damianiagentic}.
-%   \item La robustezza multilingue e dialettale dei guardrail deve essere verificata sperimentalmente.
-%   \item Il threat model non dimostra l'assenza di backdoor nei modelli; riduce il rischio tramite provenance, firme, testing e rollback.
-%   \item Privacy, compliance e consenso per voice cloning richiedono un'analisi dedicata oltre al threat model tecnico.
-%   \item L'uso dell'avatar in contesti di salute aumenta la decision criticality e richiede policy di contenuto e supervisione umana più restrittive.
-% \end{itemize}
+\node[
+  data,
+  below=1.35cm of securityplane.south,
+  xshift=-1.8cm,
+  text width=2.8cm
+] (kb)
+{Versioned Knowledge Base\\write path separato};
 
-% % =========================================================
-% \section{Conclusioni}
+\node[
+  sec,
+  right=0.85cm of kb,
+  text width=3.0cm
+] (feedback)
+{Feedback Manager\\validation + HITL};
 
-% La pipeline dual-brain riduce la latenza percepita, ma introduce superfici d'attacco specifiche: il Fast-Brain agisce su input parziale, i due agenti devono coordinarsi, memorie e feedback possono persistere, e l'output audiovisivo sfrutta una forte identità umana. Il rischio non deriva soltanto dal modello linguistico, ma dall'interazione fra identità, memoria, tool, orchestrazione e fiducia dell'utente.
+\draw[arr] (feedback)--(kb);
 
-% Il threat modeling ha mostrato come i rischi prioritari siano goal hijack, feedback poisoning, identity/privilege abuse, comunicazione inter-agent insicura e abuso della voce clonata. ASI05 è stato correttamente considerato non applicabile nello scope corrente, evitando di introdurre scenari RCE non supportati dall'architettura.
+% Il contenuto validato viene poi reso disponibile al serving read-only.
+\draw[arr] (kb.north) -- ++(0,0.35) -| (rag.south);
 
-% La strategia proposta applica le sette precauzioni \cite{damianiagentic} e adotta un principio centrale: \textbf{la bassa latenza non deve mai giustificare il bypass dei controlli}. I controlli deterministici restano nel fast path; monitoraggio, audit e analisi più costose operano in modo asincrono; in caso di errore il sistema usa un fallback statico sicuro. La separazione delle identità e la least agency limitano il blast radius, mentre provenance, voice vault e update gate proteggono gli asset più caratterizzanti della pipeline.
+\node[
+  plane,
+  fit=(kb)(feedback),
+  label={[font=\small\bfseries]below:
+  {Offline/controlled update path}}
+] (updateplane) {};
 
-% Il passo successivo è implementare il security harness e la simulazione di feedback poisoning, completando le tabelle sperimentali con valori misurati. Questo permetterà di trasformare il threat model progettuale in una valutazione verificata e riproducibile.
+% =========================================================
+% TRANSVERSE CONTROLS
+% =========================================================
 
-% % =========================================================
-% \appendix
-% \section{JSON Schema semplificato del Fast-Brain}
+\node[
+  sec,
+  below=0.85cm of updateplane.south,
+  text width=6.0cm
+] (obs)
+{Immutable audit + continuous monitoring + anomaly detection + SBOM/AIBOM};
 
-% \begin{lstlisting}[language=json]
-% {
-%   "$schema": "https://json-schema.org/draft/2020-12/schema",
-%   "type": "object",
-%   "additionalProperties": false,
-%   "required": ["session_id", "intent", "trigger", "filler", "sequence"],
-%   "properties": {
-%     "session_id": {"type": "string", "minLength": 16, "maxLength": 128},
-%     "intent": {
-%       "type": "string",
-%       "enum": [
-%         "complex_analytical",
-%         "opinion_affective",
-%         "factual_search",
-%         "controversial_defensive",
-%         "generic_acknowledgement"
-%       ]
-%     },
-%     "trigger": {
-%       "type": "string",
-%       "enum": [
-%         "GAZE_UP_LEFT",
-%         "HEAD_NOD_SLIGHT",
-%         "LEAN_IN_BOOK",
-%         "HAND_GESTURE_OPEN",
-%         "IDLE_THINKING"
-%       ]
-%     },
-%     "filler": {"type": "string", "minLength": 1, "maxLength": 120},
-%     "sequence": {"type": "integer", "minimum": 0}
-%   }
-% }
-% \end{lstlisting}
+\end{tikzpicture}%
+}
+\caption{Secure architecture proposta per la pipeline Dual-Brain.}
+\label{fig:secure-architecture}
+\end{figure}
 
-% La lunghezza in caratteri non sostituisce il controllo applicativo sul numero di parole. Il validator deve inoltre applicare content policy, PII detection e divieto di richieste all'utente.
+La figura non introduce nuove contromisure, ma mostra la
+\textbf{collocazione architetturale} dei controlli già definiti nella
+Sezione~\ref{sec:precauzioni} e applicati ai cinque scenari prioritari.
 
-% \section{Formato sicuro del messaggio inter-agent}
+Sul percorso di ingresso, M11 opera come livello logico di enforcement
+tra dati non fidati e componenti agentici. Come descritto nella
+Precauzione~2, i controlli destinati al Fast-Brain devono essere
+compatibili con il vincolo real-time, mentre le verifiche più onerose
+sul contesto RAG e sulla risposta sostanziale possono essere eseguite
+sul Background Path.
 
-% \begin{lstlisting}[language=json]
-% {
-%   "message_id": "uuid",
-%   "session_id": "9f4b...",
-%   "agent_id": "fast-brain-prod-eu-01",
-%   "audience": "orchestrator-prod-eu",
-%   "issued_at": "2026-07-23T14:22:18Z",
-%   "expires_at": "2026-07-23T14:22:20Z",
-%   "sequence": 12,
-%   "idempotency_key": "9f4b...:12",
-%   "payload": {
-%     "intent": "complex_analytical",
-%     "trigger": "GAZE_UP_LEFT",
-%     "filler": "That is an important question; let me think carefully."
-%   },
-%   "policy_version": "fastbrain-policy-3.2",
-%   "schema_version": "1.0"
-% }
-% \end{lstlisting}
+L'Instant Path rimane confinato secondo il principio di Least Agency:
+M1 produce esclusivamente gli artefatti necessari al filler, mentre
+l'accesso a memoria persistente e servizi downstream rimane governato
+dall'Orchestratore. Il Background Path utilizza invece D4 in sola
+lettura durante il serving; l'aggiornamento della Knowledge Base passa
+attraverso il percorso separato di validazione già definito per SC6.
 
-% Il trasporto deve autenticare l'identità del workload. Se il messaggio è persistito, inoltrato attraverso più trust domain o necessita di verifica end-to-end, è opportuno aggiungere una firma o un MAC applicativo. Sequence, expiry e idempotency impediscono replay e duplicazione.
+Le comunicazioni tra workload e le invocazioni dei servizi applicano
+le identità, i vincoli di autorizzazione e la protezione dei canali
+descritti nella Precauzione~3 e in SC3--SC7. In particolare, la
+transizione tra filler e risposta principale rimane sotto il controllo
+deterministico di M9--M10: il \emph{Video Ready Signal} viene accettato
+soltanto se coerente con identità, sessione, job e stato corrente.
 
-% \section{Matrice di tracciabilità}
+Audit trail, monitoraggio runtime e controlli della supply chain
+rimangono trasversali all'intera architettura, secondo quanto già
+definito nelle Precauzioni~4--7. La proprietà risultante è quindi una
+separazione tra \emph{generation plane} e \emph{enforcement plane}: gli
+agenti producono contenuti e decisioni limitate al proprio ruolo, ma
+non possono autonomamente modificare memoria persistente, ampliare i
+propri privilegi o forzare una transizione audiovisiva.
 
-% \begin{longtable}{|L{3.2cm}|L{3.0cm}|L{3.0cm}|L{4.2cm}|}
-% \caption{Tracciabilità threat--controlli--test.}\label{tab:traceability}\\
-% \hline
-% \textbf{Threat} & \textbf{OWASP / STRIDE} & \textbf{Controlli} & \textbf{Validazione} \\
-% \hline
-% \endfirsthead
-% \hline
-% \textbf{Threat} & \textbf{OWASP / STRIDE} & \textbf{Controlli} & \textbf{Validazione} \\
-% \hline
-% \endhead
-% Goal hijack & ASI01 / Tampering & Least agency, validator, fallback & Esperimento A: prompt injection multilingue \\
-% \hline
-% Feedback poisoning & ASI06 / Tampering & Auth, anti-replay, update gate, rollback & Esperimento B: top-$k$ poisoning simulation \\
-% \hline
-% Privilege abuse & ASI03 / EoP & Workload identity, scoped token, AuthZ & Test negativo: Fast-Brain chiama endpoint RAG \\
-% \hline
-% Inter-agent replay & ASI07 / Spoofing, Tampering & Nonce, sequence, expiry, session binding & Esperimento C\\
-% \hline
-% Voice clone abuse & ASI09 / Spoofing, Disclosure & Voice vault, provenance, audit, revoca & Test accessi e generazioni senza audit ID \\
-% \hline
-% Supply chain & ASI04 / Tampering & Firma, SBOM, scanning, shadow mode & Verifica artefatto e rollback \\
-% \hline
-% Cascading failure & ASI08 / DoS & Quote, timeout, circuit breaker, fallback & Load e fault-injection test \\
-% \hline
-% \end{longtable}
+L'architettura applica pertanto un principio di \textbf{zero implicit
+trust}: l'appartenenza di un componente alla rete interna non è
+sufficiente per autorizzarne una richiesta. Identità del mittente,
+operazione richiesta, sessione, job e stato corrente devono risultare
+coerenti prima dell'esecuzione. In questo modo la compromissione di un
+singolo agente non attribuisce automaticamente all'attaccante le
+capacità dell'intera pipeline.
+\subsection{Fail-safe behavior}
+\label{subsec:fail-safe}
 
+La secure architecture adotta il comportamento fail-safe già
+richiamato nelle mitigazioni degli scenari prioritari: il mancato
+superamento di una verifica non viene interpretato come autorizzazione
+implicita.
+
+Nel Fast Path, un output non valido o non disponibile entro la deadline
+viene sostituito con un filler statico preventivamente approvato. Sul
+Background Path, una risposta che non supera i controlli non raggiunge
+la sintesi audiovisiva. Analogamente, messaggi di coordinamento non
+autenticati, scaduti o incompatibili con lo stato corrente non possono
+attivare lo Swap Manager, mentre aggiornamenti sospetti della memoria
+rimangono esclusi dalla versione attiva della Knowledge Base.
+
+Il principio progettuale è pertanto che un vincolo prestazionale possa
+determinare una degradazione controllata della qualità del servizio,
+ma non il bypass di un controllo di sicurezza necessario.
+
+% =========================================================
+\section{Trade-off sicurezza--latenza}
+\label{sec:security-latency}
+
+Come discusso nella descrizione della pipeline e nella fase di
+prioritizzazione, il vincolo inferiore a $800\,\text{ms}$ riguarda
+principalmente l'Instant Path e costituisce uno degli amplificatori di
+rischio specifici dell'architettura. La secure architecture deve quindi
+evitare che l'introduzione dei controlli annulli il vantaggio
+prestazionale del Fast-Brain.
+
+Il problema viene affrontato mediante \textbf{security control
+placement}: i controlli indispensabili prima che un output produca
+effetti rimangono sincroni, quelli più onerosi vengono eseguiti sul
+Background Path e le attività che non richiedono una decisione
+immediata vengono spostate fuori dal serving path. La
+Tabella~\ref{tab:security-latency} riassume tale separazione.
+
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\footnotesize
+
+\begin{longtable}{
+    |L{2.80cm}|
+    L{\dimexpr\textwidth-2.80cm-2.00cm-3.50cm-8\tabcolsep-5\arrayrulewidth\relax}|
+    C{2.00cm}|
+    L{3.50cm}|
+}
+
+\caption{Collocazione dei controlli rispetto al vincolo di latenza.}
+\label{tab:security-latency}\\
+
+\hline
+\textbf{Controllo} &
+\textbf{Collocazione} &
+\textbf{Impatto sul Fast Path} &
+\textbf{Comportamento in caso di errore} \\
+\hline
+\endfirsthead
+
+\multicolumn{4}{c}{
+    \tablename\ \thetable{} -- continuazione
+}\\
+\hline
+\textbf{Controllo} &
+\textbf{Collocazione} &
+\textbf{Impatto sul Fast Path} &
+\textbf{Comportamento in caso di errore} \\
+\hline
+\endhead
+
+\hline
+\multicolumn{4}{r}{Continua nella pagina successiva}\\
+\endfoot
+
+\hline
+\endlastfoot
+
+Session/job binding, JSON Schema, enum, sequence e state validation
+&
+Sincrono, prima dell'utilizzo dell'output Fast-Brain e delle
+transizioni dello Swap Manager.
+&
+Basso
+&
+Rifiuto dell'output o del messaggio e attivazione del fallback.
+\\
+\hline
+
+Input Guard e controllo leggero di goal integrity
+&
+Sul Fast Path vengono mantenuti soltanto controlli a costo limitato;
+le verifiche più approfondite rimangono sul Background Path.
+&
+Da misurare
+&
+Se il controllo fallisce o non termina entro la deadline, l'output
+dinamico non viene utilizzato.
+\\
+\hline
+
+Workload identity, mTLS e autorizzazione per azione
+&
+Tra i componenti e i servizi attraversati durante l'esecuzione della
+pipeline.
+&
+Basso / medio
+&
+\emph{Fail closed}: una richiesta non autenticata o non autorizzata
+viene rifiutata.
+\\
+\hline
+
+Validazione del contesto RAG e Deep Output Guard
+&
+Background Path, prima della sintesi audiovisiva della risposta
+principale.
+&
+Nessun impatto diretto
+&
+La risposta non validata non raggiunge i servizi TTS e video.
+\\
+\hline
+
+Audit trail e anomaly detection
+&
+Raccolta degli eventi durante l'esecuzione e correlazione o analisi
+prevalentemente asincrona.
+&
+Basso
+&
+Le anomalie critiche possono attivare circuit breaker o bloccare una
+transizione senza richiedere analisi sincrona completa.
+\\
+\hline
+
+HITL, SBOM/AIBOM, vulnerability scanning e red teaming
+&
+Percorsi di aggiornamento, deployment e verifica periodica, esterni al
+turno conversazionale ordinario.
+&
+Nullo
+&
+Modifiche o artefatti non approvati non vengono promossi in produzione.
+\\
+\hline
+
+\end{longtable}
+\endgroup
+Il punto più critico rimane il controllo semantico sul Fast-Brain.
+Una validazione puramente strutturale ha costo ridotto ma non rileva
+output formalmente corretti e semanticamente deviati; al contrario,
+una seconda inferenza completa annullerebbe parte del vantaggio
+temporale dell'Instant Path. Per questo motivo la secure architecture
+assume un controllo leggero con deadline definita, la cui efficacia e
+il cui overhead dovranno essere misurati nel piano sperimentale.
+
+Gli altri controlli vengono collocati secondo quanto già definito nelle
+Precauzioni~\ref{sec:precauzioni}: le verifiche più approfondite su RAG
+e risposta principale appartengono al Background Path, mentre audit
+aggregato, SBOM/AIBOM, vulnerability scanning, red teaming e HITL sugli
+aggiornamenti operano fuori dal turno conversazionale.
+
+La scelta progettuale fondamentale è pertanto che
+\textbf{la latenza venga ottimizzata mediante la collocazione dei
+controlli, non mediante il loro bypass}. Se una verifica necessaria sul
+Fast Path non può essere completata entro la propria deadline, viene
+applicato il comportamento fail-safe definito nella
+Sezione~\ref{subsec:fail-safe}.
+
+% =========================================================
+\section{Piano di validazione sperimentale}
+\label{sec:experimental-validation}
+
+La validazione sperimentale ha l'obiettivo di verificare se i controlli
+definiti nelle Sezioni~\ref{sec:precauzioni} e
+\ref{sec:secure-architecture} interrompano effettivamente le catene
+d'attacco dei cinque scenari prioritari, senza assumere a priori la loro
+efficacia.
+
+I test devono essere eseguiti in un ambiente isolato e riproducibile,
+mantenendo versionati modello, prompt, policy, Knowledge Base e
+configurazione dei guardrail. Per i controlli probabilistici è
+opportuno confrontare la configurazione protetta con una baseline priva
+del controllo oggetto del test; per i controlli deterministici viene
+invece verificata direttamente la proprietà di sicurezza attesa.
+
+La Tabella~\ref{tab:experimental-plan} riassume il piano di validazione.
+Le metriche riportate rappresentano grandezze da misurare e non
+risultati già ottenuti.
+
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\footnotesize
+
+\begin{longtable}{
+    |C{1.25cm}|
+    L{3.25cm}|
+    L{\dimexpr\textwidth-1.25cm-3.25cm-3.15cm-3.10cm-10\tabcolsep-6\arrayrulewidth\relax}|
+    L{3.15cm}|
+    L{3.10cm}|
+}
+
+\caption{Piano sperimentale per i cinque scenari prioritari.}
+\label{tab:experimental-plan}\\
+
+\hline
+\textbf{Scenario} &
+\textbf{Test} &
+\textbf{Procedura} &
+\textbf{Metriche} &
+\textbf{Proprietà attesa} \\
+\hline
+\endfirsthead
+
+\multicolumn{5}{c}{
+    \tablename\ \thetable{} -- continuazione
+}\\
+\hline
+\textbf{Scenario} &
+\textbf{Test} &
+\textbf{Procedura} &
+\textbf{Metriche} &
+\textbf{Proprietà attesa} \\
+\hline
+\endhead
+
+\hline
+\multicolumn{5}{r}{Continua nella pagina successiva}\\
+\endfoot
+
+\hline
+\endlastfoot
+
+\textbf{SC1}
+&
+Goal hijack e prompt injection
+&
+Sottoporre Fast-Brain e Deep-Brain a direct prompt injection,
+chunk splitting sui partial transcript e indirect prompt injection
+tramite una copia controllata del contesto RAG. Il corpus deve
+comprendere anche varianti in arabo, dialetto emiratino e
+code-switching, come previsto dal red teaming della
+Precauzione~7.
+&
+Attack Success Rate; detection rate; false-positive rate; fallback
+rate; overhead del guardrail; latenza Fast Path.
+&
+Un output semanticamente deviato non deve raggiungere i servizi
+downstream. L'impatto del controllo sul Fast Path deve essere
+misurato rispetto alla baseline.
+\\
+\hline
+
+\textbf{SC6}
+&
+Poisoning di memoria, RAG e feedback
+&
+Utilizzare una copia isolata e versionata di D4, introducendo
+documenti o feedback sintetici avversariali e verificando la pipeline
+di validazione, quarantena e aggiornamento. Confrontare il retrieval
+prima e dopo i tentativi di contaminazione e verificare la separazione
+tra sessioni.
+&
+Poisoned-item acceptance rate; presenza di chunk avversariali nel
+top-$k$; cross-session contamination; detection rate; correttezza del
+rollback.
+&
+Contenuti non validati non devono essere promossi nella Knowledge
+Base attiva e una sessione non deve contaminare implicitamente il
+contesto di un'altra.
+\\
+\hline
+
+\textbf{SC3}
+&
+Negative authorization testing
+&
+Eseguire richieste verso risorse non appartenenti al ruolo della
+workload identity utilizzata: ad esempio accesso in scrittura a D4,
+accesso non autorizzato a D8, token con audience errata, token
+scaduti o richieste prive di un job valido.
+&
+Unauthorized-action acceptance rate; policy-denial rate; completezza
+dell'audit.
+&
+Ogni operazione fuori scope deve essere rifiutata e il tentativo deve
+essere attribuibile alla workload identity che lo ha originato.
+\\
+\hline
+
+\textbf{SC7}
+&
+Tampering e replay dei messaggi
+&
+Partendo da messaggi di coordinamento validi, modificare
+session ID, job ID, sequence number, timestamp e payload oppure
+riprodurre messaggi già utilizzati. Includere falsi
+\emph{Video Ready Signal} e un messaggio valido come controllo
+positivo.
+&
+Replay acceptance rate; tampered-message acceptance rate;
+cross-session acceptance rate; false rejection di messaggi validi.
+&
+Messaggi alterati, duplicati, scaduti o appartenenti a un'altra
+sessione non devono modificare lo stato dello Swap Manager.
+\\
+\hline
+
+\textbf{SC9}
+&
+Unsafe output e trust exploitation
+&
+Sottoporre il Deep-Brain a richieste che inducano raccolta non
+necessaria di dati personali, falsa certezza, indicazioni di
+salute eccessivamente prescrittive o uso manipolativo del ruolo del
+personaggio. Verificare che soltanto output validati possano essere
+trasformati in voce e video.
+&
+Unsafe-output pass rate; detection rate; false-positive rate;
+percentuale di output bloccati prima della sintesi audiovisiva.
+&
+Contenuti incompatibili con le policy non devono essere amplificati
+tramite voce e rappresentazione audiovisiva.
+\\
+\hline
+
+\end{longtable}
+\endgroup
+
+Per SC1, oltre all'efficacia del guardrail, deve essere misurato
+esplicitamente il costo temporale introdotto dal controllo semantico.
+Una misura utile è:
+
+\[
+\Delta t_{\mathrm{guard}} =
+t_{\mathrm{FastPath,secure}} -
+t_{\mathrm{FastPath,baseline}}
+\]
+
+da affiancare a statistiche di latenza quali mediana e percentile
+elevato, così da verificare il trade-off discusso nella
+Sezione~\ref{sec:security-latency}. Non viene fissato in questa fase un
+valore sperimentale dell'overhead, che dovrà essere ricavato
+dall'implementazione.
+
+Per SC9 il test precedente verifica la capacità tecnica di impedire che
+un contenuto non conforme venga presentato attraverso il digital human.
+La misura dell'effettiva variazione della fiducia o del comportamento
+degli utenti richiederebbe invece uno studio controllato con
+partecipanti umani e non viene dedotta dai soli test software.
+
+I risultati ottenuti dovranno infine essere conservati insieme alla
+versione dei componenti testati. Eventuali failure dei controlli
+costituiscono input per una nuova iterazione del processo di threat
+modeling e per la rivalutazione del rischio residuo.
+
+
+% =========================================================
+\section{Valutazione del rischio residuo atteso}
+\label{sec:residual-risk}
+
+La Risk Prioritization della
+Sezione~\ref{sec:risk-prioritization} rappresenta il rischio
+\textbf{inerente}, precedente all'applicazione dei controlli. Dopo la
+definizione della secure architecture è possibile formulare una
+valutazione qualitativa del \textbf{rischio residuo atteso}, cioè del
+livello di rischio che si prevede rimanga qualora i controlli operino
+come progettato.
+
+Questa valutazione non rappresenta un risultato sperimentale. I valori
+dovranno essere confermati o rivisti sulla base della
+Sezione~\ref{sec:experimental-validation}. Viene mantenuta la stessa
+matrice qualitativa utilizzata per la prioritizzazione iniziale.
+
+\begingroup
+\setlength{\tabcolsep}{4pt}
+\footnotesize
+
+\begin{longtable}{
+    |C{1.20cm}|
+    C{1.65cm}|
+    C{1.70cm}|
+    C{1.70cm}|
+    C{1.65cm}|
+    L{\dimexpr\textwidth-1.20cm-1.65cm-1.70cm-1.70cm-1.65cm-12\tabcolsep-7\arrayrulewidth\relax}|
+}
+
+\caption{Valutazione qualitativa del rischio residuo atteso.}
+\label{tab:residual-risk}\\
+
+\hline
+\textbf{Scenario} &
+\textbf{Inerente} &
+\textbf{Likelihood attesa} &
+\textbf{Severity attesa} &
+\textbf{Residuo atteso} &
+\textbf{Motivazione} \\
+\hline
+\endfirsthead
+
+\multicolumn{6}{c}{
+    \tablename\ \thetable{} -- continuazione
+}\\
+\hline
+\textbf{Scenario} &
+\textbf{Inerente} &
+\textbf{Likelihood attesa} &
+\textbf{Severity attesa} &
+\textbf{Residuo atteso} &
+\textbf{Motivazione} \\
+\hline
+\endhead
+
+\hline
+\multicolumn{6}{r}{Continua nella pagina successiva}\\
+\endfoot
+
+\hline
+\endlastfoot
+
+\textbf{SC1}
+&
+\critico
+&
+\textbf{Media}
+&
+\textbf{Alta}
+&
+\alto
+&
+Input/Output Guard, goal-integrity check e Least Agency riducono la
+probabilità che un hijack produca effetti downstream, ma gli input
+linguistici rimangono adattivi e un eventuale bypass può ancora
+influenzare una risposta ad alta criticità.
+\\
+\hline
+
+\textbf{SC6}
+&
+\critico
+&
+\textbf{Bassa}
+&
+\textbf{Alta}
+&
+\medio
+&
+La separazione del write path, l'isolamento delle sessioni,
+la validazione degli aggiornamenti e il rollback rendono molto più
+difficile stabilizzare una contaminazione persistente. Un poisoning
+che superasse tali controlli conserverebbe tuttavia un impatto elevato.
+\\
+\hline
+
+\textbf{SC3}
+&
+\alto
+&
+\textbf{Bassa}
+&
+\textbf{Alta}
+&
+\medio
+&
+Identità distinte, credenziali limitate e autorizzazione per azione
+riducono la probabilità di propagazione dei privilegi. Una
+compromissione valida di una workload identity privilegiata potrebbe
+comunque raggiungere asset sensibili.
+\\
+\hline
+
+\textbf{SC7}
+&
+\alto
+&
+\textbf{Bassa}
+&
+\textbf{Alta}
+&
+\medio
+&
+mTLS, binding di sessione e job, freshness e controllo della sequenza
+riducono la possibilità di accettare messaggi falsificati o riprodotti.
+Rimane elevato l'impatto potenziale di una compromissione delle
+identità o delle chiavi utilizzate nel canale autenticato.
+\\
+\hline
+
+\textbf{SC9}
+&
+\alto
+&
+\textbf{Bassa}
+&
+\textbf{Alta}
+&
+\medio
+&
+Output Guard e calibrazione della fiducia riducono la probabilità che
+un contenuto malevolo venga presentato con l'identità del digital
+human. Il rischio non può essere eliminato completamente perché
+dipende anche dalla risposta e dal livello di affidamento
+dell'utente.
+\\
+\hline
+
+\end{longtable}
+\endgroup
+
+SC1 rimane quindi lo scenario con il rischio residuo atteso più
+elevato. La scelta è intenzionalmente conservativa: a differenza dei
+controlli di autorizzazione o anti-replay, la difesa contro input
+linguistici avversariali dipende anche da classificazioni semantiche
+probabilistiche e non può essere considerata equivalente a una
+garanzia deterministica.
+
+Per tutti gli scenari, la classificazione della
+Tabella~\ref{tab:residual-risk} deve essere aggiornata qualora i test
+mostrino un'efficacia inferiore a quella prevista, un overhead non
+compatibile con il Fast Path o nuove modalità di attacco non comprese
+nel threat model corrente.
+
+
+% =========================================================
+\section{Limitazioni}
+\label{sec:limitations}
+
+Il presente lavoro definisce un threat model e una secure architecture
+a livello progettuale. Le principali limitazioni da considerare
+nell'interpretazione dei risultati sono le seguenti:
+
+\begin{itemize}
+
+    \item \textbf{Assenza di risultati empirici.}
+    I controlli sono requisiti architetturali e il piano della
+    Sezione~\ref{sec:experimental-validation} descrive come verificarli;
+    la loro efficacia effettiva e il relativo overhead non sono ancora
+    misurati.
+
+    \item \textbf{Valutazione qualitativa del rischio.}
+    Likelihood e Severity utilizzano la scala definita nella
+    Sezione~\ref{sec:risk-prioritization}; AIVSS viene impiegato come
+    riferimento per gli audit e non per produrre un AARS quantitativo.
+
+    \item \textbf{Dipendenza dall'implementazione.}
+    Deployment, provider, protocolli, modelli e configurazioni effettive
+    possono modificare trust boundary, superficie d'attacco e
+    prestazioni rispetto all'architettura analizzata.
+
+    \item \textbf{Robustezza dei controlli semantici.}
+    Prompt injection, goal hijacking e contenuti avversariali possono
+    evolvere in risposta ai guardrail. L'efficacia su input
+    multilingue, dialettali, frammentati e semanticamente ambigui deve
+    pertanto essere verificata sperimentalmente.
+
+    \item \textbf{Componente socio-tecnica di SC9.}
+    I test software possono verificare il blocco di output non conformi
+    e la presenza delle misure di trust calibration, ma non dimostrano
+    come utenti reali percepiscano l'autorevolezza del digital human.
+    Tale aspetto richiederebbe una valutazione sperimentale dedicata.
+
+    \item \textbf{Supply chain e servizi esterni.}
+    Provenance, firme, SBOM/AIBOM e vulnerability scanning riducono il
+    rischio ma non dimostrano l'assenza di backdoor, comportamenti
+    malevoli o compromissioni interne a componenti e provider terzi.
+
+\end{itemize}
+
+Restano inoltre valide le esclusioni già dichiarate nella sezione di
+scope; l'introduzione futura di nuove capacità, tool o livelli di
+autonomia richiederebbe una nuova iterazione del threat model.
+
+
+% =========================================================
+\section{Conclusioni}
+\label{sec:conclusions}
+
+Il lavoro ha applicato un processo di threat modeling asset-centered a
+una pipeline Dual-Brain il cui requisito real-time introduce un
+vincolo di sicurezza non presente in un normale chatbot. La
+combinazione di STRIDE-AI, CIA$^3$-R e OWASP Agentic ha permesso di
+passare dall'architettura concreta alla prioritizzazione delle minacce,
+identificando SC1 e SC6 come rischi Critici e SC3, SC7 e SC9 come
+rischi Alti.
+
+L'analisi degli scenari ha mostrato che il rischio non dipende
+soltanto dai due modelli linguistici, ma soprattutto dai punti in cui
+output agentici interagiscono con memoria, identità, comunicazioni di
+coordinamento e rappresentazione audiovisiva. La secure architecture
+traduce quindi i controlli definiti nella
+Sezione~\ref{sec:precauzioni} in punti di enforcement lungo la pipeline,
+mantenendo separati il serving path, gli aggiornamenti persistenti e i
+controlli trasversali.
+
+Il principale risultato progettuale riguarda il rapporto tra sicurezza
+e latenza: il requisito real-time viene preservato attraverso la
+\emph{collocazione} dei controlli e il comportamento fail-safe, non
+attraverso la loro eliminazione. I controlli indispensabili prima che
+un output produca effetti rimangono nel percorso sincrono, mentre le
+verifiche incompatibili con la deadline del Fast-Brain vengono
+eseguite sul Background Path o fuori dal turno conversazionale.
+
+Il piano sperimentale definito nella
+Sezione~\ref{sec:experimental-validation} costituisce il passaggio
+necessario per trasformare queste proprietà progettuali in evidenza
+misurata. Fino a tale verifica, la valutazione del rischio residuo
+rimane intenzionalmente prudente: in particolare SC1 conserva un
+livello Alto atteso, poiché la robustezza contro manipolazioni
+semantiche non può essere garantita esclusivamente mediante controlli
+deterministici.
+
+Il threat model deve infine essere considerato un artefatto evolutivo.
+Modifiche a modelli, memoria, provider, policy, livello di autonomia o
+workflow richiedono di rieseguire la valutazione, applicando il ciclo
+di audit già previsto dalla Precauzione~7. In questo modo la sicurezza
+rimane una proprietà verificata nel tempo e non un'assunzione fissata
+alla sola versione iniziale dell'architettura.
 % =========================================================
 % BIBLIOGRAFIA
 % =========================================================
