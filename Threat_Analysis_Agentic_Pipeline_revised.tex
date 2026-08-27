@@ -307,6 +307,99 @@ Sono fuori scope, salvo che vengano introdotti in implementazioni future:
   \item modifica autonoma di risorse cloud o database operativi;
 \end{itemize}
 
+\subsection{Baseline architetturale e secure architecture proposta}
+\label{subsec:baseline-secure}
+
+Per distinguere le caratteristiche funzionali del sistema dai controlli
+introdotti come risultato del threat modeling, nel seguito vengono
+considerati due livelli architetturali.
+
+La \textbf{baseline architetturale} rappresenta il sistema funzionale
+oggetto dell'analisi prima dell'applicazione delle mitigazioni proposte.
+Essa comprende la separazione Dual-Brain, il Request Router, il
+Fast-Brain e il Deep-Brain, il percorso RAG e di memoria, i servizi
+multimediali, l'Orchestratore con Swap Manager e il canale di output
+verso l'utente. Sono inoltre considerate le caratteristiche funzionali
+necessarie al workflow, quali il parallelismo dei due percorsi,
+l'utilizzo di partial e full transcript, la persistenza eventualmente
+associata a memoria e feedback e la sequenza di generazione e
+riproduzione degli artefatti audiovisivi.
+
+La \textbf{secure architecture proposta} mantiene invariata tale
+struttura funzionale, ma introduce i controlli di sicurezza derivati
+dall'analisi delle minacce e dalle sette precauzioni per i sistemi
+agentici \cite{damianiagentic}. Tra questi rientrano, in particolare,
+guardrail e Output Validator, enforcement del principio di
+\emph{Least Agency}, separazione delle identità e dei privilegi,
+credenziali a durata limitata, autenticazione delle comunicazioni,
+accesso read-only alla Knowledge Base nel serving path, percorso
+separato per gli aggiornamenti persistenti, Feedback Manager,
+Human-in-the-Loop per modifiche ad alto impatto, audit immutabile e
+monitoraggio runtime.
+
+\begin{table}[H]
+\centering
+\caption{Distinzione tra baseline funzionale e controlli della secure architecture.}
+\label{tab:baseline-secure}
+\small
+
+\begin{tabularx}{\textwidth}{|Y|Y|}
+\hline
+\textbf{Baseline architetturale} &
+\textbf{Secure architecture proposta}
+\\
+\hline
+
+Request Router e fork parallelo verso Fast-Brain e Deep-Brain &
+Input/output guardrail e validazione deterministica mediante M11
+\\
+\hline
+
+Fast-Brain per filler contestuale e Deep-Brain per risposta sostanziale &
+Enforcement di Least Agency e separazione tecnica dei privilegi
+\\
+\hline
+
+RAG, memoria ed eventuali meccanismi di feedback persistente &
+Serving read-only e percorso separato di aggiornamento mediante
+Feedback Manager e HITL
+\\
+\hline
+
+Orchestratore, Swap Manager e Video Ready Signal &
+Binding autenticato di identità, sessione, job, sequenza e stato
+\\
+\hline
+
+Servizi TTS, voice cloning, generazione video, lip-sync e WebRTC &
+Workload identity separate, credenziali short-lived, mTLS,
+autorizzazione ed egress control
+\\
+\hline
+
+Logging necessario al funzionamento e alla diagnostica &
+Audit trail protetto, monitoraggio continuo, anomaly detection e
+controlli della supply chain
+\\
+\hline
+
+\end{tabularx}
+\end{table}
+
+La \textbf{Risk Prioritization} viene eseguita rispetto alla baseline
+architetturale e produce pertanto una valutazione del
+\textbf{rischio inerente}. I controlli appartenenti alla secure
+architecture non vengono considerati già efficaci durante tale
+valutazione. Essi vengono introdotti nelle sezioni successive e
+considerati solamente nella valutazione del
+\textbf{rischio residuo atteso}.
+
+Questa distinzione non impedisce di descrivere anticipatamente un
+controllo quando necessario per comprendere l'architettura; in tal
+caso esso viene comunque interpretato come requisito della secure
+architecture proposta e non come mitigazione già implementata o
+validata.
+
 \subsection{Processo di threat modeling}
 
 Il processo adottato è:
@@ -325,7 +418,7 @@ Il processo adottato è:
   arr/.style={-Stealth,thick,Primary}
 ]
 
-\node[procstep] (a) {Architettura e scope};
+\node[procstep] (a) {Architettura, scope\\e trust boundary};
 \node[procstep,right=0.45cm of a] (b) {Asset Model\\Data / Model};
 \node[procstep,right=0.45cm of b] (c) {STRIDE-AI e\\CIA$^3$-R};
 \node[procstep,right=0.45cm of c] (d) {OWASP Agentic\\e applicabilità};
@@ -490,9 +583,14 @@ differenti:
     vocale, clonazione della voce, generazione video multimodale e
     lip-sync. Nella configurazione considerata, la produzione del video
     cinematografico completo può richiedere alcuni minuti. Al termine
-    del rendering viene emesso un messaggio autenticato di completamento,
+    del rendering viene emesso un messaggio di completamento,
     denominato \emph{Video Ready Signal}.
 
+    Nella baseline il \emph{Video Ready Signal} rappresenta il meccanismo
+    funzionale con cui viene comunicata la disponibilità dell'artefatto
+    finale. L'autenticazione del mittente, il binding alla sessione e al
+    job e la protezione da tampering o replay vengono invece introdotti
+    come requisiti della secure architecture proposta.
 \end{itemize}
 
 I due percorsi convergono nello \textbf{Swap Manager}, integrato
@@ -507,15 +605,17 @@ audio, scatti nella postura del personaggio e associazioni errate tra il
 video prodotto e la sessione utente. Lo stitching non viene pertanto
 deciso dal modello linguistico, ma da una macchina a stati deterministica
 che opera su identificatori di sessione, stato della riproduzione,
-timestamp e segnali di completamento validati.
+timestamp e segnali di completamento.
 
 La timeline riportata nella parte inferiore della
 Figura~\ref{fig:complete-pipeline} mostra la differenza tra latenza reale
 e latenza percepita. L'utente riceve nei primi secondi un riconoscimento
 verbale e gestuale, mentre l'elaborazione più onerosa continua in
 background. Il video definitivo viene riprodotto solamente quando tutti
-gli artefatti necessari sono stati prodotti, validati e associati alla
-sessione corretta.
+gli artefatti necessari sono stati prodotti e associati al turno
+conversazionale corrente. Nella secure architecture tale associazione
+viene ulteriormente sottoposta ai controlli di validazione descritti
+nelle sezioni successive.
 
 \begin{figure}[H]
     \centering
@@ -538,177 +638,252 @@ tradotti in una sequenza continua di scene audiovisive.
     \label{fig:storyboard-pipeline}
 \end{figure}
 
-I numeri riportati nell'angolo superiore delle singole clip sono
-\textbf{identificatori delle scene pre-renderizzate} e non indicano il
-loro ordine cronologico. L'ordine temporale effettivo è rappresentato
-dalle frecce della storyboard ed è articolato nelle seguenti fasi:
+% I numeri riportati nell'angolo superiore delle singole clip sono
+% \textbf{identificatori delle scene pre-renderizzate} e non indicano il
+% loro ordine cronologico. L'ordine temporale effettivo è rappresentato
+% dalle frecce della storyboard ed è articolato nelle seguenti fasi:
 
-% =========================================================
-% SEQUENZA DELLE SCENE (Layout ad Armonia di Blocco)
-% =========================================================
+% % =========================================================
+% % SEQUENZA DELLE SCENE (Layout ad Armonia di Blocco)
+% % =========================================================
 
-\begin{enumerate}[leftmargin=*, itemsep=0.8em, topsep=0.5em, parsep=0.3em]
+% \begin{enumerate}[leftmargin=*, itemsep=0.8em, topsep=0.5em, parsep=0.3em]
 
-    % --- MACRO FASE 1: INGRESSO ED ASCOLTO ---
-    \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).} 
-    In assenza di interazione, il digital human si trova nello stato
-    iniziale \texttt{IDLE\_READING}. La donna è raffigurata mentre legge
-    un libro antico. La clip è riproducibile in loop e costituisce lo
-    stato di riposo del sistema.
+%     % --- MACRO FASE 1: INGRESSO ED ASCOLTO ---
+%     \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).} 
+%     In assenza di interazione, il digital human si trova nello stato
+%     iniziale \texttt{IDLE\_READING}. La donna è raffigurata mentre legge
+%     un libro antico. La clip è riproducibile in loop e costituisce lo
+%     stato di riposo del sistema.
 
-    \item \textbf{Listening (Figura~\ref{fig:listening}).}
-    Quando l'utente inizia a parlare o a digitare, l'Orchestratore
-    interrompe il loop di lettura e attiva la scena
-    \texttt{LISTENING}. La donna alza lo sguardo e assume una postura
-    attenta, fornendo un riscontro visivo immediato prima che la
-    richiesta sia completa.
+%     \item \textbf{Listening (Figura~\ref{fig:listening}).}
+%     Quando l'utente inizia a parlare o a digitare, l'Orchestratore
+%     interrompe il loop di lettura e attiva la scena
+%     \texttt{LISTENING}. La donna alza lo sguardo e assume una postura
+%     attenta, fornendo un riscontro visivo immediato prima che la
+%     richiesta sia completa.
 
-    Durante questa fase, lo streaming STT o il canale testuale produce
-    i token parziali utilizzati per la classificazione preliminare
-    dell'intento.
+%     Durante questa fase, lo streaming STT o il canale testuale produce
+%     i token parziali utilizzati per la classificazione preliminare
+%     dell'intento.
 
-    % FIGURA CORRISPONDENTE A FASE 1 e 2
-    \begin{figure}[H]
-        \centering
-        \begin{subfigure}[b]{0.42\textwidth}
-            \centering
-            \includegraphics[width=0.75\linewidth]{img/1_Idle_reading.png}
-            \caption{\emph{Idle Reading}}
-            \label{fig:idle-reading}
-        \end{subfigure}
-        \hspace{0.8cm}
-        \begin{subfigure}[b]{0.42\textwidth}
-            \centering
-            \includegraphics[width=0.75\linewidth]{img/2_listening.png}
-            \caption{\emph{Listening}}
-            \label{fig:listening}
-        \end{subfigure}
-        \caption{Fase iniziale di attesa ed ascolto dell'input utente.}
-    \end{figure}
+%     % FIGURA CORRISPONDENTE A FASE 1 e 2
+%     \begin{figure}[H]
+%         \centering
+%         \begin{subfigure}[b]{0.42\textwidth}
+%             \centering
+%             \includegraphics[width=0.75\linewidth]{img/1_Idle_reading.png}
+%             \caption{\emph{Idle Reading}}
+%             \label{fig:idle-reading}
+%         \end{subfigure}
+%         \hspace{0.8cm}
+%         \begin{subfigure}[b]{0.42\textwidth}
+%             \centering
+%             \includegraphics[width=0.75\linewidth]{img/2_listening.png}
+%             \caption{\emph{Listening}}
+%             \label{fig:listening}
+%         \end{subfigure}
+%         \caption{Fase iniziale di attesa ed ascolto dell'input utente.}
+%     \end{figure}
 
-    % --- MACRO FASE 2: RAGIONAMENTO ED ATTESA ---
-    \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
-    Quando l'utente completa e invia la richiesta, la pipeline passa
-    alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
-    leggermente e assume una postura riflessiva.
+%     % --- MACRO FASE 2: RAGIONAMENTO ED ATTESA ---
+%     \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
+%     Quando l'utente completa e invia la richiesta, la pipeline passa
+%     alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
+%     leggermente e assume una postura riflessiva.
 
-    Nello stesso istante, il Request Router esegue il fork della
-    richiesta: il Fast-Brain genera il riconoscimento immediato,
-    mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
+%     Nello stesso istante, il Request Router esegue il fork della
+%     richiesta: il Fast-Brain genera il riconoscimento immediato,
+%     mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
 
-    \item \textbf{Filler verbale e gestuale.}
-    Il Fast-Brain produce una breve frase rassicurante, coerente con
-    l'intento e con il tono dell'utente. Il filler può essere
-    riprodotto durante la conclusione della scena
-    \texttt{THINKING} o durante l'ingresso nella prima clip di
-    attesa.
+%     \item \textbf{Filler verbale e gestuale.}
+%     Il Fast-Brain produce una breve frase rassicurante, coerente con
+%     l'intento e con il tono dell'utente. Il filler può essere
+%     riprodotto durante la conclusione della scena
+%     \texttt{THINKING} o durante l'ingresso nella prima clip di
+%     attesa.
 
-    Il filler non deve anticipare la risposta sostanziale,
-    introdurre nuove informazioni o porre ulteriori domande. La sua
-    funzione è esclusivamente quella di confermare che la richiesta
-    è stata ricevuta e che il sistema la sta elaborando.
+%     Il filler non deve anticipare la risposta sostanziale,
+%     introdurre nuove informazioni o porre ulteriori domande. La sua
+%     funzione è esclusivamente quella di confermare che la richiesta
+%     è stata ricevuta e che il sistema la sta elaborando.
 
-    \item \textbf{Search (Figura~\ref{fig:search}).}
-    Dopo il riconoscimento iniziale viene attivata la clip
-    \texttt{SEARCH}, nella quale la donna consulta una libreria e cerca
-    tra i libri. La scena rappresenta visivamente la fase di recupero
-    delle informazioni eseguita in background dal Deep-Brain.
+%     \item \textbf{Search (Figura~\ref{fig:search}).}
+%     Dopo il riconoscimento iniziale viene attivata la clip
+%     \texttt{SEARCH}, nella quale la donna consulta una libreria e cerca
+%     tra i libri. La scena rappresenta visivamente la fase di recupero
+%     delle informazioni eseguita in background dal Deep-Brain.
 
-    \item \textbf{Preparing (Figura~\ref{fig:preparing}).}
-    Se l'elaborazione non è ancora terminata, l'Orchestratore prosegue
-    con la scena \texttt{PREPARING}, nella quale la donna prepara erbe
-    e tè. Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono
-    il pool principale di filler gestuali e possono essere alternate,
-    estese o riprodotte in loop fino alla ricezione del
-    \emph{Video Ready Signal}.
+%     \item \textbf{Preparing (Figura~\ref{fig:preparing}).}
+%     Se l'elaborazione non è ancora terminata, l'Orchestratore prosegue
+%     con la scena \texttt{PREPARING}, nella quale la donna prepara erbe
+%     e tè. Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono
+%     il pool principale di filler gestuali e possono essere alternate,
+%     estese o riprodotte in loop fino alla ricezione del
+%     \emph{Video Ready Signal}.
 
-    % FIGURA CORRISPONDENTE A FASE 3, 5 e 6
-    \begin{figure}[H]
-        \centering
-        \begin{subfigure}[b]{0.31\textwidth}
-            \centering
-            \includegraphics[width=0.88\linewidth]{img/3_thinking.png}
-            \caption{\emph{Thinking}}
-            \label{fig:thinking}
-        \end{subfigure}
-        \hfill
-        \begin{subfigure}[b]{0.31\textwidth}
-            \centering
-            \includegraphics[width=0.88\linewidth]{img/4_search.png}
-            \caption{\emph{Search}}
-            \label{fig:search}
-        \end{subfigure}
-        \hfill
-        \begin{subfigure}[b]{0.31\textwidth}
-            \centering
-            \includegraphics[width=0.88\linewidth]{img/5_preparing.png}
-            \caption{\emph{Preparing}}
-            \label{fig:preparing}
-        \end{subfigure}
-        \caption{Fase di elaborazione dual-brain e gestione visuale dell'attesa.}
-    \end{figure}
+%     % FIGURA CORRISPONDENTE A FASE 3, 5 e 6
+%     \begin{figure}[H]
+%         \centering
+%         \begin{subfigure}[b]{0.31\textwidth}
+%             \centering
+%             \includegraphics[width=0.88\linewidth]{img/3_thinking.png}
+%             \caption{\emph{Thinking}}
+%             \label{fig:thinking}
+%         \end{subfigure}
+%         \hfill
+%         \begin{subfigure}[b]{0.31\textwidth}
+%             \centering
+%             \includegraphics[width=0.88\linewidth]{img/4_search.png}
+%             \caption{\emph{Search}}
+%             \label{fig:search}
+%         \end{subfigure}
+%         \hfill
+%         \begin{subfigure}[b]{0.31\textwidth}
+%             \centering
+%             \includegraphics[width=0.88\linewidth]{img/5_preparing.png}
+%             \caption{\emph{Preparing}}
+%             \label{fig:preparing}
+%         \end{subfigure}
+%         \caption{Fase di elaborazione dual-brain e gestione visuale dell'attesa.}
+%     \end{figure}
 
-    % --- MACRO FASE 3: SWAP, RISPOSTA E CHIUSURA ---
-    \item \textbf{Approach (Figura~\ref{fig:approach}).}
-    Quando il video finale è pronto e ha superato i controlli
-    previsti, lo Swap Manager attiva la scena
-    \texttt{APPROACH}. La donna si avvicina alla posizione dalla
-    quale inizierà a parlare.
+%     % --- MACRO FASE 3: SWAP, RISPOSTA E CHIUSURA ---
+%     \item \textbf{Approach (Figura~\ref{fig:approach}).}
+%     Quando il video finale è pronto e ha superato i controlli
+%     previsti, lo Swap Manager attiva la scena
+%     \texttt{APPROACH}. La donna si avvicina alla posizione dalla
+%     quale inizierà a parlare.
 
-    Questa clip svolge la funzione di ponte audiovisivo: consente
-    di riportare il personaggio in una posa, un'inquadratura e una
-    condizione audio compatibili con il primo frame della risposta
-    generata.
+%     Questa clip svolge la funzione di ponte audiovisivo: consente
+%     di riportare il personaggio in una posa, un'inquadratura e una
+%     condizione audio compatibili con il primo frame della risposta
+%     generata.
 
-    \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
-    In corrispondenza di un punto di taglio sicuro, lo Swap Manager
-    sostituisce il flusso di filler con il video prodotto dal
-    Deep-Brain. Inizia quindi la scena
-    \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
-    la risposta completa con voce sintetizzata, gestualità coerente
-    e sincronizzazione labiale.
+%     \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
+%     In corrispondenza di un punto di taglio sicuro, lo Swap Manager
+%     sostituisce il flusso di filler con il video prodotto dal
+%     Deep-Brain. Inizia quindi la scena
+%     \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
+%     la risposta completa con voce sintetizzata, gestualità coerente
+%     e sincronizzazione labiale.
 
-    La risposta può essere composta da più clip generate, purché
-    risultino associate alla stessa sessione e vengano riprodotte
-    nell'ordine previsto.
+%     La risposta può essere composta da più clip generate, purché
+%     risultino associate alla stessa sessione e vengano riprodotte
+%     nell'ordine previsto.
 
-    \item \textbf{Blessing e ritorno allo stato iniziale (Figura~\ref{fig:blessing}).}
-    Al termine della risposta viene riprodotta la scena
-    \texttt{BLESSING}, che fornisce una breve chiusura gestuale e
-    affettiva coerente con la personalità del personaggio.
+%     \item \textbf{Blessing e ritorno allo stato iniziale (Figura~\ref{fig:blessing}).}
+%     Al termine della risposta viene riprodotta la scena
+%     \texttt{BLESSING}, che fornisce una breve chiusura gestuale e
+%     affettiva coerente con la personalità del personaggio.
 
-    Conclusa la scena, l'Orchestratore chiude il turno conversazionale,
-    registra gli eventi nell'audit trail e riporta il digital human
-    nello stato \texttt{IDLE\_READING}, rendendolo disponibile per una
-    nuova richiesta.
+%     Conclusa la scena, l'Orchestratore chiude il turno conversazionale,
+%     registra gli eventi nell'audit trail e riporta il digital human
+%     nello stato \texttt{IDLE\_READING}, rendendolo disponibile per una
+%     nuova richiesta.
 
-    % FIGURA CORRISPONDENTE A FASE 7, 8 e 9
-    \begin{figure}[H]
-        \centering
-        \begin{subfigure}[b]{0.31\textwidth}
-            \centering
-            \includegraphics[width=0.88\linewidth]{img/6_approach.png}
-            \caption{\emph{Approach}}
-            \label{fig:approach}
-        \end{subfigure}
-        \hfill
-        \begin{subfigure}[b]{0.31\textwidth}
-            \centering
-            \includegraphics[width=0.88\linewidth]{img/7_answer.png}
-            \caption{\emph{Answer}}
-            \label{fig:answer}
-        \end{subfigure}
-        \hfill
-        \begin{subfigure}[b]{0.31\textwidth}
-            \centering
-            \includegraphics[width=0.88\linewidth]{img/8_blessing.png}
-            \caption{\emph{Blessing}}
-            \label{fig:blessing}
-        \end{subfigure}
-        \caption{Transizione audio-visiva, erogazione della risposta e chiusura del turno.}
-    \end{figure}
+%     % FIGURA CORRISPONDENTE A FASE 7, 8 e 9
+%     \begin{figure}[H]
+%         \centering
+%         \begin{subfigure}[b]{0.31\textwidth}
+%             \centering
+%             \includegraphics[width=0.88\linewidth]{img/6_approach.png}
+%             \caption{\emph{Approach}}
+%             \label{fig:approach}
+%         \end{subfigure}
+%         \hfill
+%         \begin{subfigure}[b]{0.31\textwidth}
+%             \centering
+%             \includegraphics[width=0.88\linewidth]{img/7_answer.png}
+%             \caption{\emph{Answer}}
+%             \label{fig:answer}
+%         \end{subfigure}
+%         \hfill
+%         \begin{subfigure}[b]{0.31\textwidth}
+%             \centering
+%             \includegraphics[width=0.88\linewidth]{img/8_blessing.png}
+%             \caption{\emph{Blessing}}
+%             \label{fig:blessing}
+%         \end{subfigure}
+%         \caption{Transizione audio-visiva, erogazione della risposta e chiusura del turno.}
+%     \end{figure}
 
-\end{enumerate}
+% \end{enumerate}
+I numeri riportati nelle singole clip identificano le scene
+pre-renderizzate e non ne rappresentano necessariamente l'ordine
+cronologico. La sequenza effettiva è determinata dalla macchina a
+stati descritta nella Sezione successiva.
+
+\begin{table}[H]
+\centering
+\caption{Sequenza audiovisiva percepita dall'utente.}
+\label{tab:storyboard-states}
+\small
+\begin{tabularx}{\textwidth}{|L{2.8cm}|L{3.3cm}|Y|}
+\hline
+\textbf{Stato} &
+\textbf{Funzione} &
+\textbf{Comportamento della pipeline}
+\\
+\hline
+
+\texttt{IDLE\_READING} &
+Attesa &
+Il digital human rimane nella clip di riposo finché non viene rilevata
+una nuova interazione.
+\\
+\hline
+
+\texttt{LISTENING} &
+Acquisizione &
+VAD/STT acquisisce progressivamente l'input mentre vengono prodotti i
+partial transcript utilizzabili dall'Instant Path.
+\\
+\hline
+
+\texttt{THINKING} &
+Fork Dual-Brain &
+Il Request Router avvia in parallelo Fast-Brain e Deep-Brain.
+\\
+\hline
+
+Filler &
+Riscontro immediato &
+Il Fast-Brain produce il breve riconoscimento verbale e il relativo
+comportamento gestuale senza anticipare la risposta sostanziale.
+\\
+\hline
+
+\texttt{SEARCH} /
+\texttt{PREPARING} &
+Attesa prolungata &
+Le clip pre-renderizzate mascherano il tempo necessario al Background
+Path e possono essere concatenate o ripetute.
+\\
+\hline
+
+\texttt{APPROACH} &
+Preparazione allo swap &
+Una clip ponte riporta il personaggio verso una configurazione
+audiovisiva compatibile con l'inizio del contenuto generato.
+\\
+\hline
+
+\texttt{ANSWER\_TALKING} &
+Risposta principale &
+Lo Swap Manager sostituisce il filler con il video prodotto dal
+Background Path.
+\\
+\hline
+
+\texttt{BLESSING} &
+Chiusura &
+La risposta termina e la pipeline riporta il personaggio nello stato
+\texttt{IDLE\_READING}.
+\\
+\hline
+\end{tabularx}
+\end{table}
 
 Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono una
 rappresentazione narrativa dell'attesa e non una prova diretta che, in
@@ -743,17 +918,22 @@ per:
 
 \end{itemize}
 
-In applicazione del principio di \emph{Least Agency}, il Fast-Brain
-riceve esclusivamente i dati e i privilegi necessari alla produzione
-del filler. Non può accedere direttamente all'indice RAG, alla memoria
-persistente, ai database di feedback, agli embedding vocali o ai servizi
-di generazione del video definitivo.
+Dal punto di vista funzionale, il Fast-Brain è destinato esclusivamente
+alla classificazione preliminare dell'intento e alla produzione del
+filler verbale e gestuale. Il suo compito non richiede accesso diretto
+all'indice RAG, alla memoria persistente, ai database di feedback,
+agli embedding vocali o ai servizi utilizzati per generare il video
+definitivo.
 
-Il Fast-Brain non deve fornire una risposta sostanziale, presentare come
-certe informazioni non ancora recuperate, richiedere dati sensibili
-all'utente o modificare autonomamente la memoria del sistema. La sua
-autonomia è limitata alla scelta di una frase di riconoscimento e di un
-comportamento audiovisivo tra alternative preventivamente autorizzate.
+Il comportamento atteso prevede inoltre che il Fast-Brain non produca
+la risposta sostanziale, non presenti come certe informazioni non ancora
+recuperate, non richieda dati sensibili e non modifichi autonomamente
+lo stato persistente del sistema.
+
+Questi vincoli descrivono il \textbf{ruolo funzionale previsto} del
+Fast-Brain. Il loro enforcement tecnico mediante \emph{Least Agency},
+isolamento, autorizzazioni e policy deterministiche viene introdotto
+successivamente come parte della secure architecture proposta.
 
 L'output comprende cinque campi logici: identificatore di sessione,
 intento, trigger gestuale, filler verbale e numero di sequenza. Un
@@ -770,26 +950,18 @@ caption={Esempio di output logico del Fast-Brain.}]
 }
 \end{lstlisting}
 
-Il formato JSON non rappresenta, da solo, un confine di sicurezza.
-Prima di essere utilizzato dall'Orchestratore, l'output deve essere
-esaminato da un \textbf{Output Validator} deterministico, che verifica:
+Il formato JSON definisce l'interfaccia logica tra Fast-Brain e
+Orchestratore, ma non costituisce di per sé un meccanismo di sicurezza.
+Nella baseline, un output sintatticamente corretto può comunque
+contenere valori semanticamente inattesi o essere associato in modo
+errato a una sessione.
 
-\begin{itemize}
-
-    \item la conformità allo schema previsto;
-    \item la validità del \texttt{session\_id};
-    \item la monotonicità del numero di sequenza;
-    \item l'appartenenza del trigger a una allowlist di animazioni;
-    \item la lunghezza e il contenuto del filler;
-    \item l'assenza di comandi, markup o dati sensibili;
-    \item la compatibilità della transizione con lo stato corrente.
-
-\end{itemize}
-
-In caso di errore, timeout o violazione delle regole, l'output viene
-scartato e sostituito con una clip di fallback statica e preventivamente
-approvata.
-
+Per questo motivo, la secure architecture proposta introduce M11 come
+livello di validazione deterministica tra l'output agentico e il piano
+di controllo. I controlli su schema, session binding, sequence number,
+allowlist dei trigger, contenuto del filler e comportamento di fallback
+sono descritti nella Sezione~\ref{sec:precauzioni} e nella
+Sezione~\ref{sec:secure-architecture}.
 
 \subsection{Deep-Brain Agent e componenti di supporto}
 
@@ -804,16 +976,16 @@ Il suo flusso operativo comprende:
 
     \item normalizzazione della richiesta e \emph{query expansion};
     \item retrieval sull'indice vettoriale FAISS mediante un
-    \textbf{RAG Retriever} con accesso in sola lettura;
+    \textbf{RAG Retriever};
     \item recupero dei chunk insieme ai relativi metadati, punteggi e
     informazioni di provenienza;
     \item consultazione della memoria di sessione e dell'eventuale
     memoria contestuale autorizzata;
     \item applicazione dei prompt di sistema, del profilo di personalità
     e degli esempi \emph{few-shot};
-    \item generazione e validazione della risposta testuale;
-    \item invocazione isolata del \textbf{Voice Service}, con accesso
-    ai soli embedding vocali autorizzati;
+    \item generazione della risposta testuale;
+    \item invocazione del \textbf{Voice Service} e utilizzo degli
+    embedding vocali necessari alla sintesi;
     \item generazione del video multimodale e sincronizzazione
     audio-video;
     \item produzione del \emph{Video Ready Signal} al completamento
@@ -823,22 +995,26 @@ Il suo flusso operativo comprende:
 
 Il Deep-Brain non comunica direttamente con il player dell'utente.
 La risposta e gli artefatti audiovisivi vengono consegnati
-all'Orchestratore, che ne verifica la sessione, la provenienza, lo stato
-di completamento e la compatibilità con il turno conversazionale ancora
-attivo.
+all'Orchestratore, che nella baseline ne coordina l'associazione al
+turno conversazionale e lo stato di completamento. Nella secure
+architecture tale correlazione viene rafforzata mediante verifica
+dell'identità e della provenienza, binding alla sessione e al job e
+controlli sullo stato corrente.
 
-La memoria persistente non può essere sovrascritta direttamente
-attraverso una normale interazione conversazionale. Gli eventuali
-feedback espliciti o impliciti vengono trasformati in proposte di
-aggiornamento e inviati a un componente separato, il
-\textbf{Feedback Manager}.
+La presenza di memoria, Knowledge Base e meccanismi di feedback
+introduce la possibilità che informazioni acquisite durante il
+funzionamento vengano successivamente riutilizzate dal Deep-Brain.
+Le modalità con cui tali contenuti vengono promossi a stato persistente
+costituiscono pertanto parte della superficie d'attacco considerata nel
+threat model, in particolare rispetto al rischio di
+\emph{Memory \& Context Poisoning}.
 
-Il Feedback Manager valida la provenienza, la qualità e la sicurezza
-della proposta prima di autorizzare qualsiasi modifica alla base di
-conoscenza o al pool di esempi. Gli aggiornamenti ad alto impatto
-richiedono inoltre la supervisione di un operatore umano secondo un
-meccanismo \emph{Human-in-the-Loop}.
-
+La baseline non assume che gli aggiornamenti persistenti siano già
+protetti da un percorso di scrittura separato. Come risultato
+dell'analisi, la secure architecture proposta introduce invece un
+\textbf{Feedback Manager}, separa il serving path dal percorso di
+aggiornamento e richiede un meccanismo \emph{Human-in-the-Loop} per
+le modifiche persistenti ad alto impatto.
 
 \subsection{Orchestrazione e gestione dello stato}
 
@@ -868,7 +1044,7 @@ La macchina a stati comprende le seguenti transizioni principali:
     \texttt{SEARCH} e \texttt{PREPARING} durante l'elaborazione di
     background;
 
-    \item ricezione e validazione del
+    \item ricezione del
     \emph{Video Ready Signal};
 
     \item attivazione della scena \texttt{APPROACH} e ricerca del punto
@@ -884,10 +1060,12 @@ La macchina a stati comprende le seguenti transizioni principali:
 
 \end{enumerate}
 
-Ogni transizione deve essere associata almeno a un identificatore di
-sessione, un numero di sequenza, un timestamp, lo stato precedente, lo
-stato successivo e l'identità del componente che ha richiesto la
-transizione.
+Dal punto di vista funzionale, lo Swap Manager mantiene lo stato
+necessario a correlare le transizioni con il turno conversazionale
+corrente. La secure architecture rafforza tale correlazione richiedendo
+che ogni transizione sia associata almeno a identificatore di sessione,
+numero di sequenza, timestamp, stato precedente, stato successivo e
+identità verificata del componente che ha richiesto la transizione.
 
 Se il Deep-Brain completa la risposta prima della conclusione del filler,
 lo Swap Manager non avvia immediatamente il video principale: attende
@@ -898,93 +1076,303 @@ principale vengono riprodotti contemporaneamente.
 
 Se invece il Deep-Brain supera il timeout massimo previsto, la macchina
 a stati interrompe i loop di attesa, attiva un messaggio di fallback e
-chiude o sospende la sessione in modo controllato. Le condizioni di gara
-e i replay vengono mitigati mediante lock logici, chiavi di idempotenza,
-controlli sulla monotonicità dei messaggi e rifiuto dei segnali
-appartenenti a sessioni concluse.
+chiude o sospende la sessione in modo controllato.
 
+La concorrenza tra i due percorsi espone inoltre la baseline a race
+condition, replay, duplicazione dei messaggi e associazioni errate tra
+sessioni. Lock logici, chiavi di idempotenza, controlli sulla
+monotonicità e rifiuto dei segnali appartenenti a sessioni concluse
+vengono pertanto introdotti successivamente come controlli della
+secure architecture.
 % =========================================================
-% \section{Data Flow Diagram e trust boundary}
+% TRUST BOUNDARY
+% =========================================================
 
-% \subsection{DFD di livello 0}
+\section{Trust Boundary della pipeline}
+\label{sec:trust-boundaries}
 
-% \begin{figure}[H]
-% \centering
-% \begin{tikzpicture}[
-%   box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=1.6cm,align=center},
-%   arr/.style={Stealth-Stealth,thick}
-% ]
-% \node[box] (u) {Utente / Attaccante\\\scriptsize dominio esterno};
-% \node[box,right=3.8cm of u,fill=AgentFill] (s) {Agentic Digital Human Pipeline\\\scriptsize dominio del sistema};
-% \draw[arr] (u)--node[above,font=\scriptsize]{voce, testo, feedback / audio-video}(s);
-% \end{tikzpicture}
-% \caption{DFD livello 0.}
-% \end{figure}
+A partire dall'architettura descritta nella
+Sezione~\ref{sec:pipeline-description}, vengono individuati i principali
+\emph{trust boundary} attraversati da dati, comandi e artefatti durante
+l'esecuzione della pipeline.
 
-% \subsection{DFD di livello 1}
+Un trust boundary identifica un punto nel quale informazioni o richieste
+passano tra componenti caratterizzati da differenti identità, privilegi,
+provenienza o assunzioni di fiducia. Il fatto che due componenti
+appartengano alla stessa infrastruttura non implica quindi che le loro
+comunicazioni debbano essere considerate implicitamente attendibili.
+Ogni attraversamento richiede autenticazione, autorizzazione,
+validazione dell'integrità e corretta associazione alla sessione,
+in funzione del tipo di dato e dell'operazione eseguita
+\cite{owaspagentic,owaspagenticthreats}.
 
-% \begin{figure}[H]
-% \centering
-% \resizebox{\textwidth}{!}{%
-% \begin{tikzpicture}[
-%   comp/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize},
-%   agent/.style={draw,rounded corners,minimum height=1cm,text width=2.2cm,align=center,font=\scriptsize,fill=AgentFill},
-%   tool/.style={draw,rounded corners,minimum height=0.85cm,text width=1.9cm,align=center,font=\scriptsize,fill=ToolFill},
-%   data/.style={draw,rounded corners,minimum height=0.85cm,text width=2.1cm,align=center,font=\scriptsize,fill=DataFill},
-%   arr/.style={-Stealth,thick},
-%   tb/.style={draw,dashed,very thick,Boundary,rounded corners,inner sep=11pt},
-%   lab/.style={font=\scriptsize,fill=white,inner sep=1.5pt}
-% ]
-% \node[comp] (user) at (0,0) {User};
-% \node[tool] (edge) at (2.8,0) {API / VAD / STT};
-% \node[agent] (fast) at (6,1.7) {Fast-Brain};
-% \node[agent] (deep) at (6,-1.7) {Deep-Brain};
-% \node[data] (memory) at (9.4,-3.5) {RAG / memoria / feedback};
-% \node[comp] (validator) at (9.4,1.7) {Output Validator};
-% \node[comp] (orch) at (12.5,0) {Orchestrator};
-% \node[tool] (tools) at (15.7,0) {TTS / voice / video / lip-sync};
-% \node[comp] (out) at (18.8,0) {Output};
-% \draw[arr] (user)--(edge);
-% \draw[arr] (edge)--(fast); \draw[arr] (edge)--(deep);
-% \draw[arr] (fast)--(validator); \draw[arr] (validator)--(orch);
-% \draw[arr] (deep)--(orch); \draw[arr] (deep)--(memory); \draw[arr] (memory)--(deep);
-% \draw[arr,dashed] (edge) to[bend left=18] node[lab,above]{feedback}(memory);
-% \draw[arr] (orch)--(tools); \draw[arr] (tools)--(out);
-% \node[tb,fit=(user),label={[lab]above:TB1}] {};
-% \node[tb,fit=(edge),label={[lab]above:TB2}] {};
-% \node[tb,fit=(fast)(deep)(validator)(orch),label={[lab]above:TB3}] {};
-% \node[tb,fit=(memory),label={[lab]below:TB4}] {};
-% \node[tb,fit=(tools),label={[lab]above:TB5}] {};
-% \node[tb,fit=(out),label={[lab]above:TB6}] {};
-% \end{tikzpicture}%
-% }
-% \caption{DFD livello 1 e principali trust boundary.}
-% \label{fig:dfd1}
-% \end{figure}
+Nel sistema Dual-Brain sono individuati sei trust boundary principali,
+mostrati schematicamente nella Figura~\ref{fig:trust-boundaries}.
+I boundary sono derivati dalla \textbf{baseline architetturale} e
+rimangono presenti indipendentemente dall'adozione delle mitigazioni.
 
-% \begin{table}[H]
-% \centering
-% \caption{Trust boundary e requisiti di sicurezza.}
-% \label{tab:trustboundaries}
-% \small
-% \begin{tabularx}{\textwidth}{|C{0.9cm}|L{3.2cm}|Y|Y|}
-% \hline
-% \textbf{TB} & \textbf{Confine} & \textbf{Dati/azioni} & \textbf{Rischi dominanti} \\
-% \hline
-% TB1 & Utente esterno $\leftrightarrow$ edge & Voce, testo, feedback, session ID & Spoofing, prompt injection, flooding, feedback manipulation \\
-% \hline
-% TB2 & Edge $\rightarrow$ agenti & Partial transcript, full transcript, intent preliminare & Truncation, goal hijack, PII leakage, session mix-up \\
-% \hline
-% TB3 & Agenti $\leftrightarrow$ orchestratore & Filler, trigger, risposta, completion signal & Identity spoofing, tampering, replay, state desynchronization \\
-% \hline
-% TB4 & Deep-Brain $\leftrightarrow$ RAG/memoria & Query, chunk, embedding, score, feedback update & Poisoning, cross-user leakage, unauthorized write \\
-% \hline
-% TB5 & Orchestratore $\leftrightarrow$ media services & Testo, voice reference, prompt visuale, audio e video intermedi & Tool misuse, supply chain, provider disclosure, artifact tampering \\
-% \hline
-% TB6 & Output $\rightarrow$ utente & Video, audio, metadata, provenance & Impersonazione, output tampering, assenza di disclosure AI \\
-% \hline
-% \end{tabularx}
-% \end{table}
+La figura riporta inoltre l'Output Validator e il Feedback Manager come
+\textbf{punti di enforcement proposti} in corrispondenza di due confini
+particolarmente rilevanti. Tali componenti appartengono alla secure
+architecture e non vengono considerati controlli già efficaci nella
+valutazione del rischio inerente.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\begin{tikzpicture}[
+    comp/.style={
+        draw,
+        rounded corners,
+        minimum height=0.9cm,
+        text width=2.25cm,
+        align=center,
+        font=\scriptsize
+    },
+    agent/.style={
+        draw,
+        rounded corners,
+        minimum height=1cm,
+        text width=2.25cm,
+        align=center,
+        font=\scriptsize,
+        fill=AgentFill
+    },
+    tool/.style={
+        draw,
+        rounded corners,
+        minimum height=0.9cm,
+        text width=2.3cm,
+        align=center,
+        font=\scriptsize,
+        fill=ToolFill
+    },
+    data/.style={
+        draw,
+        rounded corners,
+        minimum height=0.9cm,
+        text width=2.4cm,
+        align=center,
+        font=\scriptsize,
+        fill=DataFill
+    },
+    guard/.style={
+        draw,
+        rounded corners,
+        minimum height=0.85cm,
+        text width=2.2cm,
+        align=center,
+        font=\scriptsize,
+        fill=SoftBlue
+    },
+    arr/.style={-Stealth,thick},
+    feedback/.style={-Stealth,thick,dashed},
+    tblab/.style={
+        font=\scriptsize\bfseries,
+        text=Boundary,
+        fill=white,
+        inner sep=1.5pt
+    }
+]
+
+% ---------------------------------------------------------
+% Componenti principali
+% ---------------------------------------------------------
+
+\node[comp]  (user) at (0,0) {Utente};
+\node[tool]  (edge) at (3.0,0) {API / VAD /\\Streaming STT};
+
+\node[agent] (fast) at (6.3,1.6) {Fast-Brain};
+\node[agent] (deep) at (6.3,-1.6) {Deep-Brain};
+
+\node[guard] (validator) at (9.5,1.6) {Output Validator\\{\scriptsize proposto}};
+\node[data]  (memory) at (9.5,-1.6) {RAG / memoria\\persistente};
+\node[guard] (feedbackmgr) at (9.5,-3.5) {Feedback Manager\\{\scriptsize proposto}};
+
+\node[comp] (orch) at (12.8,0)
+{Orchestratore /\\Swap Manager};
+
+\node[tool] (media) at (16.1,0)
+{TTS / Voice / Veo /\\Lip-Sync};
+
+\node[comp] (output) at (19.2,0)
+{WebRTC /\\Output};
+
+% ---------------------------------------------------------
+% Flussi
+% ---------------------------------------------------------
+
+\draw[arr]
+(user) --
+node[tblab,above]{TB1}
+(edge);
+
+\draw[arr]
+(edge) to[bend left=15]
+node[tblab,above]{TB2}
+(fast);
+
+\draw[arr]
+(edge) to[bend right=15]
+node[tblab,below]{TB2}
+(deep);
+
+\draw[arr] (fast) -- (validator);
+
+\draw[arr]
+(validator) --
+node[tblab,above]{TB3}
+(orch);
+
+\draw[arr]
+(deep) --
+node[tblab,below]{TB3}
+(orch);
+
+\draw[arr]
+(deep) --
+node[tblab,above]{TB4}
+(memory);
+
+\draw[arr]
+(memory) -- (deep);
+
+\draw[feedback]
+(edge) to[bend right=25]
+node[below,font=\scriptsize]{feedback}
+(feedbackmgr);
+
+\draw[arr]
+(feedbackmgr) --
+node[tblab,right]{TB4}
+(memory);
+
+\draw[arr]
+(orch) --
+node[tblab,above]{TB5}
+(media);
+
+\draw[arr]
+(media) --
+node[tblab,above]{TB6}
+(output);
+
+\end{tikzpicture}%
+}
+\caption{Principali trust boundary della pipeline agentica Dual-Brain.}
+\label{fig:trust-boundaries}
+\end{figure}
+
+La Figura~\ref{fig:trust-boundaries} è intenzionalmente una
+rappresentazione di sicurezza semplificata e non sostituisce il diagramma
+architetturale completo. L'obiettivo è evidenziare i punti nei quali
+cambia il dominio di fiducia e nei quali devono pertanto essere
+riesaminate identità, autorizzazioni, integrità, provenienza e
+associazione alla sessione.
+
+\begin{table}[H]
+\centering
+\caption{Trust boundary principali della pipeline Dual-Brain.}
+\label{tab:trustboundaries}
+\small
+\begin{tabularx}{\textwidth}{|C{0.9cm}|L{3.3cm}|Y|Y|}
+\hline
+
+\textbf{TB} &
+\textbf{Confine} &
+\textbf{Dati e operazioni principali} &
+\textbf{Rischi dominanti}
+\\
+\hline
+
+\textbf{TB1} &
+Utente esterno $\leftrightarrow$ livello di ingresso &
+Audio o testo dell'utente, metadati di sessione e feedback espliciti o
+impliciti diretti alla pipeline. &
+Spoofing dell'utente o della sessione, manipolazione dell'input,
+prompt injection, replay, flooding ed esposizione dei dati acquisiti.
+\\
+\hline
+
+\textbf{TB2} &
+Edge / STT $\rightarrow$ dominio agentico &
+Partial transcript diretto al Fast-Brain e trascrizione completa
+diretta al Deep-Brain, insieme agli identificatori necessari al
+binding della sessione. &
+Tampering o truncation delle trascrizioni, goal hijack,
+session mix-up, propagazione di input non attendibili e disclosure
+di dati dell'utente.
+\\
+\hline
+
+\textbf{TB3} &
+Agenti $\rightarrow$ piano deterministico di controllo &
+Filler, behavioral trigger, risposta principale, identificatori e
+messaggi utilizzati dall'Orchestratore per modificare lo stato della
+sessione. Nella secure architecture proposta, l'output del Fast-Brain attraversa
+l'Output Validator prima di poter influenzare l'orchestrazione. &
+Spoofing dell'identità di agente, tampering o replay dei messaggi,
+bypass del validatore, confused deputy, associazione cross-sessione
+e desincronizzazione dello Swap Manager.
+\\
+\hline
+
+\textbf{TB4} &
+Deep-Brain / canale di aggiornamento $\leftrightarrow$ RAG e memoria &
+Query di retrieval, embedding, chunk e relativi metadati di
+provenienza, memoria contestuale e proposte di aggiornamento originate
+dal feedback. Nella secure architecture proposta il percorso di serving viene
+reso in sola lettura, mentre le modifiche persistenti vengono
+instradate attraverso il Feedback Manager e, per gli aggiornamenti
+ad alto impatto, sottoposte a controllo HITL. &
+Memory e context poisoning, modifica non autorizzata della Knowledge
+Base, cross-session leakage, contaminazione persistente del contesto,
+privilege abuse e perdita di provenance.
+\\
+\hline
+
+\textbf{TB5} &
+Pipeline interna $\leftrightarrow$ servizi multimediali &
+Testi da sintetizzare, riferimenti e embedding vocali necessari,
+prompt o artefatti per la generazione video, audio/video intermedi
+e informazioni di completamento delle elaborazioni. &
+Service spoofing, abuso di credenziali, compromissione della supply
+chain, disclosure verso provider esterni, tampering degli artefatti
+e indisponibilità dei servizi.
+\\
+\hline
+
+\textbf{TB6} &
+Pipeline multimediale $\rightarrow$ utente &
+Stream WebRTC finale, audio, video e metadati necessari alla
+riproduzione e all'identificazione della sessione. &
+Man-in-the-middle, output tampering, session hijacking,
+impersonazione del digital human, replay di contenuti e denial of
+service sul canale di streaming.
+\\
+\hline
+
+\end{tabularx}
+\end{table}
+
+Tra i confini individuati, \textbf{TB4} assume particolare rilevanza
+per il threat model corrente, poiché controlla l'accesso allo stato
+utilizzato dal Deep-Brain e agli eventuali aggiornamenti persistenti.
+Una compromissione limitata a un singolo messaggio può infatti
+trasformarsi, in presenza di una scrittura non autorizzata o di
+poisoning, in una modifica del contesto riutilizzata nelle interazioni
+successive. Questo rende TB4 direttamente rilevante per
+\emph{Memory \& Context Poisoning} (ASI06) e, come effetto successivo,
+anche per possibili deviazioni dell'obiettivo dell'agente
+\cite{owaspagentic}.
+
+Il \textbf{TB3} rappresenta invece il confine più sensibile dal punto
+di vista del \emph{control plane}. Nella baseline, un messaggio
+agentico che raggiunge il piano di controllo può influenzare lo stato
+della sessione e le transizioni dello Swap Manager. Nella secure
+architecture proposta, tale attraversamento viene invece subordinato
+ai controlli deterministici previsti da M11 e dalla logica di
+orchestrazione.
 
 % =========================================================
 % ASSET MODEL
@@ -1003,6 +1391,60 @@ In accordo con la metodologia STRIDE-AI introdotta nella Sezione~\ref{subsec:str
 
 Per ciascun asset vengono analizzati il ruolo all'interno della pipeline, le principali minacce STRIDE-AI e le proprietà della matrice $\text{CIA}^3\text{-R}$ potenzialmente oggetto di violazione.
 
+\subsection*{Collocazione degli asset rispetto alla baseline}
+\label{subsec:asset-baseline}
+
+L'Asset Model comprende sia gli elementi già presenti nella
+\textbf{baseline architetturale}, sia gli elementi di sicurezza che
+vengono introdotti come parte della \textbf{secure architecture
+proposta}. Questa scelta consente di analizzare non soltanto gli asset
+originariamente esposti alle minacce, ma anche i controlli
+security-critical che, una volta introdotti, diventano a loro volta
+potenziali bersagli di tampering, bypass o denial of service.
+
+\begin{table}[H]
+\centering
+\caption{Collocazione degli asset rispetto ai due livelli architetturali.}
+\label{tab:asset-baseline-secure}
+\small
+\begin{tabularx}{\textwidth}{|L{3.4cm}|Y|Y|}
+\hline
+\textbf{Livello} &
+\textbf{Asset} &
+\textbf{Interpretazione}
+\\
+\hline
+
+Baseline architetturale &
+D1--D13, M1--M10 &
+Asset funzionali necessari al funzionamento della pipeline e quindi
+considerati nella valutazione del rischio inerente.
+\\
+\hline
+
+Secure architecture proposta &
+M11 &
+Livello di guardrail, policy e validazione introdotto come mitigazione.
+L'asset viene comunque incluso nel threat model perché deve essere
+protetto a sua volta da alterazione, bypass e indisponibilità.
+\\
+\hline
+\end{tabularx}
+\end{table}
+
+La classificazione riguarda la \emph{presenza logica} dell'asset e non
+la sua configurazione di sicurezza. Ad esempio, D13 è già necessario
+nella baseline sotto forma di identità tecniche e credenziali per
+l'accesso ai servizi; workload identity separate, token short-lived e
+certificati mTLS rappresentano invece la sua realizzazione rafforzata
+nella secure architecture. Analogamente, D12 comprende già log e
+feedback prodotti dal funzionamento del sistema, mentre immutabilità,
+protezione e monitoraggio dell'audit trail costituiscono controlli
+successivamente introdotti.
+
+Il Feedback Manager non viene modellato come asset autonomo: esso
+costituisce una realizzazione del livello di validazione e policy M11
+applicata al percorso di aggiornamento persistente.
 % ---------------------------------------------------------
 % DATA ASSETS
 % ---------------------------------------------------------
@@ -1098,7 +1540,7 @@ Log di richieste, decisioni, invocazioni, transizioni, provenance degli artefatt
 \hline
 
 \textbf{D13} \newline Agent and Service Identities, Credentials \& Secrets & 
-Identità non umane, service account, API key, token temporanei, certificati mTLS e credenziali utilizzate dagli agenti e dai servizi interni o esterni della pipeline. & 
+Identità non umane, service account, API key, token, certificati e altre credenziali utilizzate dagli agenti e dai servizi interni o esterni della pipeline. & 
 \textbf{S} [Au]: furto o impersonificazione dell'identità tecnica di un agente o di un servizio autorizzato. \newline \textbf{I} [C]: esposizione di API key, token, certificati o altri segreti utilizzabili per accedere ai componenti della pipeline. \newline \textbf{E} [Az]: riuso di credenziali privilegiate o privilege inheritance tra agenti e servizi per ottenere autorizzazioni superiori a quelle previste. \\
 \hline
 
@@ -1120,21 +1562,20 @@ non soltanto i pesi dei modelli di machine learning, ma anche prompt e
 componenti software che determinano obiettivi, vincoli, routing e
 sequenze operative del sistema agentico.
 
-Sebbene il diagramma architetturale non rappresenti esplicitamente un
-componente di guardrail, il Fast-Brain è vincolato a produrre un output
-strutturato in formato JSON rigoroso, contenente esclusivamente un filler
-breve e un behavioral trigger autorizzato. Ai fini del threat model si
-considera pertanto come requisito architetturale necessario la presenza
-di un livello di guardrail e validazione tra gli agenti e i componenti
-esecutivi della pipeline.
+Il Fast-Brain produce un output strutturato in formato JSON contenente
+un filler breve e un behavioral trigger. Nella baseline, tale vincolo
+descrive l'interfaccia logica attesa, ma non costituisce di per sé un
+meccanismo di sicurezza né implica che la semantica dell'output sia
+già validata.
 
-Tale livello deve validare gli input e gli output dei modelli, verificare
-la conformità allo schema JSON, limitare i trigger a un insieme
-predefinito e applicare le policy prima che il contenuto prodotto venga
-inoltrato ai servizi TTS, video e animazione. L'inclusione del relativo asset identifica un requisito della secure
-architecture assunta dal threat model; la sua effettiva implementazione
-e la corretta configurazione dovranno essere verificate attraverso il
-piano sperimentale.
+Per questo motivo, l'Asset Model include anche M11, introdotto nella
+secure architecture proposta come livello di guardrail, policy e
+validazione tra gli output agentici e i componenti downstream. M11
+deve essere modellato come asset perché, una volta introdotto, può
+diventare a sua volta bersaglio di tampering, bypass o denial of
+service. La sua efficacia non viene tuttavia considerata nella stima
+del rischio inerente e dovrà essere verificata attraverso il piano
+sperimentale.
 
 \begingroup
 \setlength{\tabcolsep}{5pt}
@@ -1201,9 +1642,20 @@ Logica che decide quando terminare il filler, quando avviare il contenuto princi
 \textbf{T} [I]: modifica delle condizioni di readiness o delle regole di transizione per eseguire uno swap anticipato o associare contenuti errati. \newline \textbf{D} [A]: race condition, deadlock o errore persistente nello stato di playback che impediscono la transizione dal filler alla risposta principale. \newline \textbf{E} [Az]: bypass dell'isolamento delle sessioni che consente alla logica di stitching di utilizzare flussi appartenenti a un altro utente. \\
 \hline
 
-\textbf{M11} \newline Guardrails, Policy Rules \& Output Schemas & 
-Componente di sicurezza che valida gli input e gli output degli agenti, verifica la conformità del JSON prodotto dal Fast-Brain, limita i behavioral trigger a una allowlist e applica le policy prima dell'inoltro ai componenti esecutivi della pipeline. & 
-\textbf{T} [I]: manomissione delle policy, delle soglie o dello schema di validazione per autorizzare output e trigger non consentiti. \newline \textbf{D} [A]: indisponibilità o configurazione eccessivamente restrittiva del guardrail che blocca richieste legittime e interrompe il percorso agentico. \newline \textbf{E} [Az]: bypass dei controlli di validazione o autorizzazione per eseguire comportamenti oltre lo scope assegnato agli agenti. \\
+\textbf{M11} \newline Guardrails, Policy Rules \& Validation Layer &
+Livello di sicurezza introdotto nella secure architecture per validare
+input e output agentici e controllare le operazioni che possono
+influenzare componenti downstream o stato persistente. Comprende
+logicamente l'Output Validator, gli schemi e le policy di validazione e
+le funzioni di controllo del Feedback Manager. &
+\textbf{T} [I]: manomissione delle policy, delle soglie o delle regole
+di validazione per autorizzare output, aggiornamenti o trigger non
+consentiti. \newline
+\textbf{D} [A]: indisponibilità o configurazione eccessivamente
+restrittiva del livello di validazione che blocca richieste legittime.
+\newline
+\textbf{E} [Az]: bypass dei controlli di validazione o autorizzazione
+per consentire comportamenti oltre lo scope assegnato agli agenti. \\
 \hline
 
 \end{longtable}
@@ -1231,6 +1683,18 @@ Tale distinzione previene sovrapposizioni analitiche:
 \end{itemize}
 
 I componenti di coordinamento (\textit{Request Router}, \textit{Orchestration Logic} e \textit{Swap Manager}), pur non essendo modelli di Machine Learning in senso stretto, vengono inclusi tra i \textit{Model Assets} adottando una visione architetturale estesa. Essi governano infatti l'autonomia e la logica decisionale del sistema, determinando il routing dei dati, la concorrenza tra i percorsi (\textit{Instant} e \textit{Background Path}), l'isolamento delle sessioni e la gestione delle transizioni.
+
+Un caso particolare è rappresentato da \textbf{M11 -- Guardrails,
+Policy Rules \& Output Schemas}. M11 viene incluso nell'Asset Model
+perché costituisce un componente security-critical della
+\textbf{secure architecture proposta} e deve quindi essere a sua volta
+protetto da tampering, bypass e indisponibilità.
+
+La sua presenza nell'Asset Model non implica tuttavia che la relativa
+efficacia venga considerata nella stima del rischio inerente. Durante
+la Risk Prioritization M11 non viene assunto come mitigazione già
+implementata o validata; la sua efficacia viene considerata solamente
+nella successiva analisi dei controlli e del rischio residuo.
 
 Infine, la mappatura delle proprietà di sicurezza $CIA^3$-R associate a ciascun asset costituisce il presupposto metodologico per le successive sezioni, in cui verranno valutate l'applicabilità, la probabilità (\textit{likelihood}) e l'impatto (\textit{severity}) delle minacce (inclusa la tassonomia OWASP Top 10 per LLM/AI).
 
@@ -1499,138 +1963,172 @@ Nella fase successiva ciascuno scenario sarà valutato mediante
 livello di rischio maggiore saranno successivamente approfonditi
 attraverso precondizioni, percorso di attacco, impatto, mitigazioni e
 rischio residuo.
+
 % =========================================================
+% \subsection{Criteri di selezione degli asset coinvolti}
+% \label{subsec:owasp-assets-explanation}
+
+% Gli asset riportati nella
+% Tabella~\ref{tab:owasp-threat-matrix} sono selezionati in base al ruolo
+% direttamente assunto nello scenario di minaccia. In particolare, sono
+% inclusi gli elementi che:
+
+% \begin{itemize}
+%     \item trasportano l'input, il messaggio o il contenuto controllato
+%     dall'attaccante;
+%     \item interpretano tale contenuto e assumono una decisione;
+%     \item costituiscono il bersaglio diretto della manipolazione,
+%     dell'accesso non autorizzato o dell'indisponibilità;
+%     \item rappresentano l'output o lo stato nel quale la compromissione
+%     diventa osservabile;
+%     \item svolgono una funzione di controllo necessaria a rilevare o
+%     contenere lo scenario.
+% \end{itemize}
+
+% Non vengono invece inclusi tutti i componenti downstream che ricevono
+% passivamente un risultato già compromesso. Un componente successivo
+% viene riportato solamente quando introduce una nuova decisione,
+% propaga il danno, modifica lo stato della pipeline oppure costituisce
+% un ulteriore bersaglio della minaccia. Tale criterio mantiene la
+% mappatura selettiva e coerente con le categorie OWASP Agentic
+% \cite{owaspagentic,owaspagenticthreats}.
+
+
+% \paragraph{ASI01 -- Agent Goal Hijack}
+
+% Gli asset D1--D4 costituiscono i possibili carrier delle istruzioni
+% malevole provenienti dall'utente o dal contesto RAG. M1 e M2
+% interpretano tali contenuti, mentre M3 definisce gli obiettivi che
+% l'attaccante tenta di sovrascrivere. D5 e D6 rappresentano i trigger e
+% gli output direttamente alterati, mentre M11 è il controllo incaricato
+% di rilevare la deviazione.
+
+
+% \paragraph{ASI02 -- Tool Misuse \& Exploitation}
+
+% D5 e D6 contengono i trigger, il testo e i parametri utilizzati per
+% invocare i servizi multimediali. M2 può produrre tali contenuti, M9 ne
+% effettua il routing e M6--M8 eseguono l'elaborazione. D9 rappresenta
+% gli artefatti risultanti, D13 le credenziali utilizzate nelle
+% invocazioni e M11 il controllo di validazione.
+
+
+% \paragraph{ASI03 -- Identity \& Privilege Abuse}
+
+% D13 comprende le identità di servizio e le credenziali oggetto
+% dell'abuso, mentre D10 fornisce il contesto di sessione e di job
+% necessario per verificare che l'utilizzo di tali privilegi sia
+% coerente con la specifica operazione richiesta. M1, M2
+% e M9 utilizzano o delegano tali privilegi; D4, D8 e i servizi M6--M7
+% rappresentano le risorse sensibili raggiungibili mediante autorizzazioni
+% eccessive.
+
+
+% \paragraph{ASI04 -- Agentic Supply Chain Vulnerabilities}
+
+% M1, M2 e M4--M9 dipendono da modelli, librerie, runtime, SDK o provider
+% che possono essere compromessi nella supply chain. Anche M11 può essere
+% alterato qualora parser, validator o guardrail provengano da dipendenze
+% non affidabili. D8 e D13 rappresentano gli asset sensibili che una
+% dipendenza malevola potrebbe sottrarre o esfiltrare.
+
+
+% \paragraph{ASI05 -- Unexpected Code Execution}
+
+% Nello scope corrente ASI05 non dispone di un vettore esecutivo
+% effettivo: il Deep-Brain (M2) produce contenuto testuale e
+% l'Orchestratore (M9) inoltra gli artefatti secondo una sequenza
+% predefinita, senza interpretare D6 come codice o comando. Non sono
+% presenti shell, code interpreter, funzioni \texttt{eval}, template
+% eseguibili o altri ambienti che permettano l'esecuzione dinamica
+% dell'output agentico.
+
+% D6, M2, M9 e M11 diventerebbero direttamente coinvolti soltanto in
+% un'evoluzione architetturale nella quale l'output del modello potesse
+% raggiungere un ambiente eseguibile. Per questo motivo è
+% classificata come \textbf{Condizionata} nella matrice di applicabilità,
+% mentre allo scenario SC5 non viene attribuito un rischio inerente nella
+% configurazione corrente.
+
+
+% \paragraph{ASI06 -- Memory \& Context Poisoning}
+
+% D4 e D12 rappresentano rispettivamente la memoria, il Knowledge Base e
+% i feedback che possono essere contaminati. M4 determina come i
+% contenuti vengono indicizzati e recuperati, M2 utilizza il contesto
+% ottenuto per generare la risposta e M11 deve validare sia gli
+% aggiornamenti sia i contenuti recuperati.
+
+
+% \paragraph{ASI07 -- Insecure Inter-Agent Communication}
+
+% D2, D5 e D10 rappresentano i messaggi e gli stati di coordinamento
+% esposti a falsificazione, tampering o replay. D13 fornisce le identità
+% necessarie ad autenticare i componenti, mentre M9, M10 e M11 svolgono
+% rispettivamente le funzioni di routing, interpretazione e validazione
+% dei messaggi.
+
+
+% \paragraph{ASI08 -- Cascading Failures}
+
+% M1, M2 e M6--M8 possono costituire l'origine di timeout, crash o
+% sovraccarichi. M9 e M10 gestiscono code, retry, sincronizzazione e
+% transizione tra i flussi e possono quindi propagare il guasto. D9,
+% D10 e D11 rappresentano gli artefatti intermedi, lo stato di
+% coordinamento e il flusso WebRTC nei quali il malfunzionamento diventa
+% osservabile.
+
+
+% \paragraph{ASI09 -- Human-Agent Trust Exploitation}
+
+% D6--D8 e D11 costituiscono il messaggio e la rappresentazione
+% audiovisiva attraverso cui viene esercitata la persuasione. M3, M6 e
+% M7 definiscono e producono personalità, voce e aspetto del digital
+% human. D1 e D3 contengono invece le informazioni sensibili che
+% l'utente può essere indotto a comunicare, mentre M11 deve rilevare
+% output manipolativi o pericolosi.
+
+
+% \paragraph{ASI10 -- Rogue Agents}
+
+% M1 e M2 sono i componenti nei quali può manifestarsi la deviazione,
+% mentre M3 e D7 rappresentano gli obiettivi, le policy e la personalità
+% rispetto ai quali viene rilevato il comportamento anomalo. D4 e D12
+% possono conservare, rinforzare o documentare la deviazione; M9 può
+% propagarne gli output e M11 deve impedirne la diffusione.
+
 \subsection{Criteri di selezione degli asset coinvolti}
 \label{subsec:owasp-assets-explanation}
 
-Gli asset riportati nella
-Tabella~\ref{tab:owasp-threat-matrix} sono selezionati in base al ruolo
-direttamente assunto nello scenario di minaccia. In particolare, sono
-inclusi gli elementi che:
+Gli asset della Tabella~\ref{tab:owasp-threat-matrix} sono selezionati
+in base al ruolo direttamente svolto nello scenario: vettore o carrier
+del contenuto controllato dall'attaccante, componente decisionale,
+bersaglio della compromissione, stato o output direttamente alterato.
+I componenti downstream che ricevono passivamente un risultato già
+compromesso non vengono riportati, salvo quando introducano una nuova
+decisione o costituiscano essi stessi il bersaglio della minaccia.
 
-\begin{itemize}
-    \item trasportano l'input, il messaggio o il contenuto controllato
-    dall'attaccante;
-    \item interpretano tale contenuto e assumono una decisione;
-    \item costituiscono il bersaglio diretto della manipolazione,
-    dell'accesso non autorizzato o dell'indisponibilità;
-    \item rappresentano l'output o lo stato nel quale la compromissione
-    diventa osservabile;
-    \item svolgono una funzione di controllo necessaria a rilevare o
-    contenere lo scenario.
-\end{itemize}
+M11 costituisce un caso particolare: essendo introdotto nella secure
+architecture, viene riportato quando rappresenta il controllo
+security-critical incaricato di rilevare o contenere lo scenario, ma
+la sua presenza non riduce l'applicabilità della categoria né il
+rischio inerente.
 
-Non vengono invece inclusi tutti i componenti downstream che ricevono
-passivamente un risultato già compromesso. Un componente successivo
-viene riportato solamente quando introduce una nuova decisione,
-propaga il danno, modifica lo stato della pipeline oppure costituisce
-un ulteriore bersaglio della minaccia. Tale criterio mantiene la
-mappatura selettiva e coerente con le categorie OWASP Agentic
-\cite{owaspagentic,owaspagenticthreats}.
+Alcuni casi richiedono una precisazione. In \textbf{ASI02} i servizi
+multimediali M6--M8 vengono inclusi perché costituiscono i tool
+legittimi il cui utilizzo può essere deviato. \textbf{ASI05} è invece
+condizionata poiché la baseline non contiene shell, code interpreter,
+\texttt{eval} o altri execution sink capaci di trasformare D6 in
+codice eseguibile. In \textbf{ASI10}, Fast-Brain e Deep-Brain restano
+rilevanti come possibili sedi di una deviazione persistente, anche se
+la loro autonomia limitata ne riduce l'applicabilità rispetto a sistemi
+agentici dotati di auto-modifica o tool selection arbitraria.
 
-
-\paragraph{ASI01 -- Agent Goal Hijack}
-
-Gli asset D1--D4 costituiscono i possibili carrier delle istruzioni
-malevole provenienti dall'utente o dal contesto RAG. M1 e M2
-interpretano tali contenuti, mentre M3 definisce gli obiettivi che
-l'attaccante tenta di sovrascrivere. D5 e D6 rappresentano i trigger e
-gli output direttamente alterati, mentre M11 è il controllo incaricato
-di rilevare la deviazione.
-
-
-\paragraph{ASI02 -- Tool Misuse \& Exploitation}
-
-D5 e D6 contengono i trigger, il testo e i parametri utilizzati per
-invocare i servizi multimediali. M2 può produrre tali contenuti, M9 ne
-effettua il routing e M6--M8 eseguono l'elaborazione. D9 rappresenta
-gli artefatti risultanti, D13 le credenziali utilizzate nelle
-invocazioni e M11 il controllo di validazione.
-
-
-\paragraph{ASI03 -- Identity \& Privilege Abuse}
-
-D13 comprende le identità di servizio e le credenziali oggetto
-dell'abuso, mentre D10 fornisce il contesto di sessione e di job
-necessario per verificare che l'utilizzo di tali privilegi sia
-coerente con la specifica operazione richiesta. M1, M2
-e M9 utilizzano o delegano tali privilegi; D4, D8 e i servizi M6--M7
-rappresentano le risorse sensibili raggiungibili mediante autorizzazioni
-eccessive.
-
-
-\paragraph{ASI04 -- Agentic Supply Chain Vulnerabilities}
-
-M1, M2 e M4--M9 dipendono da modelli, librerie, runtime, SDK o provider
-che possono essere compromessi nella supply chain. Anche M11 può essere
-alterato qualora parser, validator o guardrail provengano da dipendenze
-non affidabili. D8 e D13 rappresentano gli asset sensibili che una
-dipendenza malevola potrebbe sottrarre o esfiltrare.
-
-
-\paragraph{ASI05 -- Unexpected Code Execution}
-
-Nello scope corrente ASI05 non dispone di un vettore esecutivo
-effettivo: il Deep-Brain (M2) produce contenuto testuale e
-l'Orchestratore (M9) inoltra gli artefatti secondo una sequenza
-predefinita, senza interpretare D6 come codice o comando. Non sono
-presenti shell, code interpreter, funzioni \texttt{eval}, template
-eseguibili o altri ambienti che permettano l'esecuzione dinamica
-dell'output agentico.
-
-D6, M2, M9 e M11 diventerebbero direttamente coinvolti soltanto in
-un'evoluzione architetturale nella quale l'output del modello potesse
-raggiungere un ambiente eseguibile. Per questo motivo è
-classificata come \textbf{Condizionata} nella matrice di applicabilità,
-mentre allo scenario SC5 non viene attribuito un rischio inerente nella
-configurazione corrente.
-
-
-\paragraph{ASI06 -- Memory \& Context Poisoning}
-
-D4 e D12 rappresentano rispettivamente la memoria, il Knowledge Base e
-i feedback che possono essere contaminati. M4 determina come i
-contenuti vengono indicizzati e recuperati, M2 utilizza il contesto
-ottenuto per generare la risposta e M11 deve validare sia gli
-aggiornamenti sia i contenuti recuperati.
-
-
-\paragraph{ASI07 -- Insecure Inter-Agent Communication}
-
-D2, D5 e D10 rappresentano i messaggi e gli stati di coordinamento
-esposti a falsificazione, tampering o replay. D13 fornisce le identità
-necessarie ad autenticare i componenti, mentre M9, M10 e M11 svolgono
-rispettivamente le funzioni di routing, interpretazione e validazione
-dei messaggi.
-
-
-\paragraph{ASI08 -- Cascading Failures}
-
-M1, M2 e M6--M8 possono costituire l'origine di timeout, crash o
-sovraccarichi. M9 e M10 gestiscono code, retry, sincronizzazione e
-transizione tra i flussi e possono quindi propagare il guasto. D9,
-D10 e D11 rappresentano gli artefatti intermedi, lo stato di
-coordinamento e il flusso WebRTC nei quali il malfunzionamento diventa
-osservabile.
-
-
-\paragraph{ASI09 -- Human-Agent Trust Exploitation}
-
-D6--D8 e D11 costituiscono il messaggio e la rappresentazione
-audiovisiva attraverso cui viene esercitata la persuasione. M3, M6 e
-M7 definiscono e producono personalità, voce e aspetto del digital
-human. D1 e D3 contengono invece le informazioni sensibili che
-l'utente può essere indotto a comunicare, mentre M11 deve rilevare
-output manipolativi o pericolosi.
-
-
-\paragraph{ASI10 -- Rogue Agents}
-
-M1 e M2 sono i componenti nei quali può manifestarsi la deviazione,
-mentre M3 e D7 rappresentano gli obiettivi, le policy e la personalità
-rispetto ai quali viene rilevato il comportamento anomalo. D4 e D12
-possono conservare, rinforzare o documentare la deviazione; M9 può
-propagarne gli output e M11 deve impedirne la diffusione.
+Infine, \textbf{ASI01} e \textbf{ASI06} vengono mantenute distinte:
+ASI01 descrive la manipolazione diretta dell'obiettivo o del percorso
+decisionale dell'agente, mentre ASI06 riguarda la contaminazione
+persistente della memoria o del contesto recuperabile, che può
+successivamente costituire un vettore per un goal hijack.
 % =========================================================
 \section{Risk Prioritization}
 \label{sec:risk-prioritization}
@@ -1650,15 +2148,23 @@ non rappresenta invece un metodo di calcolo del rischio.
 La prioritizzazione adotta pertanto una \textbf{matrice qualitativa
 interna} basata sulla combinazione di \emph{Likelihood} e
 \emph{Severity}. Il livello risultante esprime il \textbf{rischio
-inerente}, ossia il rischio precedente all'applicazione delle
-mitigazioni proposte nelle sezioni successive.
+inerente}, ossia il rischio associato alla baseline architetturale
+definita nella Sezione~\ref{subsec:baseline-secure}, prima di attribuire
+efficacia alle mitigazioni proposte nelle sezioni successive.
 
-Nella valutazione vengono considerate esclusivamente le caratteristiche
-dell'architettura definita nello scope corrente, tra cui la separazione
-funzionale tra Fast-Brain e Deep-Brain, il parallelismo dei due
-percorsi, la presenza di memoria e feedback persistenti, la sequenza
-deterministica dei servizi multimediali e l'assenza di esecuzione
-dinamica di codice.
+Nella valutazione vengono considerate le caratteristiche strutturali e
+funzionali proprie della baseline, tra cui la separazione tra Fast-Brain
+e Deep-Brain, il parallelismo dei due percorsi, la presenza di RAG,
+memoria e feedback persistenti, la sequenza funzionale dei servizi
+multimediali e l'assenza di esecuzione dinamica di codice.
+
+Non vengono invece utilizzati per ridurre la Likelihood o la Severity
+i controlli introdotti dalla secure architecture, quali M11,
+enforcement di Least Agency, serving RAG read-only, Feedback Manager,
+HITL, workload identity separate, credenziali short-lived, mTLS,
+controlli anti-replay, audit immutabile e monitoraggio runtime. La loro
+efficacia viene considerata esclusivamente nella successiva valutazione
+del rischio residuo atteso.
 
 Le dimensioni di exploitability e i fattori specifici dei sistemi
 agentici presentati nel materiale AIVSS del corso
@@ -1891,9 +2397,12 @@ filler, trigger comportamentali e risposta principale.
 \medio
 &
 \textbf{L: Bassa.}
-Lo sfruttamento richiede il bypass dei controlli o la compromissione
-dell'Orchestratore, poiché i servizi sono invocati secondo una sequenza
-predefinita.
+La baseline non prevede una selezione dinamica e arbitraria dei tool:
+i servizi multimediali appartengono a una sequenza funzionale
+predefinita. Lo scenario richiede quindi la manipolazione dei parametri,
+della frequenza o della finalità di invocazioni già previste dal
+workflow, risultando meno immediato rispetto agli attacchi esposti
+direttamente sul canale utente.
 \newline \textbf{S: Alta.}
 Può causare contenuti audiovisivi non autorizzati, abuso della voce
 clonata e consumo anomalo di risorse.
@@ -2490,56 +2999,65 @@ del personaggio amplifica l'impatto dell'hijack.
     completo e nel contesto RAG recuperato per il Deep-Brain.
 
     \item \textbf{Hijack del Fast-Brain.} Il modello interpreta il frammento avversariale come
-    direttiva prevalente ed effettuando l'output, questo formalmente rispetta lo schema JSON, la
-    allowlist dei trigger e i vincoli di lunghezza previsti; tuttavia il filler verbale e/o il
-    trigger comportamentale selezionati risultano semanticamente inappropriati rispetto al ruolo e
-    al tono del personaggio.
+    direttiva prevalente e produce un output che può risultare
+    sintatticamente compatibile con l'interfaccia prevista, pur contenendo
+    un filler o un trigger semanticamente inappropriato rispetto al ruolo
+    e al tono del personaggio.
 
     \item \textbf{Hijack del Deep-Brain.} In parallelo o in sequenza, il Deep-Brain subisce la
     medesima deviazione tramite il contesto RAG avvelenato o l'input esteso, producendo una risposta
     finale alterata o dannosa (ad esempio un consiglio erboristico non sicuro) destinata ai servizi
     multimediali downstream.
 
-    \item \textbf{Bypass del guardrail.} Il modulo di guardrail e validazione (M11) opera controlli
-    sintattici e strutturali -- conformità allo schema, validità del \texttt{session\_id},
-    monotonicità della sequenza, appartenenza del trigger a un'allowlist, lunghezza del filler -- ma
-    non dispone di un livello di validazione semantica in grado di rilevare un contenuto
-    strutturalmente legittimo ma tonalmente o eticamente inappropriato. L'output, pur deviato
-    dall'hijack, supera quindi la validazione ed è inoltrato ai motori downstream di sintesi vocale
-    e rendering grafico.
+    \item \textbf{Propagazione downstream.}
+    Gli output deviati prodotti dai due agenti vengono utilizzati dal
+    percorso audiovisivo: il filler e il trigger influenzano l'Instant
+    Path, mentre la risposta alterata del Deep-Brain viene trasformata in
+    audio e video e presentata all'utente. Nella baseline non viene assunta
+    l'esistenza di un controllo semantico capace di interrompere
+    necessariamente tale propagazione.
 \end{enumerate}
 
-\subsubsection{Descrizione degli Asset Coinvolti}
+% \subsubsection{Descrizione degli Asset Coinvolti}
 
-Per coprire integralmente la categoria OWASP ASI01 all'interno dello Scenario~1, l'analisi
-considera l'intera catena di asset coinvolti (D1--D6, M1--M3, M11).
+% Per coprire integralmente la categoria OWASP ASI01 all'interno dello Scenario~1, l'analisi
+% considera l'intera catena di asset coinvolti (D1--D6, M1--M3, M11).
 
-\begin{itemize}
-    \item \textbf{D1 (User Audio / Input Streams):} vettore d'attacco primario contenente il flusso
-    vocale o testuale malevolo inserito dall'utente.
-    \item \textbf{D2 (Short Prompt Tokens \& Partial Transcript):} vettore di trasporto dei primi
-    token avversariali -- eventualmente frammentati -- inviati all'Instant Path per condizionare il
-    Fast-Brain.
-    \item \textbf{D3 (Full Transcript \& Request):} vettore di trasporto della trascrizione completa
-    inviata al Background Path per condizionare il Deep-Brain.
-    \item \textbf{D4 (RAG KB \& Context Memory):} vettore di iniezione indiretta; contiene documenti,
-    chunk o memorie usati per il retrieval che possono veicolare istruzioni prevalenti avversariali.
-    \item \textbf{D5 (Behavioral Animation Triggers):} asset di output direttamente alterato; include
-    i trigger gestuali o di animazione (es. \texttt{PREPARING\_HERBS}) forzati dall'hijack del
-    Fast-Brain.
-    \item \textbf{D6 (Response Transcripts):} asset di output direttamente alterato; comprende sia il
-    testo del filler verbale sia il testo della risposta sostanziale generati fuori ruolo.
-    \item \textbf{M1 (Fast-Brain Agent \& Intent Classifier):} componente decisionale e bersaglio
-    primario dell'hijack rapido sull'Instant Path.
-    \item \textbf{M2 (Deep-Brain Agent):} componente decisionale e bersaglio primario dell'hijack
-    profondo sul Background Path.
-    \item \textbf{M3 (Personality / System Prompts):} modello di regole e direttive di sistema che
-    l'attaccante tenta di sovrascrivere o eludere.
-    \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):} controllo di sicurezza incaricato
-    di rilevare la deviazione comportamentale, validare gli schemi di output e bloccare la
-    propagazione di trigger e contenuti non autorizzati; come discusso, il controllo copre la forma
-    ma non la semantica dell'output.
-\end{itemize}
+% \begin{itemize}
+%     \item \textbf{D1 (User Audio / Input Streams):} vettore d'attacco primario contenente il flusso
+%     vocale o testuale malevolo inserito dall'utente.
+%     \item \textbf{D2 (Short Prompt Tokens \& Partial Transcript):} vettore di trasporto dei primi
+%     token avversariali -- eventualmente frammentati -- inviati all'Instant Path per condizionare il
+%     Fast-Brain.
+%     \item \textbf{D3 (Full Transcript \& Request):} vettore di trasporto della trascrizione completa
+%     inviata al Background Path per condizionare il Deep-Brain.
+%     \item \textbf{D4 (RAG KB \& Context Memory):} vettore di iniezione indiretta; contiene documenti,
+%     chunk o memorie usati per il retrieval che possono veicolare istruzioni prevalenti avversariali.
+%     \item \textbf{D5 (Behavioral Animation Triggers):} asset di output direttamente alterato; include
+%     i trigger gestuali o di animazione (es. \texttt{PREPARING\_HERBS}) forzati dall'hijack del
+%     Fast-Brain.
+%     \item \textbf{D6 (Response Transcripts):} asset di output direttamente alterato; comprende sia il
+%     testo del filler verbale sia il testo della risposta sostanziale generati fuori ruolo.
+%     \item \textbf{M1 (Fast-Brain Agent \& Intent Classifier):} componente decisionale e bersaglio
+%     primario dell'hijack rapido sull'Instant Path.
+%     \item \textbf{M2 (Deep-Brain Agent):} componente decisionale e bersaglio primario dell'hijack
+%     profondo sul Background Path.
+%     \item \textbf{M3 (Personality / System Prompts):} modello di regole e direttive di sistema che
+%     l'attaccante tenta di sovrascrivere o eludere.
+%     \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):} controllo di sicurezza incaricato
+%     di rilevare la deviazione comportamentale, validare gli schemi di output e bloccare la
+%     propagazione di trigger e contenuti non autorizzati; come discusso, il controllo copre la forma
+%     ma non la semantica dell'output.
+% \end{itemize}
+\subsubsection{Asset coinvolti}
+
+Gli asset direttamente coinvolti sono D1--D6 e M1--M3. D1--D4
+costituiscono i possibili carrier dell'input o del contesto
+avversariale; M1 e M2 sono i componenti decisionali sottoposti
+all'hijack; M3 contiene le istruzioni che l'attaccante tenta di
+sovrascrivere; D5 e D6 rappresentano gli output direttamente alterati.
+M11 è considerato successivamente come controllo della secure
+architecture e non come precondizione del rischio inerente.
 
 \subsubsection{Classificazione STRIDE-AI, Proprietà CIA$^3$-R Violate e Meccanismo del Threat}
 
@@ -2561,26 +3079,36 @@ corrispondenti proprietà di sicurezza del modello CIA$^3$-R compromesse:
     avversariale dell'utente.
 \end{itemize}
 
-Il threat si concretizza sfruttando la natura stocastica dei modelli generativi, la stretta finestra
-temporale di elaborazione dell'Instant Path ($<$800\,ms) -- che limita la capacità di applicare
-controlli di sicurezza complessi prima della generazione dell'output -- e il divario tra validazione
-sintattica e validazione semantica del guardrail (M11), che consente il transito di output
-formalmente conformi ma comportamentalmente deviati.
+Il threat si concretizza sfruttando la difficoltà dei modelli
+generativi nel distinguere in modo affidabile istruzioni legittime da
+contenuto non fidato, la finestra informativa parziale utilizzata dal
+Fast-Brain e la possibilità che output formalmente compatibili con
+l'interfaccia risultino comunque semanticamente deviati. Nella
+baseline non viene assunto un controllo semantico capace di
+interrompere necessariamente tale propagazione; M11 viene introdotto
+successivamente nella secure architecture proprio per ridurre questo
+rischio.
 
-\subsubsection{Calcolo della Priorità e Valutazione del Rischio}
+% \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 
-\begin{itemize}
-    \item \textbf{Likelihood (Alta):} l'attacco è condotto direttamente tramite il canale di input
-    pubblico (voce o testo), non richiede autenticazione o credenziali elevate ed è facilmente
-    automatizzabile o ripetibile mediante tecniche standard di prompt injection, incluse varianti di
-    frammentazione specifiche del canale streaming.
-    \item \textbf{Severity (Alta):} può compromettere sia il Fast-Brain sia il Deep-Brain, alterando
-    contemporaneamente i filler iniziali, le animazioni non verbali e la risposta principale
-    dell'avatar, causando la rottura dell'illusione conversazionale e gravi danni reputazionali o di
-    sicurezza per l'utente (ad es. la ricezione di un consiglio erboristico non sicuro).
-    \item \textbf{Livello di Rischio Inerente: CRITICO} (si veda la matrice di prioritizzazione in
-    Tabella~\ref{tab:risk-priority}).
-\end{itemize}
+% \begin{itemize}
+%     \item \textbf{Likelihood (Alta):} l'attacco è condotto direttamente tramite il canale di input
+%     pubblico (voce o testo), non richiede autenticazione o credenziali elevate ed è facilmente
+%     automatizzabile o ripetibile mediante tecniche standard di prompt injection, incluse varianti di
+%     frammentazione specifiche del canale streaming.
+%     \item \textbf{Severity (Alta):} può compromettere sia il Fast-Brain sia il Deep-Brain, alterando
+%     contemporaneamente i filler iniziali, le animazioni non verbali e la risposta principale
+%     dell'avatar, causando la rottura dell'illusione conversazionale e gravi danni reputazionali o di
+%     sicurezza per l'utente (ad es. la ricezione di un consiglio erboristico non sicuro).
+%     \item \textbf{Livello di Rischio Inerente: CRITICO} (si veda la matrice di prioritizzazione in
+%     Tabella~\ref{tab:risk-priority}).
+% \end{itemize}
+\subsubsection{Priorità}
+
+Come stabilito nella Tabella~\ref{tab:risk-priority}, SC1 presenta
+Likelihood \textbf{Alta} e Severity \textbf{Alta}, risultando
+\textbf{Critico}: il vettore è direttamente accessibile dal canale
+utente e può compromettere entrambi i percorsi della pipeline.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
@@ -2652,10 +3180,10 @@ ignari.
     e/o generazione ripetuta e automatizzata di segnali di feedback (positivi sul contenuto malevolo,
     negativi sul contenuto corretto) tramite sessioni o account multipli.
 
-    \item \textbf{Aggiornamento del ranking/memoria.} In assenza di validazione robusta della
-    provenienza e di soglie anti-abuso, il componente di retrieval (M4) e/o il Feedback Manager
-    aggiornano lo score di similarità, il ranking dei documenti o il pool di few-shot examples,
-    promuovendo stabilmente il contenuto avvelenato all'interno della Knowledge Base e della memoria
+    \item \textbf{Aggiornamento del ranking/memoria.} In assenza di una separazione robusta tra serving e aggiornamento,
+    il meccanismo di ingestione o feedback modifica ranking, documenti,
+    embedding o pool di esempi, promuovendo stabilmente il contenuto
+    avvelenato all'interno della Knowledge Base o della memoria
     contestuale (D4).
 
     \item \textbf{Propagazione cross-session.} Nelle sessioni successive, per query semanticamente
@@ -2663,36 +3191,44 @@ ignari.
     con maggiore probabilità il chunk manipolato, che viene inserito nel contesto fornito al
     Deep-Brain (M2).
 
-    \item \textbf{Generazione dell'output dannoso.} Il Deep-Brain genera una risposta fondata sul
-    contenuto avvelenato (ad esempio un dosaggio erboristico non sicuro), che il guardrail (M11) --
-    concentrato su conformità di schema e allowlist dei trigger, non su una verifica di merito del
-    contenuto informativo recuperato dal RAG -- non è strutturato per intercettare, poiché l'output
-    resta testualmente coerente, ben formato e in linea con il tono del personaggio.
+    \item \textbf{Generazione dell'output dannoso.} Il Deep-Brain genera una risposta fondata sul contenuto avvelenato,
+    ad esempio un'indicazione erboristica non sicura. Poiché il contenuto
+    recuperato appare semanticamente pertinente e formalmente plausibile,
+    la contaminazione può propagarsi fino alla risposta presentata
+    all'utente.
 \end{enumerate}
 
-\subsubsection{Descrizione degli Asset Coinvolti}
+% \subsubsection{Descrizione degli Asset Coinvolti}
 
-Coerentemente con i criteri di selezione per la categoria
-OWASP ASI06 l'analisi considera gli asset che fungono da vettore, da meccanismo di propagazione e da
-bersaglio finale della contaminazione (D4, D12, M2, M4, M11):
+% Coerentemente con i criteri di selezione per la categoria
+% OWASP ASI06 l'analisi considera gli asset che fungono da vettore, da meccanismo di propagazione e da
+% bersaglio finale della contaminazione (D4, D12, M2, M4, M11):
 
-\begin{itemize}
-    \item \textbf{D4 (RAG KB \& Context Memory):} bersaglio primario della contaminazione; contiene
-    i documenti, i chunk, gli embedding e i punteggi di ranking che vengono alterati in modo
-    persistente dall'attacco.
-    \item \textbf{D12 (Audit \& Feedback Data):} vettore d'attacco secondario; raccoglie i segnali di
-    feedback impliciti ed espliciti sfruttati per manipolare ranking e pool di esempi, e costituisce
-    al contempo la fonte primaria per la rilevazione forense dell'abuso.
-    \item \textbf{M2 (Deep-Brain Agent):} componente che consuma il contesto avvelenato e lo traduce
-    in una risposta sostanziale dannosa, propagando il danno verso l'utente finale.
-    \item \textbf{M4 (Embedding e Retrieval Models):} componente decisionale che determina come i
-    contenuti vengono indicizzati, confrontati e selezionati; un aggiornamento non robusto del suo
-    ranking è il meccanismo diretto di persistenza dell'attacco.
-    \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):} controllo di sicurezza che
-    dovrebbe validare sia gli aggiornamenti alla Knowledge Base sia i contenuti recuperati prima del
-    loro utilizzo; come nello Scenario~1, il gap tra validazione sintattica e validazione semantica
-    ne limita l'efficacia contro questo tipo di minaccia.
-\end{itemize}
+% \begin{itemize}
+%     \item \textbf{D4 (RAG KB \& Context Memory):} bersaglio primario della contaminazione; contiene
+%     i documenti, i chunk, gli embedding e i punteggi di ranking che vengono alterati in modo
+%     persistente dall'attacco.
+%     \item \textbf{D12 (Audit \& Feedback Data):} vettore d'attacco secondario; raccoglie i segnali di
+%     feedback impliciti ed espliciti sfruttati per manipolare ranking e pool di esempi, e costituisce
+%     al contempo la fonte primaria per la rilevazione forense dell'abuso.
+%     \item \textbf{M2 (Deep-Brain Agent):} componente che consuma il contesto avvelenato e lo traduce
+%     in una risposta sostanziale dannosa, propagando il danno verso l'utente finale.
+%     \item \textbf{M4 (Embedding e Retrieval Models):} componente decisionale che determina come i
+%     contenuti vengono indicizzati, confrontati e selezionati; un aggiornamento non robusto del suo
+%     ranking è il meccanismo diretto di persistenza dell'attacco.
+%     \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):} controllo di sicurezza che
+%     dovrebbe validare sia gli aggiornamenti alla Knowledge Base sia i contenuti recuperati prima del
+%     loro utilizzo; come nello Scenario~1, il gap tra validazione sintattica e validazione semantica
+%     ne limita l'efficacia contro questo tipo di minaccia.
+% \end{itemize}
+\subsubsection{Asset coinvolti}
+
+Lo scenario interessa principalmente D4, D12, M2 e M4. D4 rappresenta
+lo stato persistente contaminato, D12 il possibile vettore di feedback,
+M4 determina indicizzazione e retrieval del contenuto e M2 utilizza il
+contesto avvelenato nella generazione delle risposte. M11 viene
+considerato successivamente come livello di validazione introdotto
+dalla secure architecture.
 
 \subsubsection{Classificazione STRIDE-AI, Proprietà CIA$^3$-R Violate e Meccanismo del Threat}
 
@@ -2717,18 +3253,24 @@ una volta stabilizzata nell'indice o nel ranking, agisce come una minaccia laten
 automaticamente ogni volta che una query semanticamente affine viene sottoposta al sistema, senza
 richiedere ulteriore intervento attivo da parte dell'attaccante.
 
-\subsubsection{Calcolo della Priorità e Valutazione del Rischio}
+% \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 
-\begin{itemize}
-    \item \textbf{Likelihood (Alta):} documenti, feedback o contenuti esterni rappresentano un
-    canale di contaminazione facilmente ripetibile e automatizzabile, specialmente in assenza di
-    autenticazione forte, deduplicazione o rate-limiting sui segnali di feedback.
-    \item \textbf{Severity (Alta):} il poisoning persiste tra turni e sessioni, altera il retrieval e
-    le risposte per un numero potenzialmente ampio di utenti non correlati all'attaccante, ed è
-    difficilmente reversibile in assenza di meccanismi di versioning e rollback della Knowledge Base.
-    \item \textbf{Livello di Rischio Inerente: CRITICO} (si veda la matrice di prioritizzazione in
-    Tabella~\ref{tab:risk-priority}).
-\end{itemize}
+% \begin{itemize}
+%     \item \textbf{Likelihood (Alta):} documenti, feedback o contenuti esterni rappresentano un
+%     canale di contaminazione facilmente ripetibile e automatizzabile, specialmente in assenza di
+%     autenticazione forte, deduplicazione o rate-limiting sui segnali di feedback.
+%     \item \textbf{Severity (Alta):} il poisoning persiste tra turni e sessioni, altera il retrieval e
+%     le risposte per un numero potenzialmente ampio di utenti non correlati all'attaccante, ed è
+%     difficilmente reversibile in assenza di meccanismi di versioning e rollback della Knowledge Base.
+%     \item \textbf{Livello di Rischio Inerente: CRITICO} (si veda la matrice di prioritizzazione in
+%     Tabella~\ref{tab:risk-priority}).
+% \end{itemize}
+\subsubsection{Priorità}
+
+SC6 è classificato \textbf{Critico} (Likelihood Alta, Severity Alta)
+nella Tabella~\ref{tab:risk-priority}, principalmente per la
+ripetibilità dei vettori di poisoning e per la persistenza
+cross-sessione della contaminazione.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
@@ -2880,58 +3422,64 @@ che il Fast-Brain disponga intenzionalmente di tool privilegiati, ma
 nella possibilità che una configurazione IAM errata annulli
 indirettamente la separazione di privilegi progettata tra i componenti.
 
+% \subsubsection{Descrizione degli Asset Coinvolti}
 
-\subsubsection{Descrizione degli Asset Coinvolti}
+% Coerentemente con i criteri definiti per ASI03, vengono considerati gli
+% asset che rappresentano identità, contesto autorizzativo, componenti che
+% utilizzano i privilegi e risorse sensibili raggiungibili mediante
+% l'abuso (D4, D8, D10, D13, M1, M2, M6, M7, M9):
 
-Coerentemente con i criteri definiti per ASI03, vengono considerati gli
-asset che rappresentano identità, contesto autorizzativo, componenti che
-utilizzano i privilegi e risorse sensibili raggiungibili mediante
-l'abuso (D4, D8, D10, D13, M1, M2, M6, M7, M9):
+% \begin{itemize}
 
-\begin{itemize}
+%     \item \textbf{D13 (Service Identities \& Credentials):}
+%     costituisce il principale oggetto dell'abuso e comprende token,
+%     API key, certificati e workload identity utilizzati dai componenti
+%     della pipeline.
 
-    \item \textbf{D13 (Service Identities \& Credentials):}
-    costituisce il principale oggetto dell'abuso e comprende token,
-    API key, certificati e workload identity utilizzati dai componenti
-    della pipeline.
+%     \item \textbf{D10 (Coordination \& Swap State):}
+%     associa session ID, job ID e stato operativo alla richiesta e deve
+%     impedire che una credenziale valida venga riutilizzata per un job
+%     o una finalità differenti.
 
-    \item \textbf{D10 (Coordination \& Swap State):}
-    associa session ID, job ID e stato operativo alla richiesta e deve
-    impedire che una credenziale valida venga riutilizzata per un job
-    o una finalità differenti.
+%     \item \textbf{M1 (Fast-Brain Agent):}
+%     rappresenta il componente a bassa agency dal quale può originare
+%     una richiesta oltre il proprio ruolo in presenza di credenziali o
+%     relazioni di fiducia configurate in modo scorretto.
 
-    \item \textbf{M1 (Fast-Brain Agent):}
-    rappresenta il componente a bassa agency dal quale può originare
-    una richiesta oltre il proprio ruolo in presenza di credenziali o
-    relazioni di fiducia configurate in modo scorretto.
+%     \item \textbf{M2 (Deep-Brain Agent):}
+%     opera con un perimetro funzionale più ampio rispetto al Fast-Brain
+%     e può quindi essere coinvolto in meccanismi di privilege
+%     inheritance o condivisione non intenzionale delle autorizzazioni.
 
-    \item \textbf{M2 (Deep-Brain Agent):}
-    opera con un perimetro funzionale più ampio rispetto al Fast-Brain
-    e può quindi essere coinvolto in meccanismi di privilege
-    inheritance o condivisione non intenzionale delle autorizzazioni.
+%     \item \textbf{M9 (Orchestratore):}
+%     costituisce il principale punto di enforcement tra la decisione
+%     agentica e l'esecuzione dei servizi downstream; un controllo
+%     insufficiente dell'origine e della finalità delle richieste lo
+%     trasforma in un possibile \emph{confused deputy}.
 
-    \item \textbf{M9 (Orchestratore):}
-    costituisce il principale punto di enforcement tra la decisione
-    agentica e l'esecuzione dei servizi downstream; un controllo
-    insufficiente dell'origine e della finalità delle richieste lo
-    trasforma in un possibile \emph{confused deputy}.
+%     \item \textbf{D4 (RAG KB \& Context Memory):}
+%     rappresenta una risorsa sensibile che non deve diventare
+%     modificabile o interrogabile oltre le autorizzazioni assegnate.
 
-    \item \textbf{D4 (RAG KB \& Context Memory):}
-    rappresenta una risorsa sensibile che non deve diventare
-    modificabile o interrogabile oltre le autorizzazioni assegnate.
+%     \item \textbf{D8 (Voice \& Visual Identity Assets):}
+%     comprende asset particolarmente sensibili poiché il loro accesso
+%     non autorizzato può consentire la creazione di contenuti
+%     contraffatti anche al di fuori della sessione originaria.
 
-    \item \textbf{D8 (Voice \& Visual Identity Assets):}
-    comprende asset particolarmente sensibili poiché il loro accesso
-    non autorizzato può consentire la creazione di contenuti
-    contraffatti anche al di fuori della sessione originaria.
+%     \item \textbf{M6--M7 (Voice e Video Services):}
+%     rappresentano servizi downstream ad alto impatto il cui utilizzo
+%     deve essere autorizzato per singolo job e non semplicemente sulla
+%     base della provenienza interna della richiesta.
 
-    \item \textbf{M6--M7 (Voice e Video Services):}
-    rappresentano servizi downstream ad alto impatto il cui utilizzo
-    deve essere autorizzato per singolo job e non semplicemente sulla
-    base della provenienza interna della richiesta.
+% \end{itemize}
 
-\end{itemize}
+\subsubsection{Asset coinvolti}
 
+Gli asset principali sono D13 e D10, che rappresentano rispettivamente
+identità/credenziali e contesto autorizzativo della richiesta. M1, M2 e
+M9 possono originare, delegare o utilizzare tali privilegi, mentre D4,
+D8 e i servizi M6--M7 costituiscono le principali risorse sensibili
+raggiungibili in caso di escalation.
 
 \subsubsection{Classificazione STRIDE-AI, Proprietà CIA$^3$-R Violate e Meccanismo del Threat}
 
@@ -2968,29 +3516,36 @@ percorsi soltanto se tale differenza è mantenuta anche nelle identità e
 nelle autorizzazioni tecniche.
 
 
-\subsubsection{Calcolo della Priorità e Valutazione del Rischio}
+% \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 
-\begin{itemize}
+% \begin{itemize}
 
-    \item \textbf{Likelihood (Media):}
-    lo scenario non è direttamente realizzabile dal solo canale
-    pubblico dell'utente, ma richiede una configurazione IAM debole,
-    credenziali con scope eccessivo, una compromissione preliminare o
-    l'abuso di una relazione di fiducia interna.
+%     \item \textbf{Likelihood (Media):}
+%     lo scenario non è direttamente realizzabile dal solo canale
+%     pubblico dell'utente, ma richiede una configurazione IAM debole,
+%     credenziali con scope eccessivo, una compromissione preliminare o
+%     l'abuso di una relazione di fiducia interna.
 
-    \item \textbf{Severity (Alta):}
-    una volta ottenuto il privilegio aggiuntivo, il blast radius può
-    estendersi oltre la singola risposta e coinvolgere Knowledge Base,
-    memoria, asset vocali e visivi e servizi di generazione. La
-    sottrazione di D8 può inoltre consentire la produzione di contenuti
-    contraffatti anche al di fuori del normale workflow.
+%     \item \textbf{Severity (Alta):}
+%     una volta ottenuto il privilegio aggiuntivo, il blast radius può
+%     estendersi oltre la singola risposta e coinvolgere Knowledge Base,
+%     memoria, asset vocali e visivi e servizi di generazione. La
+%     sottrazione di D8 può inoltre consentire la produzione di contenuti
+%     contraffatti anche al di fuori del normale workflow.
 
-    \item \textbf{Livello di Rischio Inerente: ALTO}
-    (si veda la matrice di prioritizzazione in
-    Tabella~\ref{tab:risk-priority}).
+%     \item \textbf{Livello di Rischio Inerente: ALTO}
+%     (si veda la matrice di prioritizzazione in
+%     Tabella~\ref{tab:risk-priority}).
 
-\end{itemize}
+% \end{itemize}
 
+\subsubsection{Priorità}
+
+SC3 è classificato \textbf{Alto} (Likelihood Media, Severity Alta)
+nella Tabella~\ref{tab:risk-priority}: richiede una debolezza
+autorizzativa o una compromissione preliminare, ma il relativo blast
+radius può raggiungere memoria, asset di identità e servizi
+multimediali privilegiati.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
@@ -3100,11 +3655,11 @@ prima che l'artefatto corretto sia realmente disponibile.
     momento differente. Possono essere interessati session ID, job ID,
     timestamp, sequence number o stato di completamento.
 
-    \item \textbf{Validazione incompleta.}
-    M11 verifica che il messaggio rispetti lo schema previsto, ma
-    l'assenza di un controllo sufficiente su origine, freshness,
-    unicità e binding con la sessione consente al payload formalmente
-    valido di essere accettato.
+    \item \textbf{Controllo insufficiente del messaggio.}
+    Il messaggio raggiunge il piano di orchestrazione senza una verifica
+    sufficiente di origine, freshness, unicità e binding con sessione e
+    job. Un payload formalmente plausibile può quindi essere accettato
+    anche se duplicato, modificato o appartenente a un contesto differente.
 
     \item \textbf{Propagazione da M9 a M10.}
     L'Orchestratore inoltra il messaggio e lo Swap Manager modifica lo
@@ -3128,50 +3683,57 @@ l'esecuzione parallela richiede infatti più messaggi asincroni e più
 punti di sincronizzazione rispetto a una pipeline strettamente
 sequenziale.
 
+% \subsubsection{Descrizione degli Asset Coinvolti}
 
-\subsubsection{Descrizione degli Asset Coinvolti}
+% La mappatura considera gli asset che trasportano i messaggi, ne
+% stabiliscono l'identità o ne interpretano lo stato
+% (D2, D5, D10, D13, M9, M10, M11):
 
-La mappatura considera gli asset che trasportano i messaggi, ne
-stabiliscono l'identità o ne interpretano lo stato
-(D2, D5, D10, D13, M9, M10, M11):
+% \begin{itemize}
 
-\begin{itemize}
+%     \item \textbf{D2 (Short Prompt Tokens \& Partial Transcript):}
+%     rappresenta un messaggio transitorio la cui manipolazione può
+%     modificare la classificazione iniziale e quindi il comportamento
+%     del Fast-Brain.
 
-    \item \textbf{D2 (Short Prompt Tokens \& Partial Transcript):}
-    rappresenta un messaggio transitorio la cui manipolazione può
-    modificare la classificazione iniziale e quindi il comportamento
-    del Fast-Brain.
+%     \item \textbf{D5 (Behavioral Animation Triggers):}
+%     contiene i trigger trasmessi verso il percorso audiovisivo; un
+%     messaggio modificato o associato al job errato può produrre un
+%     comportamento non coerente con la sessione.
 
-    \item \textbf{D5 (Behavioral Animation Triggers):}
-    contiene i trigger trasmessi verso il percorso audiovisivo; un
-    messaggio modificato o associato al job errato può produrre un
-    comportamento non coerente con la sessione.
+%     \item \textbf{D10 (Coordination \& Swap State):}
+%     costituisce il principale bersaglio dello scenario e comprende
+%     session ID, job ID, timestamp, stato di playback e
+%     \emph{Video Ready Signal}.
 
-    \item \textbf{D10 (Coordination \& Swap State):}
-    costituisce il principale bersaglio dello scenario e comprende
-    session ID, job ID, timestamp, stato di playback e
-    \emph{Video Ready Signal}.
+%     \item \textbf{D13 (Service Identities \& Credentials):}
+%     fornisce le identità utilizzate per autenticare i componenti che
+%     producono e ricevono i messaggi.
 
-    \item \textbf{D13 (Service Identities \& Credentials):}
-    fornisce le identità utilizzate per autenticare i componenti che
-    producono e ricevono i messaggi.
+%     \item \textbf{M9 (Orchestratore):}
+%     instrada i messaggi tra i due percorsi e rappresenta il punto nel
+%     quale provenienza e autorizzazione devono essere verificate prima
+%     della propagazione.
 
-    \item \textbf{M9 (Orchestratore):}
-    instrada i messaggi tra i due percorsi e rappresenta il punto nel
-    quale provenienza e autorizzazione devono essere verificate prima
-    della propagazione.
+%     \item \textbf{M10 (Swap Manager):}
+%     interpreta D10 e modifica materialmente lo stato audiovisivo della
+%     sessione; l'accettazione di un segnale non valido può quindi
+%     tradursi direttamente in una transizione errata.
 
-    \item \textbf{M10 (Swap Manager):}
-    interpreta D10 e modifica materialmente lo stato audiovisivo della
-    sessione; l'accettazione di un segnale non valido può quindi
-    tradursi direttamente in una transizione errata.
+%     \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):}
+%     deve verificare non soltanto la correttezza sintattica, ma anche
+%     session binding, sequence, provenienza e freshness del messaggio.
 
-    \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):}
-    deve verificare non soltanto la correttezza sintattica, ma anche
-    session binding, sequence, provenienza e freshness del messaggio.
+% \end{itemize}
 
-\end{itemize}
+\subsubsection{Asset coinvolti}
 
+D10 rappresenta il bersaglio principale dello scenario e comprende
+session ID, job ID, timestamp, stato di playback e Video Ready Signal.
+D2 e D5 rappresentano ulteriori messaggi transitori, mentre M9 e M10
+ne effettuano rispettivamente routing e interpretazione. D13 è
+necessario per stabilire l'identità dei peer; M11 viene introdotto nella
+secure architecture per validare binding, sequence e freshness.
 
 \subsubsection{Classificazione STRIDE-AI, Proprietà CIA$^3$-R Violate e Meccanismo del Threat}
 
@@ -3211,29 +3773,35 @@ corretta}. La sola validazione mediante schema non è sufficiente a
 proteggere D10.
 
 
-\subsubsection{Calcolo della Priorità e Valutazione del Rischio}
+% \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 
-\begin{itemize}
+% \begin{itemize}
 
-    \item \textbf{Likelihood (Media):}
-    l'attacco richiede normalmente accesso a un canale interno,
-    compromissione preliminare di un servizio oppure una configurazione
-    che non autentichi e leghi correttamente i messaggi alla sessione.
-    Non è quindi direttamente eseguibile tramite la sola interfaccia
-    pubblica.
+%     \item \textbf{Likelihood (Media):}
+%     l'attacco richiede normalmente accesso a un canale interno,
+%     compromissione preliminare di un servizio oppure una configurazione
+%     che non autentichi e leghi correttamente i messaggi alla sessione.
+%     Non è quindi direttamente eseguibile tramite la sola interfaccia
+%     pubblica.
 
-    \item \textbf{Severity (Alta):}
-    la manipolazione dei messaggi di coordinamento può propagarsi fino
-    allo Swap Manager e determinare associazioni cross-sessione,
-    riproduzione di contenuti non corretti e potenziale esposizione
-    della risposta audiovisiva di un altro utente.
+%     \item \textbf{Severity (Alta):}
+%     la manipolazione dei messaggi di coordinamento può propagarsi fino
+%     allo Swap Manager e determinare associazioni cross-sessione,
+%     riproduzione di contenuti non corretti e potenziale esposizione
+%     della risposta audiovisiva di un altro utente.
 
-    \item \textbf{Livello di Rischio Inerente: ALTO}
-    (si veda la matrice di prioritizzazione in
-    Tabella~\ref{tab:risk-priority}).
+%     \item \textbf{Livello di Rischio Inerente: ALTO}
+%     (si veda la matrice di prioritizzazione in
+%     Tabella~\ref{tab:risk-priority}).
 
-\end{itemize}
+% \end{itemize}
 
+\subsubsection{Priorità}
+
+SC7 è classificato \textbf{Alto} (Likelihood Media, Severity Alta)
+nella Tabella~\ref{tab:risk-priority}: richiede normalmente accesso a
+un canale interno, ma una manipolazione riuscita può propagarsi fino
+allo Swap Manager e produrre associazioni cross-sessione.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
@@ -3346,11 +3914,12 @@ sensibili o seguire il consiglio senza un'adeguata verifica.
     e le caratteristiche personali definite da M3 e D7, nonostante il
     contenuto sostanziale violi le policy.
 
-    \item \textbf{Validazione insufficiente del merito.}
-    M11 accetta un output grammaticalmente corretto e coerente con la
-    personalità, ma non identifica la richiesta indebita di
-    informazioni personali o la natura non sicura
-    dell'affermazione proposta.
+    \item \textbf{Assenza di un controllo sufficiente sul merito.}
+    Il contenuto mantiene una forma linguisticamente plausibile e coerente
+    con la personalità del digital human, pur contenendo richieste indebite
+    di informazioni personali o indicazioni non sicure. La baseline non
+    assume un controllo semantico capace di rilevare necessariamente tale
+    deviazione.
 
     \item \textbf{Amplificazione audiovisiva.}
     M6 e M7 trasformano il contenuto in voce e rappresentazione
@@ -3382,54 +3951,62 @@ confidenzialità e integrità, ma il meccanismo di amplificazione è
 specificamente catturato da OWASP ASI09.
 
 
-\subsubsection{Descrizione degli Asset Coinvolti}
+% \subsubsection{Descrizione degli Asset Coinvolti}
 
-La selezione comprende gli asset attraverso i quali il messaggio viene
-costruito, reso credibile e infine utilizzato per influenzare
-l'utente (D1, D3, D6, D7, D8, D11, M3, M6, M7, M11):
+% La selezione comprende gli asset attraverso i quali il messaggio viene
+% costruito, reso credibile e infine utilizzato per influenzare
+% l'utente (D1, D3, D6, D7, D8, D11, M3, M6, M7, M11):
 
-\begin{itemize}
+% \begin{itemize}
 
-    \item \textbf{D1 (User Audio / Input Streams):}
-    può contenere i dati personali o sensibili che l'utente viene
-    indotto a comunicare a seguito dello sfruttamento della fiducia.
+%     \item \textbf{D1 (User Audio / Input Streams):}
+%     può contenere i dati personali o sensibili che l'utente viene
+%     indotto a comunicare a seguito dello sfruttamento della fiducia.
 
-    \item \textbf{D3 (Full Transcript \& Request):}
-    conserva la trascrizione completa delle informazioni fornite
-    dall'utente durante il turno.
+%     \item \textbf{D3 (Full Transcript \& Request):}
+%     conserva la trascrizione completa delle informazioni fornite
+%     dall'utente durante il turno.
 
-    \item \textbf{D6 (Filler \& Main Response Transcripts):}
-    contiene il messaggio attraverso cui viene esercitata la
-    persuasione o viene formulata l'indicazione non sicura.
+%     \item \textbf{D6 (Filler \& Main Response Transcripts):}
+%     contiene il messaggio attraverso cui viene esercitata la
+%     persuasione o viene formulata l'indicazione non sicura.
 
-    \item \textbf{D7 (Personality Source Artifacts):}
-    definisce gli elementi culturali, linguistici e comportamentali che
-    contribuiscono alla credibilità del personaggio.
+%     \item \textbf{D7 (Personality Source Artifacts):}
+%     definisce gli elementi culturali, linguistici e comportamentali che
+%     contribuiscono alla credibilità del personaggio.
 
-    \item \textbf{D8 (Voice \& Visual Identity Assets):}
-    comprende voce, aspetto e materiale audiovisivo che rendono
-    riconoscibile e autorevole il digital human agli occhi
-    dell'utente.
+%     \item \textbf{D8 (Voice \& Visual Identity Assets):}
+%     comprende voce, aspetto e materiale audiovisivo che rendono
+%     riconoscibile e autorevole il digital human agli occhi
+%     dell'utente.
 
-    \item \textbf{D11 (WebRTC Media Streams):}
-    costituisce il canale attraverso cui il messaggio persuasivo viene
-    concretamente presentato all'utente.
+%     \item \textbf{D11 (WebRTC Media Streams):}
+%     costituisce il canale attraverso cui il messaggio persuasivo viene
+%     concretamente presentato all'utente.
 
-    \item \textbf{M3 (Personality / System Prompts):}
-    applica tono, ruolo, limiti e regole comportamentali alla risposta
-    generata.
+%     \item \textbf{M3 (Personality / System Prompts):}
+%     applica tono, ruolo, limiti e regole comportamentali alla risposta
+%     generata.
 
-    \item \textbf{M6--M7 (Voice e Video Services):}
-    convertono il testo in una rappresentazione audiovisiva coerente
-    con l'identità del personaggio, amplificandone la credibilità.
+%     \item \textbf{M6--M7 (Voice e Video Services):}
+%     convertono il testo in una rappresentazione audiovisiva coerente
+%     con l'identità del personaggio, amplificandone la credibilità.
 
-    \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):}
-    deve individuare richieste indebite di dati, contenuti fuori ruolo
-    e indicazioni incompatibili con le safety policy prima della
-    sintesi audiovisiva.
+%     \item \textbf{M11 (Guardrails, Policy Rules \& Output Schemas):}
+%     deve individuare richieste indebite di dati, contenuti fuori ruolo
+%     e indicazioni incompatibili con le safety policy prima della
+%     sintesi audiovisiva.
 
-\end{itemize}
+% \end{itemize}
+\subsubsection{Asset coinvolti}
 
+D6 costituisce il contenuto persuasivo, mentre D7, D8, M3 e M6--M7
+contribuiscono a renderlo coerente con l'identità, la voce e la
+personalità del digital human. D11 è il canale attraverso cui il
+messaggio raggiunge l'utente; D1 e D3 rappresentano invece i dati che
+l'utente può essere indotto a divulgare. M11 viene considerato come
+controllo della secure architecture destinato a intercettare output
+fuori ruolo o non sicuri.
 
 \subsubsection{Classificazione STRIDE-AI, Proprietà CIA$^3$-R Violate e Meccanismo del Threat}
 
@@ -3463,31 +4040,36 @@ compromissione tecnica e \textbf{fiducia umana}, che costituisce il
 fattore specificamente catturato dalla categoria OWASP ASI09.
 
 
-\subsubsection{Calcolo della Priorità e Valutazione del Rischio}
+% \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 
-\begin{itemize}
+% \begin{itemize}
 
-    \item \textbf{Likelihood (Media):}
-    nella configurazione corrente lo sfruttamento della fiducia
-    richiede generalmente che il contenuto sia già stato deviato
-    attraverso un altro vettore, quale goal hijack, poisoning,
-    compromissione delle identità o supply-chain compromise. Il
-    character design empatico rende tuttavia più efficace un output
-    malevolo una volta ottenuto il controllo del contenuto.
+%     \item \textbf{Likelihood (Media):}
+%     nella configurazione corrente lo sfruttamento della fiducia
+%     richiede generalmente che il contenuto sia già stato deviato
+%     attraverso un altro vettore, quale goal hijack, poisoning,
+%     compromissione delle identità o supply-chain compromise. Il
+%     character design empatico rende tuttavia più efficace un output
+%     malevolo una volta ottenuto il controllo del contenuto.
 
-    \item \textbf{Severity (Alta):}
-    l'utente può divulgare informazioni sensibili oppure assumere
-    decisioni basate su contenuti non sicuri. La voce clonata,
-    l'antropomorfizzazione e la continuità della relazione con
-    Al-Hakima amplificano inoltre il danno reputazionale e la
-    difficoltà per l'utente di riconoscere la compromissione.
+%     \item \textbf{Severity (Alta):}
+%     l'utente può divulgare informazioni sensibili oppure assumere
+%     decisioni basate su contenuti non sicuri. La voce clonata,
+%     l'antropomorfizzazione e la continuità della relazione con
+%     Al-Hakima amplificano inoltre il danno reputazionale e la
+%     difficoltà per l'utente di riconoscere la compromissione.
 
-    \item \textbf{Livello di Rischio Inerente: ALTO}
-    (si veda la matrice di prioritizzazione in
-    Tabella~\ref{tab:risk-priority}).
+%     \item \textbf{Livello di Rischio Inerente: ALTO}
+%     (si veda la matrice di prioritizzazione in
+%     Tabella~\ref{tab:risk-priority}).
 
-\end{itemize}
+% \end{itemize}
+\subsubsection{Priorità}
 
+SC9 è classificato \textbf{Alto} (Likelihood Media, Severity Alta)
+nella Tabella~\ref{tab:risk-priority}: lo sfruttamento richiede
+generalmente una deviazione a monte del contenuto, ma la componente
+antropomorfa e audiovisiva ne amplifica significativamente l'impatto.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
@@ -3552,8 +4134,9 @@ sistema:
 \section{Secure Architecture Proposta}
 \label{sec:secure-architecture}
 
-La secure architecture proposta mantiene invariata la struttura
-funzionale Dual-Brain descritta nella
+La secure architecture proposta mantiene invariata la
+\textbf{baseline funzionale} definita nella
+Sezione~\ref{subsec:baseline-secure} e descritta nel dettaglio nella
 Sezione~\ref{sec:pipeline-description}, ma introduce punti di
 enforcement espliciti lungo i flussi nei quali dati non fidati,
 decisioni agentiche, memoria e servizi multimediali attraversano
