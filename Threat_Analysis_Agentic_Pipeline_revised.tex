@@ -3091,7 +3091,7 @@ richiesta.
 
     \item \textbf{Accesso a risorse privilegiate.} L'Orchestratore o il servizio intermedio sfrutta i propri privilegi per accedere a $D4$, $D8$ o invocare i servizi multimediali $M6$--$M7$ oltre il perimetro del chiamante primario.
 
-    \item \textbf{Propagazione dell'impatto.} L'attaccante esfiltra dati riservati, genera output audiovisivi non autorizzati o contraffà la voce dell'avatar al di fuori del workflow legittimo, estendendo il \emph{blast radius}.
+    \item \textbf{Propagazione dell'impatto.} L'attaccante esfiltra dati riservati, genera output audiovisivi non autorizzati o falsifica la voce dell'avatar al di fuori del workflow legittimo, estendendo il \emph{blast radius}.
 \end{enumerate}
 
 Il meccanismo fondamentale non risiede nella disponibilità diretta di tool privilegiati da parte del Fast-Brain, ma nell'annullamento indiretto della separazione logica dei privilegi causato da configurazioni IAM permissive.
@@ -3466,7 +3466,7 @@ Per ridurre il rischio inerente \textbf{ALTO} dello Scenario~9, la secure archit
 %   conserva la versione di prompt, policy e modello, il testo effettivamente sintetizzato e l'esito dei controlli, consentendo di ricostruire quale output sia stato mostrato all'utente.
 
     \item \textbf{P6 - Continuous execution monitoring} [Asset $D6$, $M11$]:
-    intercetta deviazioni di registro linguistico, tentativi di elicitazione dati (*social engineering* agentico) o pattern assertivi anomali, forzando la terminazione della sessione o la degradazione del rendering.
+    intercetta deviazioni di registro linguistico, tentativi di elicitazione dati (social engineering agentico) o pattern assertivi anomali, forzando la terminazione della sessione o la degradazione del rendering.
 %   rileva richieste anomale di informazioni sensibili, imperativi, deviazioni persistenti dal personaggio, contenuti ad alto rischio e generazioni audiovisive non legate a una richiesta valida.
 
     \item \textbf{P7 - Audit periodici e Red Teaming socio-tecnico} [Asset $D7$, $M3$, $M11$]:
