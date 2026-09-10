@@ -2618,349 +2618,33 @@ di identità e privilegi di SC3 può amplificare l'impatto di entrambi.
 Analogamente, la manipolazione dei messaggi di SC7 può innescare la
 propagazione di guasti descritta in SC8.
 
-% =========================================================
+%=========================================================
 \section{Controlli secondo le sette precauzioni}
 \label{sec:precauzioni}
 
-La prioritizzazione precedente identifica quali scenari richiedano
-maggiore attenzione, ma numerosi controlli di sicurezza risultano
-\textbf{trasversali} a più categorie OWASP. Per evitare di ridefinire
-le stesse contromisure all'interno di ciascuno scenario prioritario,
-questa sezione introduce una baseline comune di controlli organizzata
-secondo le sette precauzioni per i sistemi agentici presentate nel
-materiale del corso \cite{damianiagentic}.
+Per evitare ridondanze nell'analisi delle singole minacce, questa sezione definisce la baseline comune di requisiti della \emph{secure architecture proposta}, organizzata secondo le sette precauzioni per i sistemi agentici \cite{damianiagentic}. I controlli qui delineati rappresentano invarianti architetturali la cui efficacia operativa contro le catene d'attacco viene contestualizzata negli scenari prioritari (Sezione~\ref{sec:scenari-prioritari}).
 
-La collocazione della sezione tra la \emph{Risk Prioritization} e
-l'analisi dettagliata degli scenari è quindi intenzionale: prima viene
-stabilito quali rischi siano prioritari, successivamente vengono
-definiti i controlli architetturali riutilizzabili e, infine, ciascuno
-scenario mostra quali precauzioni interrompano concretamente la propria
-catena d'attacco.
-
-I controlli riportati di seguito devono essere interpretati come
-\textbf{requisiti della secure architecture proposta}. La loro
-effettiva implementazione ed efficacia dovranno essere verificate nel
-piano sperimentale; non vengono pertanto assunti come mitigazioni già
-validate nel sistema corrente.
-
-
-% ---------------------------------------------------------
 \subsection{Precauzione 1 --- Least Agency}
+Estende il principio del privilegio minimo al grado di autonomia decisionale, alle memorie e alle azioni accessibili a ciascun agente \cite{damianiagentic}. Nessun modulo può invocare tool arbitrari o eseguire azioni downstream eccedenti il proprio ruolo; i percorsi a bassa latenza e reattivi non hanno accesso a memorie persistenti o risorse sensibili, mentre le basi di conoscenza nel serving path operano esclusivamente in sola lettura con credenziali dedicate e a breve durata.
 
-Il principio di \emph{Least Agency} estende il least privilege al grado
-di autonomia, alle memorie, ai servizi e alle azioni disponibili a
-ciascun componente agentico \cite{damianiagentic}. Nell'architettura
-Dual-Brain esso viene applicato come segue:
-
-\begin{itemize}
-    \item il Fast-Brain (M1) può esclusivamente classificare l'intento,
-    produrre un filler breve e selezionare un behavioral trigger
-    appartenente a un insieme autorizzato;
-
-    \item il Fast-Brain non dispone di accesso diretto alla Knowledge
-    Base, alla memoria persistente, al feedback store, agli asset vocali
-    e visivi o ai servizi di generazione video;
-
-    \item il Deep-Brain (M2) utilizza RAG e memoria in lettura durante
-    l'inferenza e non può modificare direttamente Knowledge Base,
-    ranking o pool di few-shot examples;
-
-    \item il Deep-Brain genera la risposta sostanziale, ma non sceglie
-    autonomamente quali servizi multimediali eseguire;
-
-    \item l'Orchestratore (M9) costituisce il punto autorizzato di
-    routing verso i servizi downstream e applica la sequenza
-    deterministica prevista dall'architettura;
-
-    \item gli aggiornamenti persistenti derivati dal feedback seguono
-    una pipeline distinta dal serving path e non vengono promossi
-    automaticamente sulla sola base dell'output di un agente;
-
-    \item ogni workload utilizza esclusivamente identità, scope,
-    audience e durata delle credenziali strettamente necessari al
-    proprio compito.
-\end{itemize}
-
-
-% ---------------------------------------------------------
 \subsection{Precauzione 2 --- Guardrail deterministici e HITL}
+Introduce meccanismi deterministici e indipendenti dai modelli generativi per convalidare input, contesti e output. Le risposte agentiche devono aderire a schemi sintattici rigidi (\emph{strict schema}), vincoli di lunghezza e insiemi finiti di azioni autorizzate, attivando percorsi statici di fallback sicuro in caso di anomalie semantiche o timeout. La supervisione umana (\emph{Human-in-the-Loop}) è vincolata alle sole modifiche persistenti o ad alto impatto su prompt, memorie condivise e configurazioni.
 
-I guardrail vengono applicati sia agli input sia agli output degli
-agenti, distinguendo i controlli che devono operare nel percorso
-real-time da quelli che possono essere eseguiti fuori dal percorso
-critico. Il modulo M11 costituisce il punto di validazione tra dati non
-fidati, componenti agentici e servizi downstream.
-
-\textbf{Input Guard e controlli sul contesto:}
-
-\begin{itemize}
-    \item le trascrizioni provenienti da VAD/STT vengono trattate come
-    input non fidati prima di influenzare gli obiettivi degli agenti;
-
-    \item i partial transcript consecutivi appartenenti alla stessa
-    sessione vengono correlati, evitando che la validazione isolata di
-    ciascun chunk renda invisibili tentativi di \emph{chunk splitting};
-
-    \item vengono applicati controlli leggeri per rilevare pattern di
-    prompt injection, override delle istruzioni, richieste incompatibili
-    con il ruolo e altri input fuori policy;
-
-    \item i contenuti recuperati tramite RAG vengono trattati come dati
-    non fidati e sottoposti a controlli di provenance e contenuto prima
-    di essere utilizzati come contesto dal Deep-Brain.
-\end{itemize}
-
-\textbf{Output Guard sincrono sul Fast-Brain:}
-
-\begin{itemize}
-    \item validazione mediante JSON Schema strict;
-    \item limite massimo alla lunghezza del filler;
-    \item behavioral trigger selezionabile esclusivamente da un enum
-    autorizzato;
-    \item divieto per il filler di formulare la risposta sostanziale,
-    richiedere dati personali o introdurre nuove istruzioni;
-    \item verifica del binding tra sessione, richiesta e output;
-    \item controllo leggero di \emph{goal integrity}, che verifica la
-    coerenza semantica tra l'intento classificato, il compito
-    autorizzato del Fast-Brain e il filler generato;
-    \item fallback statico e sicuro in caso di violazione dello schema,
-    deviazione semantica, output non conforme o superamento del timeout.
-\end{itemize}
-
-Il controllo di goal integrity completa la sola validazione sintattica:
-un output può infatti rispettare perfettamente lo schema JSON pur
-essendo semanticamente incompatibile con l'obiettivo autorizzato del
-Fast-Brain. La verifica deve quindi rilevare deviazioni significative
-rispetto al compito previsto, senza attribuire alla similarità
-semantica il ruolo di garanzia assoluta contro il goal hijacking.
-
-\textbf{Output Guard sul Deep-Brain:}
-
-\begin{itemize}
-    \item validazione dell'output prima dell'inoltro ai servizi TTS e
-    video;
-    \item verifica di coerenza con ruolo, obiettivi e policy definite
-    dal System Prompt;
-    \item filtraggio di richieste di dati personali non necessarie;
-    \item blocco di contenuti manipolativi o incompatibili con il ruolo
-    del personaggio;
-    \item per contenuti relativi a salute e benessere, blocco di
-    prescrizioni, diagnosi o indicazioni potenzialmente pericolose e
-    utilizzo di un fallback coerente con i limiti del personaggio.
-\end{itemize}
-
-I controlli più costosi sul Deep-Brain e sul contesto RAG non sono
-soggetti allo stesso budget temporale dell'Instant Path, poiché vengono
-eseguiti sul Background Path prima della sintesi e della presentazione
-della risposta principale.
-
-L'\emph{Human-in-the-Loop} non viene inserito in ogni turno
-conversazionale, poiché ciò sarebbe incompatibile con il requisito
-real-time. La supervisione umana è richiesta per operazioni persistenti
-o ad alto impatto, tra cui:
-
-\begin{itemize}
-    \item modifica dei Personality/System Prompt;
-    \item modifica o sostituzione degli asset vocali e visivi;
-    \item modifica delle policy o dell'insieme dei trigger;
-    \item promozione persistente di nuovi few-shot examples;
-    \item aggiornamenti ad alto impatto della Knowledge Base;
-    \item rilascio di nuovi modelli, dipendenze o provider.
-\end{itemize}
-% ---------------------------------------------------------
 \subsection{Precauzione 3 --- Sandboxing e controllo granulare degli accessi}
+Traduce la separazione logica in isolamento tecnico applicando ambienti di esecuzione containerizzati, \emph{workload identity} distinte e mutua autenticazione (mTLS) sui confini fiduciari. La rete e il file system adottano policy \emph{deny-by-default}; le memorie conversazionali sono rigorosamente segregate per identificativo di sessione e job, mentre gli asset identitari sensibili risiedono in archivi dedicati, cifrati e soggetti a quote di utilizzo.
 
-La separazione funzionale dei componenti deve essere supportata da una
-corrispondente separazione tecnica, applicando isolamento, autenticazione
-reciproca e autorizzazione secondo il principio di least privilege.
-
-\begin{itemize}
-    \item Fast-Brain, Deep-Brain, Orchestratore e servizi multimediali
-    vengono eseguiti in workload o runtime isolati;
-
-    \item ogni servizio utilizza una workload identity distinta e
-    credenziali short-lived, evitando token condivisi o ereditati tra
-    Fast-Brain, Deep-Brain e Orchestratore;
-
-    \item le comunicazioni service-to-service attraversanti trust
-    boundary sono autenticate mediante \emph{mutual TLS} (mTLS), oltre
-    ad essere soggette alle policy di autorizzazione previste per il
-    mittente e il destinatario;
-
-    \item le policy di rete e filesystem sono \emph{deny-by-default} e
-    consentono esclusivamente le comunicazioni e gli accessi necessari
-    al ruolo del workload;
-
-    \item la memoria di sessione è segregata mediante identificatori e
-    namespace associati alla sessione, impedendo il riuso implicito di
-    contesto appartenente ad altri utenti o job;
-
-    \item nessun contenuto della memoria conversazionale viene promosso
-    automaticamente a memoria persistente o condivisa: gli eventuali
-    aggiornamenti transitano attraverso la pipeline separata di
-    validazione e ingestione;
-
-    \item la Knowledge Base e l'indice FAISS sono read-only nel serving
-    path, mentre la scrittura è consentita esclusivamente a una
-    pipeline di aggiornamento separata e autorizzata;
-
-    \item gli asset di identità vocale e visiva (D8) sono conservati in
-    uno storage dedicato, cifrato e accessibile esclusivamente ai
-    servizi che ne hanno effettiva necessità;
-
-    \item l'accesso ai provider esterni è soggetto a egress allowlist;
-
-    \item quote, timeout, limiti di concorrenza e limiti di risorse
-    impediscono a un singolo job di saturare i servizi condivisi.
-\end{itemize}
-% ---------------------------------------------------------
 \subsection{Precauzione 4 --- Audit trail completo e immutabile}
+Garantisce la tracciabilità forense delle operazioni nel rispetto del principio di minimizzazione dei dati. Vengono registrati in modo immutabile metadati di sessione, timestamp, versioni degli artefatti, input essenziali, esiti dei controlli di sicurezza, transizioni di stato e invocazioni dei servizi downstream, privilegiando tracce decisionali sintetiche ed escludendo catene di ragionamento interne estese.
 
-L'audit trail deve permettere la ricostruzione dell'intera sequenza
-operativa senza richiedere la memorizzazione di ragionamenti privati
-completi del modello.
-
-Devono essere registrati, compatibilmente con i requisiti di
-minimizzazione e protezione dei dati:
-
-\begin{itemize}
-    \item session ID, job ID, timestamp e identità del componente;
-    \item input e transcript necessari alla ricostruzione
-    dell'incidente, opportunamente protetti o pseudonimizzati;
-    \item partial transcript utilizzato dal Fast-Brain;
-    \item versione di modelli, prompt, policy e schema di validazione;
-    \item filler, trigger e risposta principale prodotti;
-    \item esito dei controlli di M11 e attivazione di eventuali
-    fallback;
-    \item servizi invocati dall'Orchestratore e relativo outcome;
-    \item documenti/chunk RAG recuperati, score e provenance;
-    \item feedback ricevuti e modifiche a ranking o few-shot pool;
-    \item accessi agli asset vocali e visivi;
-    \item transizioni dello Swap Manager, timeout e
-    \emph{Video Ready Signal}.
-\end{itemize}
-
-Per la ricostruzione forense risultano sufficienti input/output,
-decision trace sintetici, policy decision, invocazioni dei servizi e
-relativi esiti; non è necessario conservare chain-of-thought o altri
-ragionamenti interni completi.
-
-
-% ---------------------------------------------------------
 \subsection{Precauzione 5 --- Supply Chain Control}
+Impone la verifica preventiva e il controllo del ciclo di vita su modelli, container, librerie software e servizi terzi. Richiede l'utilizzo di registri approvati, verifica di hash e firme digitali, mantenimento di distinte base software e AI (SBOM/AIBOM), scansioni continue di vulnerabilità e procedure di versionamento con supporto al rollback rapido per configurazioni e knowledge base.
 
-La pipeline dipende da modelli, librerie, runtime e provider esterni;
-tali componenti devono quindi essere gestiti come parte della supply
-chain di sicurezza.
-
-\begin{itemize}
-    \item modelli e container provengono esclusivamente da registry
-    approvati;
-    \item versioni, hash e firme degli artefatti sono verificati prima
-    del deployment;
-    \item viene mantenuto un SBOM/AIBOM dei componenti software e AI
-    rilevanti;
-    \item dipendenze e immagini vengono sottoposte a vulnerability
-    scanning;
-    \item nuovi modelli, prompt e provider vengono testati in ambiente
-    isolato o in shadow mode prima del rilascio;
-    \item devono essere disponibili versioning e rollback per modelli,
-    prompt, policy e Knowledge Base;
-    \item i provider TTS, voice cloning e video sono sottoposti a due
-    diligence rispetto a sicurezza, accesso ai dati e retention;
-    \item l'audit registra la versione esatta dei componenti utilizzati
-    per produrre ogni output rilevante.
-\end{itemize}
-
-
-% ---------------------------------------------------------
 \subsection{Precauzione 6 --- Continuous Execution Monitoring}
+Assicura l'osservabilità a runtime del comportamento degli agenti per rilevare tempestivamente derive semantiche (\emph{goal drift}), accessi non autorizzati, replay di messaggi e anomalie nei tempi o nelle transizioni di stato. Meccanismi automatici di interruzione (\emph{circuit breaker} e fail-safe) isolano i componenti anomali prima che l'errore o la deviazione si propaghi al flusso multimediale.
 
-Il monitoraggio runtime deve rilevare deviazioni sia semantiche sia
-operative, con particolare attenzione ai comportamenti che possono
-propagarsi tra i due percorsi e alla transizione dal filler alla
-risposta principale.
-
-Devono essere monitorati almeno:
-
-\begin{itemize}
-    \item filler che rispondono alla domanda, richiedono informazioni
-    sensibili o violano il ruolo assegnato;
-
-    \item goal drift e behavioral trigger non coerenti con la
-    classificazione dell'intento o con il compito autorizzato
-    dell'agente;
-
-    \item accessi a risorse incompatibili con l'identità, l'audience o
-    il ruolo del componente;
-
-    \item replay, session mismatch, job mismatch, messaggi scaduti e
-    sequence duplicate;
-
-    \item burst anomali di feedback o variazioni improvvise del top-$k$
-    del retriever;
-
-    \item accessi anomali agli asset di identità vocale e visiva;
-
-    \item consumo eccessivo di CPU/GPU, timeout, retry e loop;
-
-    \item anomalie nella transizione \emph{filler-to-main}, quali
-    \emph{Video Ready Signal} anticipati o duplicati, swap incompatibili
-    con lo stato corrente, playback concorrenti, Double-Speak o
-    associazioni cross-sessione;
-
-    \item generazioni audio/video prive di una sessione o di un job
-    validamente autorizzati;
-
-    \item deviazioni persistenti successive a modifiche di modello,
-    prompt o Knowledge Base.
-\end{itemize}
-
-Circuit breaker, kill-switch, limiti di retry, timeout e meccanismi di
-graceful degradation devono consentire di arrestare una catena di
-esecuzione anomala prima che il guasto si propaghi. In presenza di uno
-stato incoerente, il sistema deve mantenere o ripristinare uno stato
-fail-safe anziché completare una transizione audiovisiva non validata.
-% ---------------------------------------------------------
 \subsection{Precauzione 7 --- Audit periodici ispirati ad AIVSS}
+Stabilisce la rivalutazione periodica del profilo di rischio agentico impiegando le dimensioni qualitative di AIVSS come checklist di conformità \cite{damianiagentic}. La revisione valuta variazioni nell'accessibilità dei vettori, nei privilegi e nel grado di autonomia, integrando sessioni di \emph{red teaming} (orientate all'OWASP Agentic Top 10) in occasione di modifiche architetturali, aggiornamenti di modello o incidenti.
 
-La settima precauzione richiede di rivalutare periodicamente il rischio
-agentico utilizzando le dimensioni proposte da AIVSS come riferimento
-per l'audit \cite{damianiagentic}.
-
-Nel presente progetto AIVSS non viene utilizzato per produrre un
-punteggio quantitativo durante la Risk Prioritization. Le sue
-dimensioni vengono invece impiegate come checklist per verificare se
-modifiche dell'architettura abbiano alterato:
-
-\begin{itemize}
-    \item accessibilità e complessità del vettore di attacco;
-    \item precondizioni e privilegi richiesti;
-    \item necessità di interazione dell'utente;
-    \item impatto su Confidentiality, Integrity e Availability;
-    \item grado di autonomia degli agenti;
-    \item utilizzo di memoria persistente;
-    \item dipendenze e interazioni tra componenti;
-    \item criticità delle decisioni e degli output prodotti.
-\end{itemize}
-
-La revisione deve essere ripetuta almeno dopo modifiche a modelli,
-prompt, memoria, policy, provider o livello di autonomia, nonché dopo
-incidenti o anomalie significative.
-
-Il red teaming deve utilizzare casi di test derivati
-dall'\textbf{OWASP Agentic Top 10}, con particolare attenzione agli
-scenari prioritari ASI01, ASI03, ASI06, ASI07 e ASI09. I test devono
-comprendere varianti multilingue e multimodali, incluse interazioni in
-arabo, dialetto emiratino e code-switching, prompt injection su partial
-transcript e contenuti RAG, manipolazione della memoria e del feedback,
-tentativi di privilege abuse, replay e tampering dei messaggi di
-coordinamento e abuso della fiducia dell'utente.
-
-Il programma di verifica deve inoltre comprendere test della supply
-chain, controllando SBOM/AIBOM, provenance, hash e firme degli
-artefatti e verificando che componenti modificati, non autorizzati o
-non correttamente attestati vengano rifiutati prima del deployment.
 
 % =========================================================
 \section{Scenari di minaccia prioritari}
@@ -2975,6 +2659,9 @@ Ogni scenario descrive una vera e propria catena d'attacco, specificando un esem
 % =========================================== %
 \subsection{Scenario 1: Goal Hijack del Fast-Brain e del Deep-Brain (SC1)}
 \label{sec:sc1}
+
+\noindent\textbf{Profilo di Rischio:} Priorità \textbf{Critica} (Likelihood: \emph{Alta}, Severity: \emph{Alta}, Tabella~\ref{tab:risk-priority}).\\
+\textbf{Asset Coinvolti:} Carrier d'attacco ($D1$--$D4$), Componenti decisionali ($M1, M2$), Direttive ($M3$), Output alterati ($D5, D6$).
 
 \subsubsection{Contesto ed Esempio di Scenario Reale}
 
@@ -3003,9 +2690,9 @@ Injection} che induce il Deep-Brain a ignorare il System Prompt di personalità.
 Al-Hakima come erogatrice di consigli di benessere e rimedi erboristici,
 un esempio concretamente dannoso è l'induzione del Deep-Brain a raccomandare un dosaggio eccessivo o
 pericoloso di un rimedio erboristico, sfruttando la fiducia materna e rassicurante del personaggio
-per ridurre lo spirito critico dell'utente. Questo esito lega direttamente lo Scenario~1 allo
-Scenario~9 (\emph{Human-Agent Trust Exploitation}), poiché la persuasività
-del personaggio amplifica l'impatto dell'hijack.
+per ridurre lo spirito critico dell'utente. L'elevata persuasività del personaggio può inoltre amplificare
+l'impatto dell'hijack, costituendo un punto di intersezione con
+lo Scenario~9 (\emph{Human-Agent Trust Exploitation}).
 
 \subsubsection{Catena d'Attacco}
 
@@ -3071,15 +2758,15 @@ del personaggio amplifica l'impatto dell'hijack.
 %     propagazione di trigger e contenuti non autorizzati; come discusso, il controllo copre la forma
 %     ma non la semantica dell'output.
 % \end{itemize}
-\subsubsection{Asset coinvolti}
-
-Gli asset direttamente coinvolti sono D1--D6 e M1--M3. D1--D4
-costituiscono i possibili carrier dell'input o del contesto
-avversariale; M1 e M2 sono i componenti decisionali sottoposti
-all'hijack; M3 contiene le istruzioni che l'attaccante tenta di
-sovrascrivere; D5 e D6 rappresentano gli output direttamente alterati.
-M11 è considerato successivamente come controllo della secure
-architecture e non come precondizione del rischio inerente.
+%\subsubsection{Asset coinvolti}
+%
+%Gli asset direttamente coinvolti sono D1--D6 e M1--M3. D1--D4
+%costituiscono i possibili carrier dell'input o del contesto
+%avversariale; M1 e M2 sono i componenti decisionali sottoposti
+%all'hijack; M3 contiene le istruzioni che l'attaccante tenta di
+%sovrascrivere; D5 e D6 rappresentano gli output direttamente alterati.
+%M11 è considerato successivamente come controllo della secure
+%architecture e non come precondizione del rischio inerente.
 
 \subsubsection{Classificazione STRIDE-AI, Proprietà CIA$^3$-R Violate e Meccanismo del Threat}
 
@@ -3125,32 +2812,47 @@ rischio.
 %     \item \textbf{Livello di Rischio Inerente: CRITICO} (si veda la matrice di prioritizzazione in
 %     Tabella~\ref{tab:risk-priority}).
 % \end{itemize}
-\subsubsection{Priorità}
-
-Come stabilito nella Tabella~\ref{tab:risk-priority}, SC1 presenta
-Likelihood \textbf{Alta} e Severity \textbf{Alta}, risultando
-\textbf{Critico}: il vettore è direttamente accessibile dal canale
-utente e può compromettere entrambi i percorsi della pipeline.
+%\subsubsection{Priorità}
+%
+%Come stabilito nella Tabella~\ref{tab:risk-priority}, SC1 presenta
+%Likelihood \textbf{Alta} e Severity \textbf{Alta}, risultando
+%\textbf{Critico}: il vettore è direttamente accessibile dal canale
+%utente e può compromettere entrambi i percorsi della pipeline.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
 Per neutralizzare il rischio inerente \textbf{CRITICO} dello Scenario~1 e spezzare la catena d'attacco a diversi livelli della pipeline, la secure architecture applica in modo integrato le precauzioni definite nella Sezione~\ref{sec:precauzioni}, mappate sui rispettivi asset coinvolti:
 
 \begin{itemize}
-    \item \textbf{P1 - Least Agency} [Asset $M1$, $D5$, $D6$]:
-    Restringe drasticamente il perimetro d'azione dell'agente Fast-Brain ($M1$). Il behavioral trigger ($D5$) può essere selezionato esclusivamente da un insieme predefinito ed enumerato, mentre il filler verbale ($D6$) rimane generato dinamicamente per preservare la natura contestuale dell'Instant Path, ma è vincolato per lunghezza, ruolo e contenuto e viene sottoposto ai controlli di M11 prima della sintesi. Viene inoltre negato all'agente rapido qualsiasi accesso diretto a Knowledge Base, memoria persistente, feedback store e servizi esterni, limitando il raggio d'impatto di un eventuale \emph{goal hijacking} sull'Instant Path.
+    \item \textbf{P1 - Least Agency} [Asset $M1$, $D5$, $D6$]: limita il perimetro operativo dei due agenti, impedendo al Fast-Brain di accedere direttamente a risorse persistenti o servizi downstream e vincolando i behavioral trigger a un insieme autorizzato.
+%    Restringe drasticamente il perimetro d'azione dell'agente Fast-Brain ($M1$). Il behavioral trigger ($D5$) può essere selezionato esclusivamente da un insieme predefinito ed enumerato, mentre il filler verbale ($D6$) rimane generato dinamicamente per preservare la natura contestuale dell'Instant Path, ma è vincolato per lunghezza, ruolo e contenuto e viene sottoposto ai controlli di M11 prima della sintesi. Viene inoltre negato all'agente rapido qualsiasi accesso diretto a Knowledge Base, memoria persistente, feedback store e servizi esterni, limitando il raggio d'impatto di un eventuale \emph{goal hijacking} sull'Instant Path.
     
     \item \textbf{P2 - Guardrail deterministici e HITL} [Asset $M11$, $D2$, $D3$, $D6$]:
-    M11 applica una catena di Input e Output Guard differenziata per i due percorsi. Sul Fast-Brain, il cui output deve essere disponibile entro il budget dell'Instant Path, vengono eseguiti controlli sincroni a basso overhead: correlazione dei partial transcript consecutivi, rilevazione di pattern di prompt injection, JSON Schema strict, limiti di lunghezza, enum dei trigger e verifica leggera di coerenza semantica tra intento, ruolo autorizzato e filler generato. Tale controllo di \emph{goal integrity} permette di rifiutare anche output formalmente validi ma semanticamente deviati. Sul Background Path, invece, possono essere applicati controlli più approfonditi sul contesto RAG e sulla risposta del Deep-Brain prima dell'inoltro ai servizi TTS e video. Qualora un controllo richiesto fallisca o il Fast-Brain superi il proprio timeout, l'output non validato non viene utilizzato e viene attivato un fallback statico e sicuro.
+    valida input, contesto RAG e output agentici prima della propagazione
+    downstream, combinando vincoli strutturali e controlli di coerenza
+    semantica. In caso di violazione o timeout viene attivato un
+    fallback sicuro.
+%    M11 applica una catena di Input e Output Guard differenziata per i due percorsi. Sul Fast-Brain, il cui output deve essere disponibile entro il budget dell'Instant Path, vengono eseguiti controlli sincroni a basso overhead: correlazione dei partial transcript consecutivi, rilevazione di pattern di prompt injection, JSON Schema strict, limiti di lunghezza, enum dei trigger e verifica leggera di coerenza semantica tra intento, ruolo autorizzato e filler generato. Tale controllo di \emph{goal integrity} permette di rifiutare anche output formalmente validi ma semanticamente deviati. Sul Background Path, invece, possono essere applicati controlli più approfonditi sul contesto RAG e sulla risposta del Deep-Brain prima dell'inoltro ai servizi TTS e video. Qualora un controllo richiesto fallisca o il Fast-Brain superi il proprio timeout, l'output non validato non viene utilizzato e viene attivato un fallback statico e sicuro.
 
     \item \textbf{P3 - Sandboxing e controllo accessi} [Asset $M1$, $M2$, $D4$]:
-    Isola l'esecuzione dell'agente Fast-Brain ($M1$) e dell'agente Deep-Brain ($M2$) all'interno di container distinti con criteri di rete \emph{deny-by-default}. Garantisce inoltre che la Knowledge Base RAG e la memoria di contesto ($D4$) usate per il recupero delle informazioni rimangano accessibili esclusivamente in modalità \emph{read-only} durante la fase di inferenza, impedendo che un dirottamento dell'agente possa tradursi nella scrittura o alterazione permanente dei documenti.
+        isola i due agenti in workload distinti e mantiene Knowledge Base e
+    memoria in modalità read-only nel serving path, riducendo il
+    \emph{blast radius} di un eventuale hijack.
+%    Isola l'esecuzione dell'agente Fast-Brain ($M1$) e dell'agente Deep-Brain ($M2$) all'interno di container distinti con criteri di rete \emph{deny-by-default}. Garantisce inoltre che la Knowledge Base RAG e la memoria di contesto ($D4$) usate per il recupero delle informazioni rimangano accessibili esclusivamente in modalità \emph{read-only} durante la fase di inferenza, impedendo che un dirottamento dell'agente possa tradursi nella scrittura o alterazione permanente dei documenti.
 
     \item \textbf{P4 - Audit trail completo e immutabile} [Asset $D2$, $D3$, $D4$, $M3$, $M11$]:
-    Registra in modo immutabile l'intero flusso informativo coinvolto nell'attacco, inclusi la trascrizione parziale ($D2$), la trascrizione completa ($D3$), la versione esatta dei prompt di sistema ($M3$), i frammenti RAG recuperati con i relativi punteggi di rilevanza ($D4$) e l'esito dei controlli di sicurezza del guardrail ($M11$). Ciò garantisce la completa tracciabilità (\emph{Accountability}) e permette la ricostruzione diagnostica di tentativi di frammentazione del payload o iniezione indiretta.
+        garantisce la ricostruibilità dei tentativi di injection e delle
+    decisioni conseguenti attraverso la registrazione di input,
+    contesto, versioni degli artefatti e decisioni di sicurezza, senza
+    conservare il ragionamento interno completo dei modelli.
+%    Registra in modo immutabile l'intero flusso informativo coinvolto nell'attacco, inclusi la trascrizione parziale ($D2$), la trascrizione completa ($D3$), la versione esatta dei prompt di sistema ($M3$), i frammenti RAG recuperati con i relativi punteggi di rilevanza ($D4$) e l'esito dei controlli di sicurezza del guardrail ($M11$). Ciò garantisce la completa tracciabilità (\emph{Accountability}) e permette la ricostruzione diagnostica di tentativi di frammentazione del payload o iniezione indiretta.
 
     \item \textbf{P6 - Continuous execution monitoring} [Asset $M1$, $M2$, $D5$, $D6$]:
-    Attiva un monitoraggio comportamentale in tempo reale in grado di rilevare anomalie semantiche e deviazioni dagli obiettivi definiti (\emph{goal drift}). Nello specifico, rileva se un filler ($D6$) prova a rispondere direttamente alla domanda dell'utente anziché limitarsi a gestire l'attesa, o se vengono emessi trigger ($D5$) non coerenti con il ruolo. In caso di rilevazione di attacco sistematico, scattano automaticamente la degradazione controllata del servizio o l'interruzione della sessione (\emph{circuit breaker}).
+        rileva deviazioni rispetto al ruolo e agli obiettivi autorizzati,
+    nonché anomalie nelle transizioni operative, consentendo
+    l'interruzione della catena mediante meccanismi di
+    \emph{circuit breaker} e comportamento \emph{fail-safe}.
+%    Attiva un monitoraggio comportamentale in tempo reale in grado di rilevare anomalie semantiche e deviazioni dagli obiettivi definiti (\emph{goal drift}). Nello specifico, rileva se un filler ($D6$) prova a rispondere direttamente alla domanda dell'utente anziché limitarsi a gestire l'attesa, o se vengono emessi trigger ($D5$) non coerenti con il ruolo. In caso di rilevazione di attacco sistematico, scattano automaticamente la degradazione controllata del servizio o l'interruzione della sessione (\emph{circuit breaker}).
 \end{itemize}
 
 % =========================================== %
