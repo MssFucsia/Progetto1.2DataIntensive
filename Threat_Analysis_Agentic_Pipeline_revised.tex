@@ -219,33 +219,43 @@ persistente di RAG, memoria e feedback, abuso di identità e privilegi
 tra componenti, tampering e replay dei messaggi di coordinamento e
 sfruttamento della fiducia nel digital human.
 
-Le mitigazioni sono organizzate secondo le sette precauzioni
-fondamentali per la sicurezza dei sistemi agentici
-\cite{damianiagentic}: Least Agency, guardrail e
-Human-in-the-Loop, sandboxing e controllo granulare degli accessi,
-audit trail immutabile, controllo della supply chain, monitoraggio
-continuo e audit periodici ispirati ad AIVSS. Tali controlli
-costituiscono la baseline di requisiti della secure architecture,
-progettata secondo un principio fail-safe: i controlli indispensabili
-sul percorso real-time non vengono bypassati per rispettare il vincolo
-di latenza, mentre le verifiche più costose vengono collocate fuori dal
-percorso critico quando possibile.
+%Le mitigazioni sono organizzate secondo le sette precauzioni
+%fondamentali per la sicurezza dei sistemi agentici
+%\cite{damianiagentic}: Least Agency, guardrail e
+%Human-in-the-Loop, sandboxing e controllo granulare degli accessi,
+%audit trail immutabile, controllo della supply chain, monitoraggio
+%continuo e audit periodici ispirati ad AIVSS. Tali controlli
+%costituiscono la baseline di requisiti della secure architecture,
+%progettata secondo un principio fail-safe: i controlli indispensabili
+%sul percorso real-time non vengono bypassati per rispettare il vincolo
+%di latenza, mentre le verifiche più costose vengono collocate fuori dal
+%percorso critico quando possibile.
+
+La strategia di mitigazione è strutturata secondo le sette precauzioni
+fondamentali per i sistemi agentici \cite{damianiagentic}, definendo una
+secure architecture governata dal principio fail-safe: i controlli
+essenziali sul percorso real-time non vengono sacrificati per rispettare
+il vincolo di latenza, mentre le verifiche computazionalmente onerose
+vengono relegate all'elaborazione asincrona fuori dal percorso critico.
+
 % =========================================================
 \section{Introduzione e obiettivi}
 
 \subsection{Contesto}
 \label{subsec:contesto}
 
-Nelle architetture tradizionali per digital human embodied (ovvero dotati di un avatar antropomorfo visivo e capace di comunicazione non verbale), il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
+Nelle architetture tradizionali per digital human embodied (ovvero dotate di un avatar antropomorfo visivo e capace di comunicazione non verbale), il flusso di elaborazione sequenziale $\text{STT} \rightarrow \text{LLM} \rightarrow \text{TTS} \rightarrow \text{Lip-Sync} \rightarrow \text{WebRTC}$ introduce una latenza complessiva che varia da diversi secondi fino a 2--4 minuti nei casi di rendering video complessi. Tale ritardo risulta del tutto incompatibile con i requisiti di un'interazione naturale e conversazionale, per la quale la latenza percepita di prima risposta deve rimanere inferiore a circa $800\,\text{ms}$ \cite{projectspec,damianiasset}.
 
-Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli (\emph{Instant Path} e \emph{Background Path}). Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o brevi espressioni vocali di attesa) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
+%Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli: \emph{Instant Path} e \emph{Background Path}. Un \textbf{Fast-Brain Agent} genera filler immediati e contestuali (durata 1--3 secondi, come cenni del capo o brevi espressioni vocali di attesa) per ridurre l'intervallo percepito dall'utente, mentre un \textbf{Deep-Brain Agent} elabora in background la risposta articolata \cite{projectspec,damianiasset}.
+
+Per superare questo limite e mascherare i tempi d'attesa, l'architettura adotta una pipeline agentica \emph{dual-brain} articolata su due percorsi paralleli: un \emph{Instant Path} gestito da un \textbf{Fast-Brain Agent}, che produce riscontri audiovisivi immediati (1--3 secondi, come cenni del capo o brevi espressioni vocali di attesa), e un \textbf{Background Path} in cui un \textbf{Deep-Brain Agent} elabora la risposta articolata \cite{projectspec,damianiasset}.
 
 L'istanza applicativa considerata come caso di studio implementa l'avatar embodied di \textbf{Al-Hakima Umm Saif}, una figura tradizionale anziana delle comunità oasiche di Liwa e della costa degli Emirati Arabi Uniti \cite{persona}. L'agente è caratterizzato da:
 \begin{itemize}
     \item una spiccata personalità materna, empatica e rassicurante \cite{persona};
     \item l'uso del dialetto emiratino locale (regione di Liwa/Al Ain) intervallato da formule religiose e proverbi tradizionali \cite{verbalhabits};
     \item l'erogazione di consigli di benessere e rimedi erboristici popolari a supporto delle risposte \cite{verbalhabits};
-\item una pipeline RAG multilingue e multimodale basata su un indice vettoriale \textbf{FAISS} (\emph{Facebook AI Similarity Search}), impiegato per la ricerca ad alta velocità di similarità semantica tra vettori densi generati tramite il modello di embedding \texttt{multilingual-e5-large}, affiancato da un LLM \texttt{Falcon-Arabic-7B}, sintesi vocale TTS con voce clonata (\emph{Therapist WAV}) e un motore video cinematico (Veo 3.1) coordinato da un sistema di \emph{Lip-Syncing} e \emph{Swap Manager} per la transizione fluida tra filler e video finale \cite{projectspec,damianiasset}.
+%\item una pipeline RAG multilingue e multimodale basata su un indice vettoriale \textbf{FAISS} (\emph{Facebook AI Similarity Search}), impiegato per la ricerca ad alta velocità di similarità semantica tra vettori densi generati tramite il modello di embedding \texttt{multilingual-e5-large}, affiancato da un LLM \texttt{Falcon-Arabic-7B}, sintesi vocale TTS con voce clonata (\emph{Therapist WAV}) e un motore video cinematico (Veo 3.1) coordinato da un sistema di \emph{Lip-Syncing} e \emph{Swap Manager} per la transizione fluida tra filler e video finale \cite{projectspec,damianiasset}.
 \end{itemize}
 
 Sebbene queste caratteristiche comportamentali massimizzino il realismo e l'immersività, esse amplificano notevolmente il potere persuasivo dell'avatar e l'impatto emotivo sull'utente. Di conseguenza, l'autenticità del contenuto, la safety dei consigli dispensati e la tutela della fiducia dell'utente (\emph{Human-Agent Trust}) diventano requisiti di sicurezza e di threat modeling prioritari \cite{persona,verbalhabits}.
@@ -254,14 +264,18 @@ Sebbene queste caratteristiche comportamentali massimizzino il realismo e l'imme
 \label{subsec:caratterizzazione-agentica}
 
 Un sistema si definisce \emph{agentico} quando combina capacità di inferenza autonoma e azione, interagisce con memorie persistenti e strumenti esterni, e coordina componenti eterogenei senza richiedere una supervisione umana passo-passo \cite{damianiagentic,react}. 
-La pipeline analizzata presenta tali caratteristiche in forma \textbf{vincolata}: l'autonomia è concentrata nell'interpretazione, nel ragionamento e nella selezione del comportamento, mentre l'esecuzione dei servizi multimediali downstream rimane governata da un workflow deterministico controllato dall'Orchestratore. Le principali dinamiche operative e decisionali sono le seguenti:
+La pipeline analizzata presenta tali caratteristiche in forma \textbf{vincolata}: l'autonomia è concentrata nell'interpretazione, nel ragionamento e nella selezione del comportamento, mentre l'esecuzione dei servizi multimediali downstream rimane governata da un workflow deterministico controllato dall'Orchestratore. Nello specifico, il profilo agentico emerge nelle seguenti dinamiche:
 
 \begin{itemize}
-    \item \textbf{Fast-Brain Agent}: interpreta i token parziali in streaming provenienti dal modulo STT e decide in modo autonomo il filler verbale, la risposta emotiva e il trigger gestuale o animativo di accompagnamento (es. \texttt{GAZE\_UP\_LEFT}, \texttt{PREPARING\_HERBS}) \cite{projectspec,persona};
-    \item \textbf{Deep-Brain Agent}: gestisce il ciclo di ragionamento sulla richiesta completa, utilizza il contesto recuperato mediante RAG, applica il \emph{System Prompt} e le informazioni di personalità e genera la risposta sostanziale. Il risultato alimenta successivamente il percorso multimediale di background previsto dall'architettura \cite{projectspec};
-    \item \textbf{Orchestratore e Swap Manager}: monitora in tempo reale lo stato di avanzamento dei due percorsi paralleli, prende decisioni dinamiche su timeout e \emph{fallback}, gestisce la commutazione trasparente del flusso video dal filler al video sintetizzato e coordina lo stacco audio-visivo \cite{projectspec};
-    \item \textbf{Ciclo di Feedback e Memoria Persistente}: raccoglie segnali di interazione impliciti (es. \emph{replay}) ed espliciti per aggiornare e riorganizzare dinamicamente il pool di \emph{few-shot examples} e il \emph{ranking} dei documenti in FAISS per le sessioni future \cite{projectspec};
-    \item \textbf{Orchestrazione di componenti e servizi esterni}: la pipeline integra componenti specializzati per STT, TTS con \emph{voice cloning}, generazione video, \emph{lip-sync} e streaming. Il loro utilizzo è inserito nel workflow della pipeline e coordinato dal livello di orchestrazione, che governa i percorsi paralleli, la sincronizzazione e le transizioni tra filler e risposta principale \cite{projectspec,damianiasset}.    
+%    \item \textbf{Fast-Brain Agent}: interpreta i token parziali in streaming provenienti dal modulo STT e decide in modo autonomo il filler verbale, la risposta emotiva e il trigger gestuale o animativo di accompagnamento (es. \texttt{GAZE\_UP\_LEFT}, \texttt{PREPARING\_HERBS}) \cite{projectspec,persona};
+%    \item \textbf{Deep-Brain Agent}: gestisce il ciclo di ragionamento sulla richiesta completa, utilizza il contesto recuperato mediante RAG, applica il \emph{System Prompt} e le informazioni di personalità e genera la risposta sostanziale. Il risultato alimenta successivamente il percorso multimediale di background previsto dall'architettura \cite{projectspec};
+%    \item \textbf{Orchestratore e Swap Manager}: monitora in tempo reale lo stato di avanzamento dei due percorsi paralleli, prende decisioni dinamiche su timeout e \emph{fallback}, gestisce la commutazione trasparente del flusso video dal filler al video sintetizzato e coordina lo stacco audio-visivo \cite{projectspec};
+%    \item \textbf{Ciclo di Feedback e Memoria Persistente}: raccoglie segnali di interazione impliciti (es. \emph{replay}) ed espliciti per aggiornare e riorganizzare dinamicamente il pool di \emph{few-shot examples} e il \emph{ranking} dei documenti in FAISS per le sessioni future \cite{projectspec};
+%    \item \textbf{Orchestrazione di componenti e servizi esterni}: la pipeline integra componenti specializzati per STT, TTS con \emph{voice cloning}, generazione video, \emph{lip-sync} e streaming. Il loro utilizzo è inserito nel workflow della pipeline e coordinato dal livello di orchestrazione, che governa i percorsi paralleli, la sincronizzazione e le transizioni tra filler e risposta principale \cite{projectspec,damianiasset}.    
+    \item \textbf{Decisione reattiva autonoma (Fast-Brain)}: interpreta i token parziali in streaming provenienti dal modulo STT e seleziona in autonomia il filler verbale, il tono emotivo e il trigger gestuale coerente (es. \texttt{GAZE\_UP\_LEFT}, \texttt{PREPARING\_HERBS}) \cite{projectspec,persona};
+    \item \textbf{Ragionamento deliberativo (Deep-Brain)}: governa il ciclo di inferenza sulla richiesta completa attraverso un pattern ReAct/RAG, integrando le linee guida comportamentali del system prompt con i documenti recuperati dalla Knowledge Base prima della generazione finale \cite{projectspec};
+    \item \textbf{Adattamento della memoria e feedback loop}: monitora i segnali di interazione impliciti ed espliciti per riordinare dinamicamente il pool di \emph{few-shot examples} e il ranking semantico per le sessioni future \cite{projectspec};
+    \item \textbf{Invocazione vincolata di tool e servizi}: l'agente non possiede permessi per l'esecuzione arbitraria di codice o l'invocazione di API arbitrarie; le azioni esterne sono circoscritte alle chiamate funzionali ai moduli downstream (sintesi vocale e rendering video) coordinate dall'Orchestratore \cite{projectspec,damianiasset}.  
 \end{itemize}
 
 \subsection{Obiettivi dell'analisi}
@@ -285,7 +299,8 @@ Gli obiettivi sono:
 
 \subsection{Oggetto dell'analisi}
 
-L'oggetto è la \textbf{pipeline agentica dual-brain} che maschera la latenza della generazione audiovisiva. Il Deep-Brain utilizza il percorso RAG per elaborare la risposta sostanziale, mentre il relativo output alimenta il percorso multimediale di background composto dai servizi di sintesi vocale, generazione video e lip-sync. L'esecuzione dei percorsi paralleli, la sincronizzazione e la transizione verso l'output finale sono coordinate dal livello di orchestrazione. RAG, memoria e servizi multimediali sono inclusi nel threat model nella misura in cui costituiscono dati, componenti o superficid'attacco raggiungibili attraverso il workflow agentico.
+%L'oggetto è la \textbf{pipeline agentica dual-brain} che maschera la latenza della generazione audiovisiva. Il Deep-Brain utilizza il percorso RAG per elaborare la risposta sostanziale, mentre il relativo output alimenta il percorso multimediale di background composto dai servizi di sintesi vocale, generazione video e lip-sync. L'esecuzione dei percorsi paralleli, la sincronizzazione e la transizione verso l'output finale sono coordinate dal livello di orchestrazione. RAG, memoria e servizi multimediali sono inclusi nel threat model nella misura in cui costituiscono dati, componenti o superfici d'attacco raggiungibili attraverso il workflow agentico.
+Il perimetro dell'analisi comprende la pipeline agentica dual-brain volta al mascheramento della latenza audiovisiva, includendo sia i canali di inferenza e decisione agentica sia i servizi multimediali e di supporto raggiungibili tramite il workflow.
 
 Sono inclusi:
 
@@ -316,14 +331,18 @@ considerati due livelli architetturali.
 
 La \textbf{baseline architetturale} rappresenta il sistema funzionale
 oggetto dell'analisi prima dell'applicazione delle mitigazioni proposte.
-Essa comprende la separazione Dual-Brain, il Request Router, il
-Fast-Brain e il Deep-Brain, il percorso RAG e di memoria, i servizi
-multimediali, l'Orchestratore con Swap Manager e il canale di output
-verso l'utente. Sono inoltre considerate le caratteristiche funzionali
-necessarie al workflow, quali il parallelismo dei due percorsi,
-l'utilizzo di partial e full transcript, la persistenza eventualmente
-associata a memoria e feedback e la sequenza di generazione e
-riproduzione degli artefatti audiovisivi.
+%Essa comprende la separazione Dual-Brain, il Request Router, il
+%Fast-Brain e il Deep-Brain, il percorso RAG e di memoria, i servizi
+%multimediali, l'Orchestratore con Swap Manager e il canale di output
+%verso l'utente. Sono inoltre considerate le caratteristiche funzionali
+%necessarie al workflow, quali il parallelismo dei due percorsi,
+%l'utilizzo di partial e full transcript, la persistenza eventualmente
+%associata a memoria e feedback e la sequenza di generazione e
+%riproduzione degli artefatti audiovisivi.
+Essa include i flussi paralleli, l'utilizzo di trascrizioni parziali e
+totali, il recupero RAG, la generazione multimediale e la logica di
+stitching dello Swap Manager finalizzata alla riproduzione degli artefatti.
+
 
 La \textbf{secure architecture proposta} mantiene invariata tale
 struttura funzionale, ma introduce i controlli di sicurezza derivati
@@ -441,7 +460,7 @@ Il processo adottato è:
 \label{fig:method}
 \end{figure}
 
-La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
+%La metodologia STRIDE-AI mantiene un approccio asset-centered e adatta le categorie classiche di STRIDE agli asset AI/ML \cite{mauri2021strideai,mauri2022stride}. Per i rischi specifici degli agenti viene usata la tassonomia OWASP Agentic 2026. Le sette precauzioni sono usate come struttura della strategia di mitigazione \cite{damianiagentic}.
 
 % =========================================================
 \subsection{Metodologia STRIDE-AI e quadro delle proprietà CIA$^3$-R}
@@ -471,7 +490,7 @@ Nel corso dell'analisi e nelle relative tabelle degli asset e del catalogo minac
 \caption{Tassonomia STRIDE-AI e trasposizione nel contesto agentico Dual-Brain \cite{mauri2021strideai}.}
 \label{tab:stride-ai-overview}
 
-\begin{tabularx}{\textwidth}{|L{2.5cm}|Y|Y|C{2.0cm}|}
+\begin{tabularx}{\textwidth}{|L{2.5cm}|L{3.7cm}|Y|C{2.0cm}|}
 \hline
 
 \textbf{Categoria} &
@@ -926,7 +945,7 @@ agli embedding vocali o ai servizi utilizzati per generare il video
 definitivo.
 
 Il comportamento atteso prevede inoltre che il Fast-Brain non produca
-la risposta sostanziale, non presenti come certe informazioni non ancora
+la risposta sostanziale, non dia per certe informazioni non ancora
 recuperate, non richieda dati sensibili e non modifichi autonomamente
 lo stato persistente del sistema.
 
@@ -2378,10 +2397,10 @@ OWASP considerata in astratto.
 &
 \critico
 &
-\textbf{L: Alta.}
+\textbf{L:}
 L'attacco può essere eseguito tramite il canale pubblico voce/testo
 senza privilegi ed è facilmente ripetibile.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Può alterare sia il Fast-Brain sia il Deep-Brain, compromettendo
 filler, trigger comportamentali e risposta principale.
 \\
@@ -2396,14 +2415,14 @@ filler, trigger comportamentali e risposta principale.
 &
 \medio
 &
-\textbf{L: Bassa.}
+\textbf{L:}
 La baseline non prevede una selezione dinamica e arbitraria dei tool:
 i servizi multimediali appartengono a una sequenza funzionale
 predefinita. Lo scenario richiede quindi la manipolazione dei parametri,
 della frequenza o della finalità di invocazioni già previste dal
 workflow, risultando meno immediato rispetto agli attacchi esposti
 direttamente sul canale utente.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Può causare contenuti audiovisivi non autorizzati, abuso della voce
 clonata e consumo anomalo di risorse.
 \\
@@ -2418,10 +2437,10 @@ clonata e consumo anomalo di risorse.
 &
 \alto
 &
-\textbf{L: Media.}
+\textbf{L:}
 Richiede credenziali condivise, privilegi eccessivi o la compromissione
 preliminare di un componente.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Può consentire accesso non autorizzato a memoria, RAG, credenziali e
 servizi multimediali sensibili.
 \\
@@ -2436,10 +2455,10 @@ servizi multimediali sensibili.
 &
 \medio
 &
-\textbf{L: Bassa.}
+\textbf{L:}
 Richiede la compromissione di modelli, librerie, aggiornamenti o
 provider esterni alla pipeline.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Una dipendenza compromessa può alterare più componenti, persistere tra
 le sessioni ed esfiltrare dati o credenziali.
 \\
@@ -2454,10 +2473,10 @@ le sessioni ed esfiltrare dati o credenziali.
 &
 \textbf{N/A}
 &
-\textbf{L: N/A.}
+\textbf{L:}
 Nello scope corrente non sono presenti componenti che interpretano gli
 output agentici come codice.
-\newline \textbf{S: N/A.}
+\newline \textbf{S:}
 L'impatto non è valutabile finché non vengono introdotti interpreti o
 ambienti di esecuzione dinamica.
 \\
@@ -2472,10 +2491,10 @@ ambienti di esecuzione dinamica.
 &
 \critico
 &
-\textbf{L: Alta.}
+\textbf{L:}
 Documenti, feedback o contenuti esterni possono costituire vettori
 ripetibili di contaminazione della memoria e del RAG.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Il poisoning può persistere tra turni e sessioni, alterando il retrieval
 e le risposte future.
 \\
@@ -2490,10 +2509,10 @@ e le risposte future.
 &
 \alto
 &
-\textbf{L: Media.}
+\textbf{L:}
 Richiede accesso ai canali interni o la compromissione preliminare di
 un componente della pipeline.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Può causare associazioni errate tra sessioni, contenuti e segnali,
 propagando l'errore fino al flusso finale.
 \\
@@ -2508,10 +2527,10 @@ propagando l'errore fino al flusso finale.
 &
 \medio
 &
-\textbf{L: Media.}
+\textbf{L:}
 La propagazione richiede condizioni specifiche di carico, timeout o
 gestione insufficiente di retry e code.
-\newline \textbf{S: Media.}
+\newline \textbf{S:}
 Compromette principalmente disponibilità e continuità della sessione,
 ma il servizio può essere ripristinato mediante fallback o riavvio.
 \\
@@ -2526,11 +2545,11 @@ ma il servizio può essere ripristinato mediante fallback o riavvio.
 &
 \alto
 &
-\textbf{L: Media.}
+\textbf{L:}
 Richiede generalmente un output manipolato, la cui credibilità è
 amplificata dalla voce, dall'aspetto e dalla personalità del digital
 human.
-\newline \textbf{S: Alta.}
+\newline \textbf{S:}
 Può indurre l'utente a divulgare dati sensibili o ad accettare
 informazioni e consigli dannosi.
 \\
@@ -2545,10 +2564,10 @@ informazioni e consigli dannosi.
 &
 \basso
 &
-\textbf{L: Bassa.}
+\textbf{L:}
 La ridotta autonomia e l'assenza di auto-modifica rendono necessarie
 configurazioni errate o compromissioni aggiuntive.
-\newline \textbf{S: Media.}
+\newline \textbf{S:}
 L'agente può produrre output anomali in più sessioni, ma non può agire
 autonomamente sull'infrastruttura ed è arrestabile o ripristinabile.
 \\
@@ -2556,6 +2575,9 @@ autonomamente sull'infrastruttura ed è arrestabile o ripristinabile.
 
 \end{longtable}
 \endgroup
+
+
+
 
 
 \subsection{Scenari prioritari}
