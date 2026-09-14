@@ -287,7 +287,7 @@ Gli obiettivi sono:
   \item identificare e classificare i Data Assets e i Model Assets rilevanti per la sicurezza della pipeline;
   \item individuare minacce concrete senza passare da una FMEA;
   \item classificare le minacce tramite STRIDE-AI e OWASP Agentic;
-  \item prioritizzare i rischi in base a likelihood, severity e amplificatori agentici;
+  \item prioritizzare i rischi in base a likelihood e severity;
   \item proporre controlli coerenti con le sette precauzioni \cite{damianiagentic};
   \item progettare una secure architecture compatibile con il vincolo real-time;
   \item definire un piano sperimentale riproducibile senza inventare risultati non misurati.
@@ -560,81 +560,34 @@ Az
 
 \subsection{Architettura della pipeline agentica}
 
-La Figura~\ref{fig:complete-pipeline} illustra l'architettura complessiva
-della pipeline agentica impiegata per la generazione di video
-conversazionali. L'obiettivo del sistema è mascherare la latenza
-computazionale introdotta dalla generazione della risposta testuale,
-dalla sintesi vocale, dal rendering video e dal lip-sync, fornendo
-all'utente un riscontro audiovisivo immediato e coerente con il contesto
-della conversazione \cite{projectspec}.
+La Figura~\ref{fig:complete-pipeline} mostra l'architettura complessiva
+della pipeline agentica adottata per la generazione di video
+conversazionali. L'obiettivo è ridurre la latenza percepita dall'utente
+separando il riscontro conversazionale immediato dalla generazione della
+risposta audiovisiva completa \cite{projectspec}.
 
-Quando l'utente inizia a parlare o a digitare, il modulo di acquisizione
-raccoglie progressivamente l'input tramite VAD, streaming STT o
-trascrizione testuale. La richiesta viene quindi intercettata dal
-\textbf{Request Router}, che associa l'input a una sessione e avvia due
-percorsi paralleli caratterizzati da requisiti temporali e funzionali
-differenti:
+L'input dell'utente viene acquisito mediante VAD, streaming STT o
+trascrizione testuale e inoltrato al \textbf{Request Router}. Da questo
+punto la pipeline si divide in due percorsi eseguiti in parallelo:
 
 \begin{itemize}
+    \item \textbf{Instant Path}, affidato al Fast-Brain, che produce un
+    breve riscontro contestuale verbale e gestuale;
 
-    \item \textbf{Instant Path -- Fast-Brain.}
-    Il percorso immediato ha lo scopo di ridurre la latenza percepita
-    dall'utente. Durante la fase di ascolto riceve una porzione limitata
-    della trascrizione in streaming e ne effettua una classificazione
-    preliminare per riconoscere intento, argomento e tono emotivo.
-
-    Entro un budget temporale inferiore a
-    $800\,\text{ms}$, il Fast-Brain seleziona un breve filler verbale e
-    un comportamento gestuale da un insieme finito di animazioni
-    pre-renderizzate. La decisione iniziale viene completata nei primi
-    $0$--$3\,\text{s}$, ma le clip selezionate possono essere ripetute o
-    concatenate per coprire l'intero tempo di elaborazione del
-    Deep-Brain.
-
-    \item \textbf{Background Path -- Deep-Brain.}
-    Il percorso di background riceve la richiesta completa e produce la
-    risposta sostanziale. Il Deep-Brain effettua il ragionamento
-    approfondito, recupera il contesto mediante la pipeline RAG su
-    indice vettoriale FAISS, applica i prompt di sistema e di
-    personalità e genera il testo definitivo della risposta.
-
-    Il risultato viene successivamente inviato ai servizi di sintesi
-    vocale, clonazione della voce, generazione video multimodale e
-    lip-sync. Nella configurazione considerata, la produzione del video
-    cinematografico completo può richiedere alcuni minuti. Al termine
-    del rendering viene emesso un messaggio di completamento,
-    denominato \emph{Video Ready Signal}.
-
-    Nella baseline il \emph{Video Ready Signal} rappresenta il meccanismo
-    funzionale con cui viene comunicata la disponibilità dell'artefatto
-    finale. L'autenticazione del mittente, il binding alla sessione e al
-    job e la protezione da tampering o replay vengono invece introdotti
-    come requisiti della secure architecture proposta.
+    \item \textbf{Background Path}, affidato al Deep-Brain, che genera
+    la risposta sostanziale e alimenta la successiva pipeline
+    audiovisiva.
 \end{itemize}
 
-I due percorsi convergono nello \textbf{Swap Manager}, integrato
-nell'Orchestratore. Tale componente controlla lo stato della sessione,
-la riproduzione delle clip di filler e la disponibilità del video finale.
-Quando la risposta del Deep-Brain è pronta, lo Swap Manager individua un
-punto di transizione audiovisiva sicuro ed esegue uno
-\emph{seamless cut} tra il flusso pre-renderizzato e il video generato.
+I due percorsi vengono coordinati dall'\textbf{Orchestratore}, che
+mantiene lo stato del turno conversazionale e integra lo
+\textbf{Swap Manager}. Quest'ultimo governa la transizione tra le clip
+pre-renderizzate utilizzate durante l'attesa e il contenuto audiovisivo
+finale prodotto dal Background Path.
 
-La transizione deve avvenire evitando frame discontinui, sovrapposizioni
-audio, scatti nella postura del personaggio e associazioni errate tra il
-video prodotto e la sessione utente. Lo stitching non viene pertanto
-deciso dal modello linguistico, ma da una macchina a stati deterministica
-che opera su identificatori di sessione, stato della riproduzione,
-timestamp e segnali di completamento.
-
-La timeline riportata nella parte inferiore della
-Figura~\ref{fig:complete-pipeline} mostra la differenza tra latenza reale
-e latenza percepita. L'utente riceve nei primi secondi un riconoscimento
-verbale e gestuale, mentre l'elaborazione più onerosa continua in
-background. Il video definitivo viene riprodotto solamente quando tutti
-gli artefatti necessari sono stati prodotti e associati al turno
-conversazionale corrente. Nella secure architecture tale associazione
-viene ulteriormente sottoposta ai controlli di validazione descritti
-nelle sezioni successive.
+La separazione tra i due percorsi consente quindi di mantenere
+responsivo il sistema senza vincolare il tempo di risposta percepito
+dall'utente alla latenza complessiva della generazione finale.
 
 \begin{figure}[H]
     \centering
@@ -643,275 +596,44 @@ nelle sezioni successive.
     \label{fig:complete-pipeline}
 \end{figure}
 
-
 \subsection{Sequenza audiovisiva e storyboard}
 
-La Figura~\ref{fig:storyboard-pipeline} rappresenta la pipeline dal punto
-di vista dell'utente e mostra come i due percorsi computazionali vengano
-tradotti in una sequenza continua di scene audiovisive.
+La Figura~\ref{fig:storyboard-pipeline} rappresenta la pipeline dal
+punto di vista dell'utente e mostra come l'esecuzione parallela dei due
+percorsi venga tradotta in una sequenza audiovisiva continua.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{img/Intera_pipeline.png}
-    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza delle scene percepite dall'utente.}
+    \includegraphics[width=0.9\textwidth]{img/Intera_pipeline.png}
+    \caption{Storyboard della pipeline agentica Dual-Brain e sequenza
+    delle scene percepite dall'utente.}
     \label{fig:storyboard-pipeline}
 \end{figure}
 
-% I numeri riportati nell'angolo superiore delle singole clip sono
-% \textbf{identificatori delle scene pre-renderizzate} e non indicano il
-% loro ordine cronologico. L'ordine temporale effettivo è rappresentato
-% dalle frecce della storyboard ed è articolato nelle seguenti fasi:
+Durante l'acquisizione della richiesta il personaggio rimane in uno
+stato di ascolto; successivamente, il risultato del Fast-Brain consente
+di fornire un breve riscontro verbale e gestuale mentre il Background
+Path continua l'elaborazione della risposta sostanziale. Se tale
+elaborazione richiede più tempo, clip pre-renderizzate possono essere
+ripetute o concatenate per mantenere continuità audiovisiva.
 
-% % =========================================================
-% % SEQUENZA DELLE SCENE (Layout ad Armonia di Blocco)
-% % =========================================================
+Quando il contenuto finale è disponibile, una scena di transizione
+riporta il personaggio in una configurazione compatibile con l'inizio
+della risposta generata. Il video principale viene quindi riprodotto e,
+al termine del turno, il personaggio ritorna alla condizione di attesa.
 
-% \begin{enumerate}[leftmargin=*, itemsep=0.8em, topsep=0.5em, parsep=0.3em]
+I numeri riportati nello storyboard identificano le clip
+pre-renderizzate e non rappresentano necessariamente il loro ordine
+cronologico. La sequenza effettiva e le condizioni che governano le
+transizioni sono definite dalla macchina a stati dell'Orchestratore,
+descritta nella Sezione successiva.
 
-%     % --- MACRO FASE 1: INGRESSO ED ASCOLTO ---
-%     \item \textbf{Idle -- Reading (Figura~\ref{fig:idle-reading}).} 
-%     In assenza di interazione, il digital human si trova nello stato
-%     iniziale \texttt{IDLE\_READING}. La donna è raffigurata mentre legge
-%     un libro antico. La clip è riproducibile in loop e costituisce lo
-%     stato di riposo del sistema.
-
-%     \item \textbf{Listening (Figura~\ref{fig:listening}).}
-%     Quando l'utente inizia a parlare o a digitare, l'Orchestratore
-%     interrompe il loop di lettura e attiva la scena
-%     \texttt{LISTENING}. La donna alza lo sguardo e assume una postura
-%     attenta, fornendo un riscontro visivo immediato prima che la
-%     richiesta sia completa.
-
-%     Durante questa fase, lo streaming STT o il canale testuale produce
-%     i token parziali utilizzati per la classificazione preliminare
-%     dell'intento.
-
-%     % FIGURA CORRISPONDENTE A FASE 1 e 2
-%     \begin{figure}[H]
-%         \centering
-%         \begin{subfigure}[b]{0.42\textwidth}
-%             \centering
-%             \includegraphics[width=0.75\linewidth]{img/1_Idle_reading.png}
-%             \caption{\emph{Idle Reading}}
-%             \label{fig:idle-reading}
-%         \end{subfigure}
-%         \hspace{0.8cm}
-%         \begin{subfigure}[b]{0.42\textwidth}
-%             \centering
-%             \includegraphics[width=0.75\linewidth]{img/2_listening.png}
-%             \caption{\emph{Listening}}
-%             \label{fig:listening}
-%         \end{subfigure}
-%         \caption{Fase iniziale di attesa ed ascolto dell'input utente.}
-%     \end{figure}
-
-%     % --- MACRO FASE 2: RAGIONAMENTO ED ATTESA ---
-%     \item \textbf{Thinking e avvio dei due percorsi (Figura~\ref{fig:thinking}).}
-%     Quando l'utente completa e invia la richiesta, la pipeline passa
-%     alla scena \texttt{THINKING}. La donna chiude gli occhi, annuisce
-%     leggermente e assume una postura riflessiva.
-
-%     Nello stesso istante, il Request Router esegue il fork della
-%     richiesta: il Fast-Brain genera il riconoscimento immediato,
-%     mentre il Deep-Brain avvia in parallelo l'elaborazione completa.
-
-%     \item \textbf{Filler verbale e gestuale.}
-%     Il Fast-Brain produce una breve frase rassicurante, coerente con
-%     l'intento e con il tono dell'utente. Il filler può essere
-%     riprodotto durante la conclusione della scena
-%     \texttt{THINKING} o durante l'ingresso nella prima clip di
-%     attesa.
-
-%     Il filler non deve anticipare la risposta sostanziale,
-%     introdurre nuove informazioni o porre ulteriori domande. La sua
-%     funzione è esclusivamente quella di confermare che la richiesta
-%     è stata ricevuta e che il sistema la sta elaborando.
-
-%     \item \textbf{Search (Figura~\ref{fig:search}).}
-%     Dopo il riconoscimento iniziale viene attivata la clip
-%     \texttt{SEARCH}, nella quale la donna consulta una libreria e cerca
-%     tra i libri. La scena rappresenta visivamente la fase di recupero
-%     delle informazioni eseguita in background dal Deep-Brain.
-
-%     \item \textbf{Preparing (Figura~\ref{fig:preparing}).}
-%     Se l'elaborazione non è ancora terminata, l'Orchestratore prosegue
-%     con la scena \texttt{PREPARING}, nella quale la donna prepara erbe
-%     e tè. Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono
-%     il pool principale di filler gestuali e possono essere alternate,
-%     estese o riprodotte in loop fino alla ricezione del
-%     \emph{Video Ready Signal}.
-
-%     % FIGURA CORRISPONDENTE A FASE 3, 5 e 6
-%     \begin{figure}[H]
-%         \centering
-%         \begin{subfigure}[b]{0.31\textwidth}
-%             \centering
-%             \includegraphics[width=0.88\linewidth]{img/3_thinking.png}
-%             \caption{\emph{Thinking}}
-%             \label{fig:thinking}
-%         \end{subfigure}
-%         \hfill
-%         \begin{subfigure}[b]{0.31\textwidth}
-%             \centering
-%             \includegraphics[width=0.88\linewidth]{img/4_search.png}
-%             \caption{\emph{Search}}
-%             \label{fig:search}
-%         \end{subfigure}
-%         \hfill
-%         \begin{subfigure}[b]{0.31\textwidth}
-%             \centering
-%             \includegraphics[width=0.88\linewidth]{img/5_preparing.png}
-%             \caption{\emph{Preparing}}
-%             \label{fig:preparing}
-%         \end{subfigure}
-%         \caption{Fase di elaborazione dual-brain e gestione visuale dell'attesa.}
-%     \end{figure}
-
-%     % --- MACRO FASE 3: SWAP, RISPOSTA E CHIUSURA ---
-%     \item \textbf{Approach (Figura~\ref{fig:approach}).}
-%     Quando il video finale è pronto e ha superato i controlli
-%     previsti, lo Swap Manager attiva la scena
-%     \texttt{APPROACH}. La donna si avvicina alla posizione dalla
-%     quale inizierà a parlare.
-
-%     Questa clip svolge la funzione di ponte audiovisivo: consente
-%     di riportare il personaggio in una posa, un'inquadratura e una
-%     condizione audio compatibili con il primo frame della risposta
-%     generata.
-
-%     \item \textbf{Answer -- Talking (Figura~\ref{fig:answer}).}
-%     In corrispondenza di un punto di taglio sicuro, lo Swap Manager
-%     sostituisce il flusso di filler con il video prodotto dal
-%     Deep-Brain. Inizia quindi la scena
-%     \texttt{ANSWER\_TALKING}, nella quale il digital human pronuncia
-%     la risposta completa con voce sintetizzata, gestualità coerente
-%     e sincronizzazione labiale.
-
-%     La risposta può essere composta da più clip generate, purché
-%     risultino associate alla stessa sessione e vengano riprodotte
-%     nell'ordine previsto.
-
-%     \item \textbf{Blessing e ritorno allo stato iniziale (Figura~\ref{fig:blessing}).}
-%     Al termine della risposta viene riprodotta la scena
-%     \texttt{BLESSING}, che fornisce una breve chiusura gestuale e
-%     affettiva coerente con la personalità del personaggio.
-
-%     Conclusa la scena, l'Orchestratore chiude il turno conversazionale,
-%     registra gli eventi nell'audit trail e riporta il digital human
-%     nello stato \texttt{IDLE\_READING}, rendendolo disponibile per una
-%     nuova richiesta.
-
-%     % FIGURA CORRISPONDENTE A FASE 7, 8 e 9
-%     \begin{figure}[H]
-%         \centering
-%         \begin{subfigure}[b]{0.31\textwidth}
-%             \centering
-%             \includegraphics[width=0.88\linewidth]{img/6_approach.png}
-%             \caption{\emph{Approach}}
-%             \label{fig:approach}
-%         \end{subfigure}
-%         \hfill
-%         \begin{subfigure}[b]{0.31\textwidth}
-%             \centering
-%             \includegraphics[width=0.88\linewidth]{img/7_answer.png}
-%             \caption{\emph{Answer}}
-%             \label{fig:answer}
-%         \end{subfigure}
-%         \hfill
-%         \begin{subfigure}[b]{0.31\textwidth}
-%             \centering
-%             \includegraphics[width=0.88\linewidth]{img/8_blessing.png}
-%             \caption{\emph{Blessing}}
-%             \label{fig:blessing}
-%         \end{subfigure}
-%         \caption{Transizione audio-visiva, erogazione della risposta e chiusura del turno.}
-%     \end{figure}
-
-% \end{enumerate}
-I numeri riportati nelle singole clip identificano le scene
-pre-renderizzate e non ne rappresentano necessariamente l'ordine
-cronologico. La sequenza effettiva è determinata dalla macchina a
-stati descritta nella Sezione successiva.
-
-\begin{table}[H]
-\centering
-\caption{Sequenza audiovisiva percepita dall'utente.}
-\label{tab:storyboard-states}
-\small
-\begin{tabularx}{\textwidth}{|L{2.8cm}|L{3.3cm}|Y|}
-\hline
-\textbf{Stato} &
-\textbf{Funzione} &
-\textbf{Comportamento della pipeline}
-\\
-\hline
-
-\texttt{IDLE\_READING} &
-Attesa &
-Il digital human rimane nella clip di riposo finché non viene rilevata
-una nuova interazione.
-\\
-\hline
-
-\texttt{LISTENING} &
-Acquisizione &
-VAD/STT acquisisce progressivamente l'input mentre vengono prodotti i
-partial transcript utilizzabili dall'Instant Path.
-\\
-\hline
-
-\texttt{THINKING} &
-Fork Dual-Brain &
-Il Request Router avvia in parallelo Fast-Brain e Deep-Brain.
-\\
-\hline
-
-Filler &
-Riscontro immediato &
-Il Fast-Brain produce il breve riconoscimento verbale e il relativo
-comportamento gestuale senza anticipare la risposta sostanziale.
-\\
-\hline
-
-\texttt{SEARCH} /
-\texttt{PREPARING} &
-Attesa prolungata &
-Le clip pre-renderizzate mascherano il tempo necessario al Background
-Path e possono essere concatenate o ripetute.
-\\
-\hline
-
-\texttt{APPROACH} &
-Preparazione allo swap &
-Una clip ponte riporta il personaggio verso una configurazione
-audiovisiva compatibile con l'inizio del contenuto generato.
-\\
-\hline
-
-\texttt{ANSWER\_TALKING} &
-Risposta principale &
-Lo Swap Manager sostituisce il filler con il video prodotto dal
-Background Path.
-\\
-\hline
-
-\texttt{BLESSING} &
-Chiusura &
-La risposta termina e la pipeline riporta il personaggio nello stato
-\texttt{IDLE\_READING}.
-\\
-\hline
-\end{tabularx}
-\end{table}
-
-Le scene \texttt{SEARCH} e \texttt{PREPARING} costituiscono una
-rappresentazione narrativa dell'attesa e non una prova diretta che, in
-un dato istante, il sistema stia eseguendo esattamente l'operazione
-mostrata. Questa distinzione deve essere comunicata chiaramente
-nell'interfaccia, affinché l'antropomorfizzazione del personaggio non
-induca l'utente a sovrastimare la consapevolezza, l'affidabilità o lo
-stato effettivo dell'agente.
-
+Le scene utilizzate durante l'attesa costituiscono una rappresentazione
+narrativa dello stato del sistema e non implicano che, in un dato
+istante, il Background Path stia eseguendo esattamente l'operazione
+raffigurata. Tale distinzione è rilevante per evitare che
+l'antropomorfizzazione del personaggio induca l'utente a sovrastimare
+la consapevolezza o lo stato effettivo dell'agente.
 
 \subsection{Fast-Brain Agent}
 
@@ -932,8 +654,6 @@ per:
     \item selezionare un filler verbale di massimo 12 parole;
     \item selezionare una clip o una sequenza di clip gestuali
     pre-renderizzate;
-    \item produrre i metadati necessari all'associazione e
-    all'ordinamento degli eventi di sessione.
 
 \end{itemize}
 
@@ -954,26 +674,27 @@ Fast-Brain. Il loro enforcement tecnico mediante \emph{Least Agency},
 isolamento, autorizzazioni e policy deterministiche viene introdotto
 successivamente come parte della secure architecture proposta.
 
-L'output comprende cinque campi logici: identificatore di sessione,
-intento, trigger gestuale, filler verbale e numero di sequenza. Un
-esempio è riportato di seguito:
+L'output logico prodotto dal Fast-Brain comprende l'intento
+classificato, il trigger gestuale e il filler verbale. Gli identificatori
+di sessione e job, il numero di sequenza e il timestamp non sono
+generati dal modello, ma vengono associati dall'Orchestratore in un
+envelope di controllo trusted.
 
 \begin{lstlisting}[language=json,
 caption={Esempio di output logico del Fast-Brain.}]
 {
-  "session_id": "9f4b...",
   "intent": "complex_analytical",
   "trigger": "GAZE_UP_LEFT",
-  "filler": "That is important; let me consider it carefully.",
-  "sequence": 12
+  "filler": "That is important; let me consider it carefully."
 }
 \end{lstlisting}
 
 Il formato JSON definisce l'interfaccia logica tra Fast-Brain e
 Orchestratore, ma non costituisce di per sé un meccanismo di sicurezza.
-Nella baseline, un output sintatticamente corretto può comunque
-contenere valori semanticamente inattesi o essere associato in modo
-errato a una sessione.
+Un output sintatticamente corretto può infatti contenere valori
+semanticamente inattesi; inoltre, l'associazione dell'output alla
+sessione e al job corrente dipende dal piano di controllo e non dal
+contenuto generato dal modello.
 
 Per questo motivo, la secure architecture proposta introduce M11 come
 livello di validazione deterministica tra l'output agentico e il piano
@@ -1037,72 +758,63 @@ le modifiche persistenti ad alto impatto.
 
 \subsection{Orchestrazione e gestione dello stato}
 
-L'Orchestratore coordina l'esecuzione asincrona dei due percorsi e
-integra la logica dello Swap Manager. Esso non decide il contenuto
-semantico della risposta, ma governa gli stati della sessione, le clip
-riprodotte e le condizioni necessarie per effettuare una transizione
-sicura.
+L'Orchestratore coordina l'esecuzione asincrona dell'Instant Path e del
+Background Path e integra la logica dello \textbf{Swap Manager}. Non
+determina il contenuto semantico delle risposte, ma mantiene lo stato
+del turno conversazionale e governa l'ordine con cui i diversi artefatti
+audiovisivi vengono presentati all'utente.
 
-La macchina a stati comprende le seguenti transizioni principali:
+Il comportamento della pipeline è rappresentato mediante una macchina
+a stati deterministica. Le principali transizioni sono:
 
 \begin{enumerate}
+    \item \texttt{IDLE-READING} $\rightarrow$ \texttt{LISTENING},
+    quando viene rilevata una nuova interazione utente;
 
-    \item apertura della sessione nello stato
-    \texttt{IDLE\_READING};
+    \item \texttt{LISTENING} $\rightarrow$ \texttt{THINKING},
+    alla conclusione del turno, con avvio parallelo di Fast-Brain e
+    Deep-Brain;
 
-    \item rilevazione dell'attività utente e passaggio allo stato
-    \texttt{LISTENING};
+    \item \texttt{THINKING} $\rightarrow$ sequenza di filler,
+    quando è disponibile l'output del Fast-Brain;
 
-    \item ricezione della richiesta completa, passaggio a
-    \texttt{THINKING} e fork parallelo di Fast-Brain e Deep-Brain;
+    \item permanenza nelle scene di attesa
+    \texttt{SEARCH}/\texttt{PREPARING} finché il Background Path
+    non ha completato la generazione degli artefatti finali;
 
-    \item validazione dell'output del Fast-Brain ed emissione del
-    filler verbale e gestuale, oppure attivazione del fallback;
+    \item passaggio a \texttt{APPROACH} quando viene ricevuta
+    l'indicazione di disponibilità del video finale;
 
-    \item riproduzione controllata delle scene
-    \texttt{SEARCH} e \texttt{PREPARING} durante l'elaborazione di
-    background;
+    \item \texttt{APPROACH} $\rightarrow$ \texttt{ANSWER-TALKING}
+    nel punto di transizione audiovisiva selezionato dallo Swap Manager;
 
-    \item ricezione del
-    \emph{Video Ready Signal};
-
-    \item attivazione della scena \texttt{APPROACH} e ricerca del punto
-    di taglio audiovisivo sicuro;
-
-    \item stitching verso lo stato \texttt{ANSWER\_TALKING} e
-    riproduzione della risposta completa;
-
-    \item riproduzione della scena \texttt{BLESSING};
-
-    \item chiusura del turno, scrittura dell'audit trail e ritorno allo
-    stato \texttt{IDLE\_READING}.
-
+    \item \texttt{ANSWER-TALKING} $\rightarrow$ \texttt{BLESSING}
+    e successivo ritorno a \texttt{IDLE-READING} al termine del turno.
 \end{enumerate}
 
-Dal punto di vista funzionale, lo Swap Manager mantiene lo stato
-necessario a correlare le transizioni con il turno conversazionale
-corrente. La secure architecture rafforza tale correlazione richiedendo
-che ogni transizione sia associata almeno a identificatore di sessione,
-numero di sequenza, timestamp, stato precedente, stato successivo e
-identità verificata del componente che ha richiesto la transizione.
+Lo Swap Manager mantiene le informazioni necessarie a correlare gli
+eventi con il turno conversazionale corrente e a evitare transizioni
+incompatibili con lo stato della riproduzione.
 
-Se il Deep-Brain completa la risposta prima della conclusione del filler,
-lo Swap Manager non avvia immediatamente il video principale: attende
-che la clip corrente raggiunga un punto di taglio sicuro oppure salta le
-scene di attesa non ancora iniziate. In questo modo viene evitato il
-fenomeno del \emph{Double-Speak}, nel quale il filler e la risposta
-principale vengono riprodotti contemporaneamente.
+Se il Background Path completa la risposta prima della conclusione del
+filler corrente, il video principale non viene avviato immediatamente:
+lo Swap Manager attende un punto di taglio audiovisivo compatibile oppure
+salta le scene di attesa non ancora iniziate. In questo modo si evita il
+fenomeno del \emph{Double-Speak}, nel quale filler e risposta principale
+verrebbero riprodotti contemporaneamente.
 
-Se invece il Deep-Brain supera il timeout massimo previsto, la macchina
-a stati interrompe i loop di attesa, attiva un messaggio di fallback e
-chiude o sospende la sessione in modo controllato.
+Se, al contrario, la generazione della risposta supera il tempo massimo
+previsto, la sessione non può restare indefinitamente negli stati di
+attesa. La gestione dei timeout e dei relativi comportamenti di fallback
+viene definita nella secure architecture proposta.
 
-La concorrenza tra i due percorsi espone inoltre la baseline a race
-condition, replay, duplicazione dei messaggi e associazioni errate tra
-sessioni. Lock logici, chiavi di idempotenza, controlli sulla
-monotonicità e rifiuto dei segnali appartenenti a sessioni concluse
-vengono pertanto introdotti successivamente come controlli della
-secure architecture.
+La natura concorrente dei due percorsi introduce inoltre rischi di race
+condition, duplicazione o riordinamento degli eventi e associazione
+errata tra turni differenti. I meccanismi utilizzati per autenticare e
+correlare gli eventi, garantirne l'idempotenza e rifiutare messaggi
+obsoleti vengono introdotti successivamente come controlli della secure
+architecture.
+
 % =========================================================
 % TRUST BOUNDARY
 % =========================================================
@@ -1110,34 +822,31 @@ secure architecture.
 \section{Trust Boundary della pipeline}
 \label{sec:trust-boundaries}
 
-A partire dall'architettura descritta nella
+A partire dalla baseline architetturale descritta nella
 Sezione~\ref{sec:pipeline-description}, vengono individuati i principali
 \emph{trust boundary} attraversati da dati, comandi e artefatti durante
 l'esecuzione della pipeline.
 
 Un trust boundary identifica un punto nel quale informazioni o richieste
 passano tra componenti caratterizzati da differenti identità, privilegi,
-provenienza o assunzioni di fiducia. Il fatto che due componenti
-appartengano alla stessa infrastruttura non implica quindi che le loro
-comunicazioni debbano essere considerate implicitamente attendibili.
-Ogni attraversamento richiede autenticazione, autorizzazione,
-validazione dell'integrità e corretta associazione alla sessione,
-in funzione del tipo di dato e dell'operazione eseguita
+provenienza o assunzioni di fiducia. L'appartenenza alla stessa
+infrastruttura non implica pertanto fiducia reciproca: ogni
+attraversamento costituisce un punto nel quale devono essere considerate
+autenticità, autorizzazione, integrità, provenienza e corretta
+associazione al contesto di esecuzione
 \cite{owaspagentic,owaspagenticthreats}.
 
-Nel sistema Dual-Brain sono individuati sei trust boundary principali,
-mostrati schematicamente nella Figura~\ref{fig:trust-boundaries}.
-I boundary sono derivati dalla \textbf{baseline architetturale} e
-rimangono presenti indipendentemente dall'adozione delle mitigazioni.
-
-La figura riporta inoltre l'Output Validator e il Feedback Manager come
-\textbf{punti di enforcement proposti} in corrispondenza di due confini
-particolarmente rilevanti. Tali componenti appartengono alla secure
-architecture e non vengono considerati controlli già efficaci nella
-valutazione del rischio inerente.
+Nel sistema Dual-Brain vengono individuati sei trust boundary principali,
+mostrati nella Figura~\ref{fig:trust-boundaries}. I confini sono derivati
+dalla \textbf{baseline architetturale} e sono quindi definiti
+indipendentemente dalle mitigazioni introdotte successivamente.
+I punti di enforcement aggiunti dalla secure architecture vengono
+presentati separatamente nella Sezione~\ref{sec:secure-architecture},
+in modo da distinguere il rischio inerente dai controlli proposti.
 
 \begin{figure}[H]
 \centering
+
 \resizebox{0.98\textwidth}{!}{%
 \begin{tikzpicture}[
     comp/.style={
@@ -1175,17 +884,7 @@ valutazione del rischio inerente.
         font=\scriptsize,
         fill=DataFill
     },
-    guard/.style={
-        draw,
-        rounded corners,
-        minimum height=0.85cm,
-        text width=2.2cm,
-        align=center,
-        font=\scriptsize,
-        fill=SoftBlue
-    },
     arr/.style={-Stealth,thick},
-    feedback/.style={-Stealth,thick,dashed},
     tblab/.style={
         font=\scriptsize\bfseries,
         text=Boundary,
@@ -1195,30 +894,34 @@ valutazione del rischio inerente.
 ]
 
 % ---------------------------------------------------------
-% Componenti principali
+% Componenti principali della baseline
 % ---------------------------------------------------------
 
 \node[comp]  (user) at (0,0) {Utente};
-\node[tool]  (edge) at (3.0,0) {API / VAD /\\Streaming STT};
 
-\node[agent] (fast) at (6.3,1.6) {Fast-Brain};
-\node[agent] (deep) at (6.3,-1.6) {Deep-Brain};
+\node[tool]  (edge) at (3.0,0)
+{API / VAD /\\Streaming STT};
 
-\node[guard] (validator) at (9.5,1.6) {Output Validator\\{\scriptsize proposto}};
-\node[data]  (memory) at (9.5,-1.6) {RAG / memoria\\persistente};
-\node[guard] (feedbackmgr) at (9.5,-3.5) {Feedback Manager\\{\scriptsize proposto}};
+\node[agent] (fast) at (6.3,1.6)
+{Fast-Brain};
 
-\node[comp] (orch) at (12.8,0)
+\node[agent] (deep) at (6.3,-1.6)
+{Deep-Brain};
+
+\node[data] (memory) at (9.6,-2.6)
+{RAG / memoria\\persistente};
+
+\node[comp] (orch) at (10.2,0)
 {Orchestratore /\\Swap Manager};
 
-\node[tool] (media) at (16.1,0)
+\node[tool] (media) at (13.7,0)
 {TTS / Voice / Veo /\\Lip-Sync};
 
-\node[comp] (output) at (19.2,0)
-{WebRTC /\\Output};
+\node[comp] (output) at (17.0,0)
+{Client /\\WebRTC};
 
 % ---------------------------------------------------------
-% Flussi
+% Flussi e Trust Boundary
 % ---------------------------------------------------------
 
 \draw[arr]
@@ -1236,10 +939,8 @@ node[tblab,above]{TB2}
 node[tblab,below]{TB2}
 (deep);
 
-\draw[arr] (fast) -- (validator);
-
 \draw[arr]
-(validator) --
+(fast) --
 node[tblab,above]{TB3}
 (orch);
 
@@ -1250,21 +951,12 @@ node[tblab,below]{TB3}
 
 \draw[arr]
 (deep) --
-node[tblab,above]{TB4}
+node[tblab,below]{TB4}
 (memory);
 
 \draw[arr]
-(memory) -- (deep);
-
-\draw[feedback]
-(edge) to[bend right=25]
-node[below,font=\scriptsize]{feedback}
-(feedbackmgr);
-
-\draw[arr]
-(feedbackmgr) --
-node[tblab,right]{TB4}
-(memory);
+(memory) to[bend right=18]
+(deep);
 
 \draw[arr]
 (orch) --
@@ -1278,25 +970,36 @@ node[tblab,above]{TB6}
 
 \end{tikzpicture}%
 }
-\caption{Principali trust boundary della pipeline agentica Dual-Brain.}
+
+\caption{Principali trust boundary della baseline architetturale
+Dual-Brain. I punti di enforcement della secure architecture non sono
+rappresentati.}
 \label{fig:trust-boundaries}
 \end{figure}
 
-La Figura~\ref{fig:trust-boundaries} è intenzionalmente una
-rappresentazione di sicurezza semplificata e non sostituisce il diagramma
-architetturale completo. L'obiettivo è evidenziare i punti nei quali
-cambia il dominio di fiducia e nei quali devono pertanto essere
-riesaminate identità, autorizzazioni, integrità, provenienza e
-associazione alla sessione.
+La Figura~\ref{fig:trust-boundaries} costituisce una rappresentazione di
+sicurezza semplificata e non sostituisce il diagramma architetturale
+completo. Il suo scopo è evidenziare i punti nei quali cambia il dominio
+di fiducia e nei quali dati o comandi possono acquisire conseguenze
+differenti rispetto al componente che li ha originati.
 
-\begin{table}[H]
-\centering
-\caption{Trust boundary principali della pipeline Dual-Brain.}
-\label{tab:trustboundaries}
+
+\begingroup
+
+\setlength{\tabcolsep}{5pt}
 \small
-\begin{tabularx}{\textwidth}{|C{0.9cm}|L{3.3cm}|Y|Y|}
-\hline
 
+\begin{longtable}{
+|C{0.9cm}|
+L{3.0cm}|
+L{4.8cm}|
+L{\dimexpr\textwidth-0.9cm-3.0cm-4.8cm-8\tabcolsep-5\arrayrulewidth\relax}|
+}
+
+\caption{Trust boundary principali della pipeline Dual-Brain.}
+\label{tab:trustboundaries}\\
+
+\hline
 \textbf{TB} &
 \textbf{Confine} &
 \textbf{Dati e operazioni principali} &
@@ -1304,94 +1007,136 @@ associazione alla sessione.
 \\
 \hline
 
+\endfirsthead
+
+\hline
+\textbf{TB} &
+\textbf{Confine} &
+\textbf{Dati e operazioni principali} &
+\textbf{Rischi dominanti}
+\\
+\hline
+
+\endhead
+
+\hline
+\multicolumn{4}{r}{\small\itshape Continua nella pagina successiva}
+\\
+\endfoot
+
+\hline
+\endlastfoot
+
+
 \textbf{TB1} &
 Utente esterno $\leftrightarrow$ livello di ingresso &
-Audio o testo dell'utente, metadati di sessione e feedback espliciti o
-impliciti diretti alla pipeline. &
+
+Audio o testo dell'utente, apertura della sessione, metadati associati
+all'interazione ed eventuale feedback inviato alla pipeline. &
+
 Spoofing dell'utente o della sessione, manipolazione dell'input,
 prompt injection, replay, flooding ed esposizione dei dati acquisiti.
 \\
 \hline
 
+
 \textbf{TB2} &
 Edge / STT $\rightarrow$ dominio agentico &
-Partial transcript diretto al Fast-Brain e trascrizione completa
-diretta al Deep-Brain, insieme agli identificatori necessari al
-binding della sessione. &
+
+Partial transcript inviato al Fast-Brain e trascrizione completa
+inoltrata al Deep-Brain, insieme al contesto di esecuzione necessario
+a correlare la richiesta con il turno corrente. &
+
 Tampering o truncation delle trascrizioni, goal hijack,
 session mix-up, propagazione di input non attendibili e disclosure
-di dati dell'utente.
+dei dati dell'utente.
 \\
 \hline
+
 
 \textbf{TB3} &
-Agenti $\rightarrow$ piano deterministico di controllo &
-Filler, behavioral trigger, risposta principale, identificatori e
-messaggi utilizzati dall'Orchestratore per modificare lo stato della
-sessione. Nella secure architecture proposta, l'output del Fast-Brain attraversa
-l'Output Validator prima di poter influenzare l'orchestrazione. &
-Spoofing dell'identità di agente, tampering o replay dei messaggi,
-bypass del validatore, confused deputy, associazione cross-sessione
-e desincronizzazione dello Swap Manager.
+Dominio agentico $\rightarrow$ piano di controllo &
+
+Output prodotti dagli agenti e consegnati all'Orchestratore:
+intento, filler e behavioral trigger del Fast-Brain e risposta
+testuale sostanziale del Deep-Brain. Gli identificatori di sessione,
+job, sequenza e timestamp appartengono invece all'envelope di
+controllo gestito dall'Orchestratore. &
+
+Spoofing della provenienza del messaggio, tampering o replay,
+output semanticamente inattesi, associazione cross-sessione,
+confused deputy e alterazione indebita dello stato dello
+Swap Manager.
 \\
 \hline
+
 
 \textbf{TB4} &
-Deep-Brain / canale di aggiornamento $\leftrightarrow$ RAG e memoria &
-Query di retrieval, embedding, chunk e relativi metadati di
-provenienza, memoria contestuale e proposte di aggiornamento originate
-dal feedback. Nella secure architecture proposta il percorso di serving viene
-reso in sola lettura, mentre le modifiche persistenti vengono
-instradate attraverso il Feedback Manager e, per gli aggiornamenti
-ad alto impatto, sottoposte a controllo HITL. &
-Memory e context poisoning, modifica non autorizzata della Knowledge
-Base, cross-session leakage, contaminazione persistente del contesto,
-privilege abuse e perdita di provenance.
+Deep-Brain $\leftrightarrow$ RAG e memoria &
+
+Query di retrieval, embedding, chunk, metadati di provenance,
+memoria di sessione e contesto persistente. Il confine comprende
+anche eventuali operazioni di aggiornamento dello stato persistente
+consentite dalla baseline. &
+
+Memory e context poisoning, scritture non autorizzate,
+cross-session o cross-tenant leakage, privilege abuse,
+perdita di provenance e contaminazione persistente del contesto.
 \\
 \hline
+
 
 \textbf{TB5} &
-Pipeline interna $\leftrightarrow$ servizi multimediali &
-Testi da sintetizzare, riferimenti e embedding vocali necessari,
-prompt o artefatti per la generazione video, audio/video intermedi
-e informazioni di completamento delle elaborazioni. &
-Service spoofing, abuso di credenziali, compromissione della supply
-chain, disclosure verso provider esterni, tampering degli artefatti
-e indisponibilità dei servizi.
+Orchestratore $\leftrightarrow$ servizi multimediali &
+
+Testi da sintetizzare, riferimenti ed embedding vocali,
+parametri per la generazione video, artefatti audio/video
+intermedi e messaggi di stato o completamento restituiti dai
+servizi multimediali. &
+
+Service spoofing, abuso di credenziali, compromissione della
+supply chain, disclosure verso provider esterni, tampering o replay
+degli artefatti e dei segnali di completamento e indisponibilità
+dei servizi.
 \\
 \hline
+
 
 \textbf{TB6} &
-Pipeline multimediale $\rightarrow$ utente &
-Stream WebRTC finale, audio, video e metadati necessari alla
-riproduzione e all'identificazione della sessione. &
+Pipeline multimediale $\rightarrow$ client esterno &
+
+Stream WebRTC finale, audio, video, signaling e metadati necessari
+alla negoziazione e alla corretta associazione della sessione
+multimediale. &
+
 Man-in-the-middle, output tampering, session hijacking,
-impersonazione del digital human, replay di contenuti e denial of
-service sul canale di streaming.
+impersonazione del digital human, replay di contenuti e
+denial of service sul canale di streaming.
 \\
 \hline
 
-\end{tabularx}
-\end{table}
+\end{longtable}
+
+\endgroup
+
 
 Tra i confini individuati, \textbf{TB4} assume particolare rilevanza
-per il threat model corrente, poiché controlla l'accesso allo stato
-utilizzato dal Deep-Brain e agli eventuali aggiornamenti persistenti.
-Una compromissione limitata a un singolo messaggio può infatti
-trasformarsi, in presenza di una scrittura non autorizzata o di
-poisoning, in una modifica del contesto riutilizzata nelle interazioni
-successive. Questo rende TB4 direttamente rilevante per
-\emph{Memory \& Context Poisoning} (ASI06) e, come effetto successivo,
-anche per possibili deviazioni dell'obiettivo dell'agente
+per il threat model poiché separa il processo di generazione dal
+contesto che può essere recuperato e, se persistente, riutilizzato in
+interazioni successive. Una modifica malevola che supera tale confine
+può quindi propagare i propri effetti oltre il singolo turno
+conversazionale, rendendo TB4 direttamente rilevante per
+\emph{Memory \& Context Poisoning} (ASI06)
 \cite{owaspagentic}.
 
-Il \textbf{TB3} rappresenta invece il confine più sensibile dal punto
-di vista del \emph{control plane}. Nella baseline, un messaggio
-agentico che raggiunge il piano di controllo può influenzare lo stato
-della sessione e le transizioni dello Swap Manager. Nella secure
-architecture proposta, tale attraversamento viene invece subordinato
-ai controlli deterministici previsti da M11 e dalla logica di
-orchestrazione.
+\textbf{TB3} è invece particolarmente sensibile dal punto di vista del
+\emph{control plane}, poiché separa output probabilistici prodotti dagli
+agenti dalla logica deterministica che governa lo stato della sessione
+e le transizioni dello Swap Manager. Nella baseline non si assume ancora
+l'enforcement dei controlli aggiuntivi previsti dalla secure
+architecture; autenticazione della provenienza, validazione degli
+output, binding alla sessione e protezione da replay vengono pertanto
+trattati successivamente come requisiti di sicurezza del confine.
 
 % =========================================================
 % ASSET MODEL
@@ -1452,14 +1197,15 @@ protetto a sua volta da alterazione, bypass e indisponibilità.
 \end{table}
 
 La classificazione riguarda la \emph{presenza logica} dell'asset e non
-la sua configurazione di sicurezza. Ad esempio, D13 è già necessario
-nella baseline sotto forma di identità tecniche e credenziali per
-l'accesso ai servizi; workload identity separate, token short-lived e
-certificati mTLS rappresentano invece la sua realizzazione rafforzata
-nella secure architecture. Analogamente, D12 comprende già log e
-feedback prodotti dal funzionamento del sistema, mentre immutabilità,
-protezione e monitoraggio dell'audit trail costituiscono controlli
-successivamente introdotti.
+la sua configurazione di sicurezza. 
+% Ad esempio, D13 è già necessario
+% nella baseline sotto forma di identità tecniche e credenziali per
+% l'accesso ai servizi; workload identity separate, token short-lived e
+% certificati mTLS rappresentano invece la sua realizzazione rafforzata
+% nella secure architecture. Analogamente, D12 comprende già log e
+% feedback prodotti dal funzionamento del sistema, mentre immutabilità,
+% protezione e monitoraggio dell'audit trail costituiscono controlli
+% successivamente introdotti.
 
 Il Feedback Manager non viene modellato come asset autonomo: esso
 costituisce una realizzazione del livello di validazione e policy M11
@@ -1594,7 +1340,8 @@ deve essere modellato come asset perché, una volta introdotto, può
 diventare a sua volta bersaglio di tampering, bypass o denial of
 service. La sua efficacia non viene tuttavia considerata nella stima
 del rischio inerente e dovrà essere verificata attraverso il piano
-sperimentale.
+sperimentale. Durante la Risk Prioritization M11 non viene assunto come mitigazione già
+implementata o validata;
 
 \begingroup
 \setlength{\tabcolsep}{5pt}
@@ -1703,19 +1450,7 @@ Tale distinzione previene sovrapposizioni analitiche:
 
 I componenti di coordinamento (\textit{Request Router}, \textit{Orchestration Logic} e \textit{Swap Manager}), pur non essendo modelli di Machine Learning in senso stretto, vengono inclusi tra i \textit{Model Assets} adottando una visione architetturale estesa. Essi governano infatti l'autonomia e la logica decisionale del sistema, determinando il routing dei dati, la concorrenza tra i percorsi (\textit{Instant} e \textit{Background Path}), l'isolamento delle sessioni e la gestione delle transizioni.
 
-Un caso particolare è rappresentato da \textbf{M11 -- Guardrails,
-Policy Rules \& Output Schemas}. M11 viene incluso nell'Asset Model
-perché costituisce un componente security-critical della
-\textbf{secure architecture proposta} e deve quindi essere a sua volta
-protetto da tampering, bypass e indisponibilità.
-
-La sua presenza nell'Asset Model non implica tuttavia che la relativa
-efficacia venga considerata nella stima del rischio inerente. Durante
-la Risk Prioritization M11 non viene assunto come mitigazione già
-implementata o validata; la sua efficacia viene considerata solamente
-nella successiva analisi dei controlli e del rischio residuo.
-
-Infine, la mappatura delle proprietà di sicurezza $CIA^3$-R associate a ciascun asset costituisce il presupposto metodologico per le successive sezioni, in cui verranno valutate l'applicabilità, la probabilità (\textit{likelihood}) e l'impatto (\textit{severity}) delle minacce (inclusa la tassonomia OWASP Top 10 per LLM/AI).
+Infine, la mappatura delle proprietà di sicurezza $CIA^3$-R associate a ciascun asset costituisce il presupposto metodologico per le successive sezioni, in cui verranno valutate l'applicabilità, la probabilità (\textit{likelihood}) e l'impatto (\textit{severity}) delle minacce.
 
 % =========================================================
 \section{Analisi delle Minacce basata su OWASP Agentic Top 10}
@@ -1976,12 +1711,6 @@ per la successiva prioritizzazione. La relazione fra le categorie non
 descritto in ASI06 può veicolare un goal hijack ASI01, mentre la
 compromissione delle identità ASI03 può amplificarne l'impatto
 consentendo l'accesso a risorse oltre lo scope previsto.
-
-Nella fase successiva ciascuno scenario sarà valutato mediante
-\emph{Likelihood} e \emph{Severity}. Soltanto quelli classificati con
-livello di rischio maggiore saranno successivamente approfonditi
-attraverso precondizioni, percorso di attacco, impatto, mitigazioni e
-rischio residuo.
 
 % =========================================================
 % \subsection{Criteri di selezione degli asset coinvolti}
@@ -2856,9 +2585,9 @@ Per neutralizzare il rischio inerente \textbf{CRITICO} dello Scenario~1 e spezza
 \end{itemize}
 
 % =========================================== %
-% SCENARIO 2
+% SCENARIO 6
 % =========================================== %
-\subsection{Scenario 2: Memory \& Context Poisoning Persistente (SC6)}
+\subsection{Scenario 6: Memory \& Context Poisoning Persistente (SC6)}
 \label{sec:sc6}
 
 \noindent\textbf{Profilo di Rischio:} Priorità \textbf{Critica} (Likelihood: \emph{Alta}, Severity: \emph{Alta}, Tabella~\ref{tab:risk-priority}).\\
@@ -3131,7 +2860,7 @@ corrispondenti proprietà di sicurezza del modello CIA$^3$-R compromesse:
     \item \textbf{Repudiation (R) $\to$ Accountability (Ac):} log privi della tracciabilità di delega impediscono di distinguere un'invocazione lecita dell'Orchestratore da un'azione scatenata da un agente deviato.
 \end{itemize}
 
-L'architettura Dual-Brain trae effettivo beneficio dal disaccoppiamento operativo solo se la barriera di agency viene formalizzata a livello di policy di sicurezza e identità infrastrutturali. Nella baseline manca un vincolo rigoroso per-job sulle chiamate interne; $M11$ e controlli IAM dedicati vengono integrati nella secure architecture proprio per chiudere tali relazioni di fiducia implicita.
+L'architettura Dual-Brain trae effettivo beneficio dal disaccoppiamento operativo solo se la barriera di agency viene formalizzata a livello di policy di sicurezza e identità infrastrutturali.
 
 % \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 % \begin{itemize}
@@ -3386,8 +3115,6 @@ sensibili o seguire il consiglio senza un'adeguata verifica.
     \item \textbf{Azione e danno indotto.} L'utente divulga dettagli sensibili (che confluiscono in $D1$ e $D3$) oppure adotta prescrizioni e comportamenti dannosi per la propria salute e sicurezza.
 \end{enumerate}
 
-Lo scenario dimostra che STRIDE-AI e $\text{CIA}^3$-R, pur necessari, richiedono l'integrazione della dimensione \textbf{socio-tecnica}: l'impatto tecnico (violazione di integrità o confidenzialità) viene catalizzato dalla manipolazione della fiducia umana modellata da OWASP ASI09.
-
 % \subsubsection{Descrizione degli Asset Coinvolti}
 % La selezione comprende gli asset attraverso i quali il messaggio viene
 % costruito, reso credibile e infine utilizzato per influenzare
@@ -3425,7 +3152,7 @@ corrispondenti proprietà di sicurezza del modello CIA$^3$-R compromesse:
     \item \textbf{Repudiation (R) $\to$ Accountability (Ac):} difficoltà nel correlare a posteriori l'influenza psicologica esercitata sul target a specifici payload o anomalie di generazione nei log.
 \end{itemize}
 
-Il perno del threat non risiede unicamente nella compromissione del dato, ma nella \emph{persuasione antropomorfa}: l'interfaccia vocale e visuale disarma le difese cognitive dell'utente, moltiplicando la severità di qualsiasi failure a monte. Nella baseline non esistono filtri contro l'induzione psicologica; $M11$ e controlli di interfaccia vengono introdotti nella secure architecture proprio per calibrare i confini operativi del personaggio.
+Il perno del threat non risiede unicamente nella compromissione del dato, ma nella \emph{persuasione umana}: l'interfaccia vocale e visuale disarma le difese cognitive dell'utente, moltiplicando la severità di qualsiasi failure a monte. Nella baseline non esistono filtri contro l'induzione psicologica; $M11$ e controlli di interfaccia vengono introdotti nella secure architecture proprio per calibrare i confini operativi del personaggio.
 
 % \subsubsection{Calcolo della Priorità e Valutazione del Rischio}
 % \begin{itemize}
@@ -3479,35 +3206,25 @@ Per ridurre il rischio inerente \textbf{ALTO} dello Scenario~9, la secure archit
 \section{Secure Architecture Proposta}
 \label{sec:secure-architecture}
 
-La secure architecture proposta mantiene invariata la
-\textbf{baseline funzionale} definita nella
-Sezione~\ref{subsec:baseline-secure} e descritta nel dettaglio nella
-Sezione~\ref{sec:pipeline-description}, ma introduce punti di
-enforcement espliciti lungo i flussi nei quali dati non fidati,
-decisioni agentiche, memoria e servizi multimediali attraversano
-componenti con privilegi differenti.
+La secure architecture proposta conserva la
+\textbf{baseline funzionale} descritta nella
+Sezione~\ref{sec:pipeline-description}, introducendo punti di
+enforcement in corrispondenza dei trust boundary individuati nella
+Sezione~\ref{sec:trust-boundaries}. L'obiettivo è impedire che dati non
+fidati, output probabilistici o richieste provenienti da un workload
+possano acquisire effetti downstream senza una verifica coerente con
+identità, sessione, privilegi e stato corrente.
 
-L'obiettivo non è aumentare l'autonomia del sistema aggiungendo nuovi
-agenti di sicurezza, bensì applicare una strategia di
-\emph{defense-in-depth} nella quale i modelli generativi rimangono
-confinati entro il proprio ruolo e le decisioni con effetto sui
-componenti downstream vengono validate da controlli deterministici,
-policy di autorizzazione e monitoraggio runtime
+I controlli definiti nella Sezione~\ref{sec:precauzioni} vengono quindi
+tradotti in elementi architetturali senza aumentare l'autonomia del
+sistema. In particolare, M11 rappresenta un
+\textbf{livello logico distribuito di security enforcement}: i controlli
+compatibili con la deadline operano localmente sul Fast Path, mentre le
+verifiche più onerose vengono collocate sul Background Path o nei
+percorsi asincroni di aggiornamento
 \cite{damianiagentic,owaspagentic,owaspagenticthreats}.
 
-In tale architettura, M11 rappresenta un \textbf{livello logico di
-security enforcement} applicato in più punti della pipeline. Esso non
-deve necessariamente corrispondere a un singolo servizio centralizzato:
-i controlli a bassa latenza possono essere integrati localmente nel
-middleware del Fast Path, mentre le verifiche più onerose possono essere
-eseguite sul Background Path. Questa separazione evita di introdurre un
-unico punto sincrono di elaborazione che comprometterebbe il requisito
-real-time.
-
 \subsection{Separazione dei percorsi e punti di enforcement}
-
-La Figura~\ref{fig:secure-architecture} rappresenta la collocazione
-logica dei principali controlli.
 
 \begin{figure}[H]
 \centering
@@ -3603,7 +3320,7 @@ node[above,font=\scriptsize]{validated ready signal}
 \node[
   plane,
   fit=(router)(inputg)(fast)(fastg)(filler)
-      (deep)(rag)(deepg)(media)(swap)(webrtc),
+      (deep)(rag)(deepg)(media)(swap),
   label={[font=\small\bfseries]above:
   {Security plane: workload identity + mTLS + per-action authorization}}
 ] (securityplane) {};
@@ -3657,46 +3374,31 @@ node[above,font=\scriptsize]{validated ready signal}
 \label{fig:secure-architecture}
 \end{figure}
 
-La figura non introduce nuove contromisure, ma mostra la
-\textbf{collocazione architetturale} dei controlli già definiti nella
-Sezione~\ref{sec:precauzioni} e applicati ai cinque scenari prioritari.
+La Figura~\ref{fig:secure-architecture} mostra come i controlli già
+definiti vengano collocati nei trust boundary della baseline. In
+\textbf{TB2--TB3}, M11 media il passaggio da input non fidati e output
+probabilistici al piano deterministico di controllo. Gli identificatori
+di sessione, job, sequenza e timestamp sono associati
+dall'Orchestratore nell'envelope di controllo e non vengono accettati
+come autoritativi se prodotti dal modello.
 
-Sul percorso di ingresso, M11 opera come livello logico di enforcement
-tra dati non fidati e componenti agentici. Come descritto nella
-Precauzione~2, i controlli destinati al Fast-Brain devono essere
-compatibili con il vincolo real-time, mentre le verifiche più onerose
-sul contesto RAG e sulla risposta sostanziale possono essere eseguite
-sul Background Path.
+In \textbf{TB4}, il serving accede alla Knowledge Base in sola lettura,
+mentre ogni modifica persistente segue un percorso separato attraverso
+il Feedback Manager, con validazione, provenance, versioning e HITL per
+gli aggiornamenti ad alto impatto. In \textbf{TB5}, workload identity,
+autorizzazione per azione e protezione del canale limitano la fiducia
+implicita tra Orchestratore e servizi multimediali; un
+\emph{Video Ready Signal} può modificare lo stato dello Swap Manager
+soltanto dopo la verifica della sua coerenza con identità, sessione,
+job e stato corrente.
 
-L'Instant Path rimane confinato secondo il principio di Least Agency:
-M1 produce esclusivamente gli artefatti necessari al filler, mentre
-l'accesso a memoria persistente e servizi downstream rimane governato
-dall'Orchestratore. Il Background Path utilizza invece D4 in sola
-lettura durante il serving; l'aggiornamento della Knowledge Base passa
-attraverso il percorso separato di validazione già definito per SC6.
+Audit, monitoraggio runtime e supply-chain control operano come
+controlli trasversali. La proprietà architetturale risultante è una
+separazione tra \emph{generation plane} ed \emph{enforcement plane}:
+gli agenti producono contenuti entro il proprio ruolo, mentre le
+operazioni che modificano stato persistente, privilegi o transizioni
+della pipeline rimangono subordinate a controlli esterni al modello.
 
-Le comunicazioni tra workload e le invocazioni dei servizi applicano
-le identità, i vincoli di autorizzazione e la protezione dei canali
-descritti nella Precauzione~3 e in SC3--SC7. In particolare, la
-transizione tra filler e risposta principale rimane sotto il controllo
-deterministico di M9--M10: il \emph{Video Ready Signal} viene accettato
-soltanto se coerente con identità, sessione, job e stato corrente.
-
-Audit trail, monitoraggio runtime e controlli della supply chain
-rimangono trasversali all'intera architettura, secondo quanto già
-definito nelle Precauzioni~4--7. La proprietà risultante è quindi una
-separazione tra \emph{generation plane} e \emph{enforcement plane}: gli
-agenti producono contenuti e decisioni limitate al proprio ruolo, ma
-non possono autonomamente modificare memoria persistente, ampliare i
-propri privilegi o forzare una transizione audiovisiva.
-
-L'architettura applica pertanto un principio di \textbf{zero implicit
-trust}: l'appartenenza di un componente alla rete interna non è
-sufficiente per autorizzarne una richiesta. Identità del mittente,
-operazione richiesta, sessione, job e stato corrente devono risultare
-coerenti prima dell'esecuzione. In questo modo la compromissione di un
-singolo agente non attribuisce automaticamente all'attaccante le
-capacità dell'intera pipeline.
 \subsection{Fail-safe behavior}
 \label{subsec:fail-safe}
 
@@ -3718,7 +3420,7 @@ determinare una degradazione controllata della qualità del servizio,
 ma non il bypass di un controllo di sicurezza necessario.
 
 % =========================================================
-\section{Trade-off sicurezza--latenza}
+\subsection{Trade-off sicurezza--latenza}
 \label{sec:security-latency}
 
 Come discusso nella descrizione della pipeline e nella fase di
@@ -3854,12 +3556,6 @@ temporale dell'Instant Path. Per questo motivo la secure architecture
 assume un controllo leggero con deadline definita, la cui efficacia e
 il cui overhead dovranno essere misurati nel piano sperimentale.
 
-Gli altri controlli vengono collocati secondo quanto già definito nelle
-Precauzioni~\ref{sec:precauzioni}: le verifiche più approfondite su RAG
-e risposta principale appartengono al Background Path, mentre audit
-aggregato, SBOM/AIBOM, vulnerability scanning, red teaming e HITL sugli
-aggiornamenti operano fuori dal turno conversazionale.
-
 La scelta progettuale fondamentale è pertanto che
 \textbf{la latenza venga ottimizzata mediante la collocazione dei
 controlli, non mediante il loro bypass}. Se una verifica necessaria sul
@@ -3883,6 +3579,17 @@ configurazione dei guardrail. Per i controlli probabilistici è
 opportuno confrontare la configurazione protetta con una baseline priva
 del controllo oggetto del test; per i controlli deterministici viene
 invece verificata direttamente la proprietà di sicurezza attesa.
+
+Prima dell'esecuzione dei test devono essere definiti criteri di
+accettazione espliciti. Per i controlli deterministici, quali
+autorizzazione, session binding e protezione anti-replay, l'obiettivo è
+l'assenza di accettazioni non autorizzate nei casi di test previsti.
+Per i controlli probabilistici devono invece essere fissate soglie
+relative ad Attack Success Rate, detection rate e false-positive rate.
+Per il Fast Path deve inoltre essere definito un limite accettabile
+sull'incremento di latenza, misurato almeno mediante mediana e percentile
+elevato. Le soglie numeriche vengono stabilite prima della campagna
+sperimentale e non ricavate a posteriori dai risultati osservati.
 
 La Tabella~\ref{tab:experimental-plan} riassume il piano di validazione.
 Le metriche riportate rappresentano grandezze da misurare e non
@@ -4275,46 +3982,34 @@ autonomia richiederebbe una nuova iterazione del threat model.
 \section{Conclusioni}
 \label{sec:conclusions}
 
-Il lavoro ha applicato un processo di threat modeling asset-centered a
-una pipeline Dual-Brain il cui requisito real-time introduce un
-vincolo di sicurezza non presente in un normale chatbot. La
-combinazione di STRIDE-AI, CIA$^3$-R e OWASP Agentic ha permesso di
-passare dall'architettura concreta alla prioritizzazione delle minacce,
-identificando SC1 e SC6 come rischi Critici e SC3, SC7 e SC9 come
-rischi Alti.
+Il lavoro ha applicato un processo di threat modeling asset-centered
+alla pipeline agentica Dual-Brain, integrando STRIDE-AI, CIA$^3$-R e
+OWASP Agentic per collegare asset, trust boundary, minacce e scenari
+d'attacco. La prioritizzazione ha individuato SC1 e SC6 come rischi
+Critici e SC3, SC7 e SC9 come rischi Alti, mostrando come la superficie
+d'attacco dipenda non soltanto dai modelli linguistici, ma anche dalle
+interazioni con memoria, identità, coordinamento e componenti
+audiovisivi.
 
-L'analisi degli scenari ha mostrato che il rischio non dipende
-soltanto dai due modelli linguistici, ma soprattutto dai punti in cui
-output agentici interagiscono con memoria, identità, comunicazioni di
-coordinamento e rappresentazione audiovisiva. La secure architecture
-traduce quindi i controlli definiti nella
-Sezione~\ref{sec:precauzioni} in punti di enforcement lungo la pipeline,
-mantenendo separati il serving path, gli aggiornamenti persistenti e i
-controlli trasversali.
+La secure architecture proposta traduce i controlli delle sette
+precauzioni in punti di enforcement collocati lungo tali confini:
+separazione tra serving e aggiornamento persistente, Least Agency,
+validazione prima degli effetti downstream, workload identity,
+autorizzazione per azione, monitoraggio e comportamento fail-safe. Il
+vincolo real-time viene preservato mediante il
+\emph{security control placement}: i controlli indispensabili rimangono
+nel percorso sincrono, mentre quelli incompatibili con la deadline del
+Fast-Brain vengono eseguiti sul Background Path o fuori dal turno
+conversazionale.
 
-Il principale risultato progettuale riguarda il rapporto tra sicurezza
-e latenza: il requisito real-time viene preservato attraverso la
-\emph{collocazione} dei controlli e il comportamento fail-safe, non
-attraverso la loro eliminazione. I controlli indispensabili prima che
-un output produca effetti rimangono nel percorso sincrono, mentre le
-verifiche incompatibili con la deadline del Fast-Brain vengono
-eseguite sul Background Path o fuori dal turno conversazionale.
+L'efficacia di tali misure deve essere verificata mediante il piano
+sperimentale definito nel lavoro; di conseguenza, la valutazione del
+rischio residuo rimane preliminare. Il threat model deve inoltre essere
+aggiornato in presenza di modifiche a modelli, memoria, provider,
+policy, tool o livelli di autonomia, mantenendo la sicurezza come
+proprietà verificata nel tempo anziché come assunzione statica
+dell'architettura.
 
-Il piano sperimentale definito nella
-Sezione~\ref{sec:experimental-validation} costituisce il passaggio
-necessario per trasformare queste proprietà progettuali in evidenza
-misurata. Fino a tale verifica, la valutazione del rischio residuo
-rimane intenzionalmente prudente: in particolare SC1 conserva un
-livello Alto atteso, poiché la robustezza contro manipolazioni
-semantiche non può essere garantita esclusivamente mediante controlli
-deterministici.
-
-Il threat model deve infine essere considerato un artefatto evolutivo.
-Modifiche a modelli, memoria, provider, policy, livello di autonomia o
-workflow richiedono di rieseguire la valutazione, applicando il ciclo
-di audit già previsto dalla Precauzione~7. In questo modo la sicurezza
-rimane una proprietà verificata nel tempo e non un'assunzione fissata
-alla sola versione iniziale dell'architettura.
 % =========================================================
 % BIBLIOGRAFIA
 % =========================================================
