@@ -273,7 +273,7 @@ La pipeline analizzata presenta tali caratteristiche in forma \textbf{vincolata}
 %    \item \textbf{Ciclo di Feedback e Memoria Persistente}: raccoglie segnali di interazione impliciti (es. \emph{replay}) ed espliciti per aggiornare e riorganizzare dinamicamente il pool di \emph{few-shot examples} e il \emph{ranking} dei documenti in FAISS per le sessioni future \cite{projectspec};
 %    \item \textbf{Orchestrazione di componenti e servizi esterni}: la pipeline integra componenti specializzati per STT, TTS con \emph{voice cloning}, generazione video, \emph{lip-sync} e streaming. Il loro utilizzo è inserito nel workflow della pipeline e coordinato dal livello di orchestrazione, che governa i percorsi paralleli, la sincronizzazione e le transizioni tra filler e risposta principale \cite{projectspec,damianiasset}.    
     \item \textbf{Decisione reattiva autonoma (Fast-Brain)}: interpreta i token parziali in streaming provenienti dal modulo STT e seleziona in autonomia il filler verbale, il tono emotivo e il trigger gestuale coerente (es. \texttt{GAZE\_UP\_LEFT}, \texttt{PREPARING\_HERBS}) \cite{projectspec,persona};
-    \item \textbf{Ragionamento deliberativo (Deep-Brain)}: governa il ciclo di inferenza sulla richiesta completa attraverso un pattern ReAct/RAG, integrando le linee guida comportamentali del system prompt con i documenti recuperati dalla Knowledge Base prima della generazione finale \cite{projectspec};
+    \item \textbf{Ragionamento deliberativo (Deep-Brain)}: elabora la richiesta completa mediante un flusso RAG, integrando le linee guida comportamentali del system prompt con i documenti recuperati dalla Knowledge Base prima della generazione finale \cite{projectspec};
     \item \textbf{Adattamento della memoria e feedback loop}: monitora i segnali di interazione impliciti ed espliciti per riordinare dinamicamente il pool di \emph{few-shot examples} e il ranking semantico per le sessioni future \cite{projectspec};
     \item \textbf{Invocazione vincolata di tool e servizi}: l'agente non possiede permessi per l'esecuzione arbitraria di codice o l'invocazione di API arbitrarie; le azioni esterne sono circoscritte alle chiamate funzionali ai moduli downstream (sintesi vocale e rendering video) coordinate dall'Orchestratore \cite{projectspec,damianiasset}.  
 \end{itemize}
@@ -1365,7 +1365,7 @@ Modello a bassa latenza che analizza la trascrizione parziale, classifica l'inte
 
 \textbf{M2} \newline Deep-Brain Agent & 
 LLM principale responsabile dell'interpretazione completa della richiesta, dell'utilizzo del contesto RAG e della generazione della risposta sostanziale. & 
-\textbf{T} [I]: indirect prompt injection o manipolazione della risposta generata. \newline \textbf{I} [C]: esposizione incontrollata di istruzioni interne o contesti RAG riservati. \newline \textbf{E} [Az]: \textbf{E}: abuso di autorizzazioni o credenziali con scope eccessivo per accedere a RAG, memoria o richiedere operazioni downstream oltre il ruolo assegnato. \\
+\textbf{T} [I]: indirect prompt injection o manipolazione della risposta generata. \newline \textbf{I} [C]: esposizione incontrollata di istruzioni interne o contesti RAG riservati. \newline \textbf{E} [Az]: abuso di autorizzazioni o credenziali con scope eccessivo per accedere a RAG, memoria o richiedere operazioni downstream oltre il ruolo assegnato. \\
 \hline
 
 \textbf{M3} \newline Personality / System Prompts & 
@@ -2733,7 +2733,7 @@ richiedere ulteriore intervento attivo da parte dell'attaccante.
 
 \subsubsection{Mitigazioni e Contromisure Applicate}
 
-Per neutralizzare il rischio inerente \textbf{CRITICO} dello Scenario~2 (SC6) e interrompere la
+Per neutralizzare il rischio inerente \textbf{CRITICO} dello Scenario~6 (SC6) e interrompere la
 propagazione della contaminazione a diversi stadi della catena, la secure architecture applica
 in modo integrato le precauzioni definite nella Sezione~\ref{sec:precauzioni}, mappate sui rispettivi
 asset coinvolti:
@@ -4042,22 +4042,22 @@ OWASP Foundation, \emph{OWASP Top 10 for Agentic Applications 2026}, 2026.
 \bibitem{owaspllm}
 OWASP Foundation, \emph{OWASP Top 10 for Large Language Model Applications 2025}, 2025.
 
-\bibitem{react}
-S. Yao et al., ``ReAct: Synergizing Reasoning and Acting in Language Models,'' 2023.
+% \bibitem{react}
+% S. Yao et al., ``ReAct: Synergizing Reasoning and Acting in Language Models,'' 2023.
 
-\bibitem{nist}
-NIST, \emph{Artificial Intelligence Risk Management Framework (AI RMF 1.0)}, 2023.
+% \bibitem{nist}
+% NIST, \emph{Artificial Intelligence Risk Management Framework (AI RMF 1.0)}, 2023.
 
-\bibitem{mitreatlas}
-MITRE, \emph{ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems}.
+% \bibitem{mitreatlas}
+% MITRE, \emph{ATLAS: Adversarial Threat Landscape for Artificial-Intelligence Systems}.
 
-\bibitem{webrtc}
-IETF, \emph{Security Architecture for WebRTC} e \emph{WebRTC Security Considerations}, RFC 8827 e RFC 8826, 2021.
+% \bibitem{webrtc}
+% IETF, \emph{Security Architecture for WebRTC} e \emph{WebRTC Security Considerations}, RFC 8827 e RFC 8826, 2021.
 
-\bibitem{cyrille2026strideai}
-T.~N.~R. Cyrille e F.~Schwarz, \emph{STRIDE-AI: A Threat Modeling Framework for Generative AI Security Assessment}, arXiv preprint arXiv:2605.17163, 2026.
+% \bibitem{cyrille2026strideai}
+% T.~N.~R. Cyrille e F.~Schwarz, \emph{STRIDE-AI: A Threat Modeling Framework for Generative AI Security Assessment}, arXiv preprint arXiv:2605.17163, 2026.
 
-\bibitem{owaspagenticthreats} OWASP Foundation, \textit{Agentic AI -- Threats and Mitigations v1.1}, 2025--2026.
+% \bibitem{owaspagenticthreats} OWASP Foundation, \textit{Agentic AI -- Threats and Mitigations v1.1}, 2025--2026.
 
 \end{thebibliography}
 \end{document}
